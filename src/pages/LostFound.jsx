@@ -12,8 +12,14 @@ const LostFound = () => {
 
     const subscription = supabase
       .channel('lost_found_changes')
-      .on('postgres_changes', { event: '*', table: 'lost_found' }, () => {
-        fetchItems();
+      .on('postgres_changes', { event: '*', table: 'lost_found' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setItems(current => [payload.new, ...current]);
+        } else if (payload.eventType === 'UPDATE') {
+          setItems(current => current.map(item => item.id === payload.new.id ? payload.new : item));
+        } else if (payload.eventType === 'DELETE') {
+          setItems(current => current.filter(item => item.id !== payload.old.id));
+        }
       })
       .subscribe();
 
@@ -25,16 +31,12 @@ const LostFound = () => {
   const fetchItems = async () => {
     setLoading(true);
     const { data, error } = await supabase.from('lost_found').select('*').order('found_at', { ascending: false });
-    
-    if (error || !data || data.length === 0) {
-      // Dummy data
-      setItems([
-        { id: 1, name: '青い折りたたみ傘', location: '南館2F 廊下', features: 'ドット柄、持ち手にストラップあり', found_at: '2026-06-14T10:30:00Z' },
-        { id: 2, name: '黒いペンケース', location: '体育館 アリーナ', features: '中身にシャープペンシル3本', found_at: '2026-06-14T11:45:00Z' },
-        { id: 3, name: '学生証', location: '仮校舎 A1教室', features: '2年生、カードケース入り', found_at: '2026-06-14T13:20:00Z' },
-        { id: 4, name: 'ハンドタオル', location: '南館1F トイレ前', features: '白地に花の刺繍', found_at: '2026-06-14T14:10:00Z' },
-      ]);
-    } else {
+
+    if (error) {
+      console.error('Fetch error:', error);
+    }
+
+    if (data) {
       setItems(data);
     }
     setLoading(false);
@@ -47,81 +49,84 @@ const LostFound = () => {
   };
 
   return (
-    <div className="space-y-6 pb-24">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold text-gradient">落とし物情報</h1>
-        <p className="text-white/40 text-sm">校内で拾得された物品の一覧です。心当たりのある方は本部までお越しください。</p>
+    <div className="space-y-10 pb-12">
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center space-x-3 text-slate-900">
+          <div className="w-1.5 h-8 bg-brand-600 rounded-full"></div>
+          <h1 className="text-3xl font-black tracking-tight">落とし物情報</h1>
+        </div>
+        <p className="text-slate-500 text-sm font-medium">本部で預かっている落とし物の一覧です。</p>
       </div>
 
       {/* Guide Section */}
-      <div className="glass-card p-6 border-l-4 border-l-ryoun-sky bg-ryoun-sky/5 flex items-start space-x-4">
-        <div className="bg-ryoun-sky/20 p-2 rounded-lg text-ryoun-sky shrink-0">
-          <Info size={20} />
+      <div className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 shadow-sm">
+        <div className="bg-brand-50 p-4 rounded-2xl text-brand-600 shadow-sm">
+          <Info size={30} strokeWidth={2.5} />
         </div>
         <div className="space-y-2">
-          <h2 className="font-bold text-ryoun-light">受け取り方法</h2>
-          <p className="text-sm text-white/60 leading-relaxed font-light">
-            落とし物の受け取りは、<span className="text-white font-medium">南館1F 会議室前「落とし物本部」</span>にて承っております。<br />
-            本人確認のため、特徴の詳細などを伺う場合がございます。
+          <h2 className="text-xl font-black text-slate-900">受け取り方法</h2>
+          <p className="text-slate-600 leading-relaxed font-bold">
+            心当たりのある方は、<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">仮校舎2F「文化委員会本部」</span>までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
           </p>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 animate-pulse text-white/30">
-          <RefreshCw className="animate-spin mb-4" size={32} />
-          <p className="text-sm">情報を更新中...</p>
+        <div className="flex flex-col items-center justify-center py-32 space-y-4">
+          <RefreshCw className="animate-spin text-brand-600" size={40} />
+          <p className="text-slate-400 font-bold tracking-widest text-sm uppercase">データを読み込み中...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <AnimatePresence>
-            {items.map((item) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <AnimatePresence mode="popLayout">
+            {items.map((item, idx) => (
               <motion.div
                 layout
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="glass-card p-5 group flex items-start space-x-4 hover:bg-white/15 transition-all"
+                transition={{ duration: 0.3, delay: idx * 0.03 }}
+                className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 group flex flex-col items-start gap-6 shadow-sm hover:shadow-md transition-shadow"
               >
-                <div className="bg-white/5 p-3 rounded-2xl text-white/30 group-hover:text-ryoun-sky transition-colors">
-                  <PackageSearch size={24} />
-                </div>
-                <div className="flex-grow space-y-3">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-bold text-lg">{item.name}</h3>
-                    <div className="text-right">
-                      {item.updated_at && (
-                        <div className="flex items-center justify-end text-[10px] text-white/30 whitespace-nowrap bg-white/5 px-2 py-1 rounded-full border border-white/5">
-                          <RefreshCw size={10} className="mr-1 opacity-50" />
-                          更新: {formatDate(item.updated_at)}
-                        </div>
-                      )}
+                <div className="flex justify-between items-start w-full gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-slate-50 p-3 rounded-xl text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
+                      <PackageSearch size={28} />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
+                      <div className="mt-2 flex items-center text-[10px] font-bold text-slate-400">
+                        <Clock size={12} className="mr-1" />
+                        拾得日時: {formatDate(item.found_at)}
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="space-y-1.5">
-                    <div className="flex items-center text-xs text-white/60">
-                      <MapPin size={12} className="mr-1.5 text-ryoun-sky" />
-                      <span className="font-medium">場所: {item.location}</span>
+                  {item.updated_at && (
+                    <div className="text-[10px] font-bold text-slate-300 whitespace-nowrap bg-slate-50 px-2 py-1 rounded-md">
+                      新着
                     </div>
-                    <div className="flex items-center text-[10px] text-ryoun-sky/70 ml-1 border-l border-ryoun-sky/20 pl-2">
-                      <Clock size={10} className="mr-1.5" />
-                      <span>拾得: {formatDate(item.found_at)}</span>
-                    </div>
+                  )}
+                </div>
+
+                <div className="w-full space-y-4">
+                  <div className="flex items-center text-sm text-slate-600 font-bold bg-slate-50/80 px-4 py-3 rounded-xl border border-slate-100">
+                    <MapPin size={16} className="mr-2 text-brand-600" />
+                    <span>場所: {item.location}</span>
                   </div>
 
-                  <div className="text-sm text-white/50 font-light bg-white/5 p-2.5 rounded-xl border border-white/5 italic">
-                    <span className="text-[10px] text-white/20 block mb-1 uppercase tracking-tighter not-italic">Features</span>
-                    {item.features}
+                  <div className="p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
+                    <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">特徴・詳細</span>
+                    <p className="text-slate-700 text-sm font-bold leading-relaxed">{item.features}</p>
                   </div>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
-          
+
           {items.length === 0 && (
-            <div className="md:col-span-2 text-center py-20 text-white/20 border-2 border-dashed border-white/5 rounded-3xl">
-              現在、登録されている落とし物はありません
+            <div className="md:col-span-2 text-center py-32 space-y-4 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-3xl">
+              <PackageSearch className="text-slate-200 mx-auto" size={48} />
+              <p className="text-slate-400 font-bold text-lg md:text-xl">現在、登録されている落とし物はありません</p>
             </div>
           )}
         </div>

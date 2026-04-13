@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { User, Lock, ArrowRight, ShieldAlert } from 'lucide-react';
+import { User, Lock, ArrowRight, ShieldAlert, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AdminLogin = () => {
@@ -12,9 +12,12 @@ const AdminLogin = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const groupId = localStorage.getItem('ryoun_group_id');
     const authType = localStorage.getItem('ryoun_auth_type');
-    if (groupId && authType === 'group') {
+    const groupIdSaved = localStorage.getItem('ryoun_group_id');
+
+    if (authType === 'hq') {
+      navigate('/ryoun-hq-portal/dashboard', { replace: true });
+    } else if (authType === 'group' && groupIdSaved) {
       navigate('/admin/dashboard', { replace: true });
     }
   }, [navigate]);
@@ -24,8 +27,25 @@ const AdminLogin = () => {
     setLoading(true);
     setError('');
 
+    // 1. 本部ログインの試行 (Supabase Auth)
     try {
-      // Supabaseのgroupsテーブルから、IDとパスワードが一致するものを探す
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: groupId,
+        password: password,
+      });
+
+      if (!authError && authData.user) {
+        localStorage.setItem('ryoun_auth_type', 'hq');
+        navigate('/ryoun-hq-portal/dashboard');
+        setLoading(false);
+        return;
+      }
+    } catch (err) {
+      // Auth認証失敗時は団体ログインのチェックへ
+    }
+
+    try {
+      // 2. 団体ログインの試行 (groupsテーブル)
       const { data, error: dbError } = await supabase
         .from('groups')
         .select('id, login_id')
@@ -34,7 +54,7 @@ const AdminLogin = () => {
         .single();
 
       if (dbError || !data) {
-        throw new Error('団体IDまたはパスワードが正しくありません。');
+        throw new Error('IDまたはパスワードが正しくありません。');
       }
 
       // ログイン成功：IDを保存してダッシュボードへ
@@ -51,45 +71,48 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
+    <div className="min-h-[85vh] flex flex-col items-center justify-center px-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md glass-card p-8 space-y-8"
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md bg-white border border-slate-100 p-8 md:p-10 rounded-3xl shadow-sm space-y-10"
       >
-        <div className="text-center space-y-2">
-          <div className="w-16 h-16 bg-ryoun-sky/20 text-ryoun-sky rounded-2xl flex items-center justify-center mx-auto mb-4 border border-ryoun-sky/30">
-            <User size={32} />
+        <div className="text-center space-y-4">
+          <div className="w-20 h-20 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-brand-100 shadow-sm transition-transform hover:scale-105">
+            <User size={40} />
           </div>
-          <h1 className="text-2xl font-bold">団体ログイン</h1>
-          <p className="text-white/40 text-sm">企画情報の更新を行います</p>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">管理画面ログイン</h1>
+            <p className="text-slate-400 text-xs font-bold tracking-widest uppercase">待ち時間、整理券などの情報を編集できます</p>
+          </div>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-white/50 uppercase ml-1">団体ID</label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-              <input 
-                type="text" 
+        <form onSubmit={handleLogin} className="space-y-8">
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ログインID</label>
+            <div className="relative group">
+              <User className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors" size={20} />
+              <input
+                type="text"
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-ryoun-sky/50 outline-none transition-all"
-                placeholder="G-123"
+                placeholder="IDを入力"
+                className="w-full bg-slate-50/50 border border-slate-100 rounded-xl py-4.5 pl-14 pr-6 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-200"
                 value={groupId}
                 onChange={(e) => setGroupId(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-white/50 uppercase ml-1">パスワード</label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
-              <input 
-                type="password" 
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">パスワード</label>
+            <div className="relative group">
+              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors" size={20} />
+              <input
+                type="password"
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-ryoun-sky/50 outline-none transition-all"
                 placeholder="••••••••"
+                className="w-full bg-slate-50/50 border border-slate-100 rounded-xl py-4.5 pl-14 pr-6 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-200"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -97,26 +120,37 @@ const AdminLogin = () => {
           </div>
 
           {error && (
-            <div className="flex items-center space-x-2 text-red-400 bg-red-400/10 p-4 rounded-xl text-sm border border-red-400/20">
-              <ShieldAlert size={16} />
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center space-x-3 text-rose-600 bg-rose-50 p-5 rounded-xl text-sm border border-rose-100 font-bold"
+            >
+              <ShieldAlert size={20} strokeWidth={2.5} />
               <span>{error}</span>
-            </div>
+            </motion.div>
           )}
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             disabled={loading}
-            className="w-full btn-primary flex items-center justify-center space-x-2 py-4"
+            className="w-full btn-primary h-16 flex items-center justify-center space-x-3"
           >
-            <span>ログイン</span>
-            <ArrowRight size={18} />
+            {loading ? (
+              <RefreshCw className="animate-spin" size={24} />
+            ) : (
+              <>
+                <span className="text-lg">ログイン</span>
+                <ArrowRight size={22} className="transition-transform group-hover:translate-x-1" />
+              </>
+            )}
           </button>
         </form>
 
-        <div className="pt-4 text-center">
-           <p className="text-[10px] text-white/20 font-light tracking-widest leading-relaxed">
-             ログインできない場合は実行委員会（本部）まで<br />お問い合わせください。
-           </p>
+        <div className="pt-8 text-center border-t border-slate-50">
+          <p className="text-[11px] text-slate-400 font-bold tracking-tight leading-relaxed">
+            ログインできない場合は<br />
+            <span className="text-brand-600">本部 (仮校舎2F)</span> までお越しください。
+          </p>
         </div>
       </motion.div>
     </div>

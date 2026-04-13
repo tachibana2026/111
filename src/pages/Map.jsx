@@ -15,14 +15,17 @@ const Map = () => {
   const building = BUILDINGS.find(b => b.id === activeBuilding);
 
   return (
-    <div className="space-y-6 pb-24">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold text-gradient">校内マップ</h1>
-        <p className="text-white/40 text-sm">各建物の配置と教室をご確認いただけます</p>
+    <div className="space-y-10 pb-12">
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center space-x-3 text-slate-900">
+          <div className="w-1.5 h-8 bg-brand-600 rounded-full"></div>
+          <h1 className="text-3xl font-black tracking-tight">校内マップ</h1>
+        </div>
+        <p className="text-slate-500 text-sm font-medium">各校舎の配置と教室の場所を確認できます。</p>
       </div>
 
       {/* Building Tabs */}
-      <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10">
+      <div className="flex p-1 bg-slate-100 rounded-2xl border border-slate-200">
         {BUILDINGS.map(b => (
           <button
             key={b.id}
@@ -30,11 +33,11 @@ const Map = () => {
               setActiveBuilding(b.id);
               setActiveFloor(b.floors[0]);
             }}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 rounded-xl transition-all ${
-              activeBuilding === b.id ? 'bg-ryoun-sky text-ryoun-dark font-bold shadow-lg' : 'text-white/50 hover:text-white'
+            className={`flex-1 flex items-center justify-center space-x-2 py-3.5 rounded-xl transition-all ${
+              activeBuilding === b.id ? 'bg-white text-brand-700 font-bold shadow-sm' : 'text-slate-500 hover:text-slate-700 font-bold'
             }`}
           >
-            <b.icon size={18} />
+            <b.icon size={18} strokeWidth={activeBuilding === b.id ? 2.5 : 2} />
             <span className="text-sm">{b.name}</span>
           </button>
         ))}
@@ -42,19 +45,19 @@ const Map = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Floor Selection */}
-        <div className={`lg:col-span-1 space-y-2 flex lg:flex-col overflow-x-auto lg:overflow-visible no-scrollbar pb-2 lg:pb-0 ${building.floors.length <= 1 ? 'hidden lg:invisible' : ''}`}>
+        <div className={`lg:col-span-1 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible no-scrollbar pb-2 lg:pb-0 ${building.floors.length <= 1 ? 'hidden lg:invisible' : ''}`}>
           {building.floors.map(floor => (
             <button
               key={floor}
               onClick={() => setActiveFloor(floor)}
-              className={`px-6 py-4 lg:w-full rounded-2xl flex items-center justify-between border transition-all shrink-0 mr-2 lg:mr-0 ${
+              className={`px-6 py-4 lg:w-full rounded-xl flex items-center justify-between border transition-all shrink-0 ${
                 activeFloor === floor 
-                ? 'bg-ryoun-sky/10 border-ryoun-sky text-ryoun-sky' 
-                : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' 
+                : 'bg-white border-slate-100 text-slate-400 hover:border-brand-100 hover:text-brand-600 font-bold'
               }`}
             >
-              <span className="font-bold">{floor}</span>
-              <MapIcon size={16} className={activeFloor === floor ? 'opacity-100' : 'opacity-0'} />
+              <span className="font-black text-xl">{floor}</span>
+              <MapIcon size={16} className={`${activeFloor === floor ? 'text-brand-600' : 'text-slate-200'}`} />
             </button>
           ))}
         </div>
@@ -64,54 +67,46 @@ const Map = () => {
           <AnimatePresence mode="wait">
             <motion.div
               key={`${activeBuilding}-${activeFloor}`}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.02 }}
-              transition={{ duration: 0.3 }}
-              className="glass-card aspect-[4/3] flex flex-col items-center justify-center relative overflow-hidden group"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white border border-slate-100 rounded-3xl aspect-[4/3] flex flex-col items-center justify-center relative overflow-hidden shadow-sm"
             >
-              {/* Background pattern */}
-              <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-                <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-              </div>
-
-              <div className="z-10 text-center space-y-4">
-                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4 mx-auto border border-white/10 group-hover:scale-110 group-hover:bg-ryoun-sky/10 group-hover:border-ryoun-sky/30 transition-all duration-500">
-                  <MapIcon size={40} className="text-white/20 group-hover:text-ryoun-sky transition-colors" />
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 rounded-2xl bg-brand-50 flex items-center justify-center mb-4 mx-auto border border-brand-100">
+                  <MapIcon size={40} className="text-brand-600" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold tracking-widest">{building.name} {activeFloor}</h3>
-                  <p className="text-white/30 text-sm mt-2 font-light">マップ画像準備中</p>
-                </div>
-                <div className="pt-4">
-                   <p className="text-[10px] text-white/20 uppercase tracking-[0.3em]">Placeholder only</p>
+                  <h3 className="text-2xl font-black text-slate-900">
+                    {building.name} <span className="text-brand-600">{activeFloor}</span>
+                  </h3>
+                  <p className="text-slate-400 text-[10px] mt-4 font-black tracking-widest uppercase bg-slate-50 px-3 py-1 rounded-full inline-block">マップ読み込み中...</p>
                 </div>
               </div>
               
-              {/* Fake rooms overlay */}
-              <div className="absolute top-10 left-10 w-32 h-20 border border-white/5 bg-white/5 rounded animate-pulse"></div>
-              <div className="absolute top-40 right-10 w-24 h-40 border border-white/5 bg-white/5 rounded animate-pulse" style={{ animationDelay: '1s' }}></div>
-              <div className="absolute bottom-10 left-20 w-40 h-16 border border-white/5 bg-white/5 rounded animate-pulse" style={{ animationDelay: '2s' }}></div>
+              {/* Background dots pattern */}
+              <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#0084FF 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
             </motion.div>
           </AnimatePresence>
 
           {/* Legend */}
-          <div className="mt-6 flex flex-wrap gap-4">
-            <div className="flex items-center space-x-2">
-               <div className="w-3 h-3 rounded bg-ryoun-sky"></div>
-               <span className="text-xs text-white/60">受付/本部</span>
+          <div className="mt-6 flex flex-wrap gap-x-8 gap-y-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm">
+            <div className="flex items-center space-x-2.5">
+               <div className="w-3.5 h-3.5 rounded-full bg-brand-500"></div>
+               <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">本部・受付</span>
             </div>
-            <div className="flex items-center space-x-2">
-               <div className="w-3 h-3 rounded bg-green-500/50"></div>
-               <span className="text-xs text-white/60">トイレ</span>
+            <div className="flex items-center space-x-2.5">
+               <div className="w-3.5 h-3.5 rounded-full bg-emerald-500"></div>
+               <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">お手洗い</span>
             </div>
-            <div className="flex items-center space-x-2">
-               <div className="w-3 h-3 rounded bg-yellow-500/50"></div>
-               <span className="text-xs text-white/60">休憩所</span>
+            <div className="flex items-center space-x-2.5">
+               <div className="w-3.5 h-3.5 rounded-full bg-amber-500"></div>
+               <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">休憩所</span>
             </div>
-            <div className="flex items-center space-x-2">
-               <div className="w-3 h-3 rounded bg-red-500/50"></div>
-               <span className="text-xs text-white/60">救護室</span>
+            <div className="flex items-center space-x-2.5">
+               <div className="w-3.5 h-3.5 rounded-full bg-rose-500"></div>
+               <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">救護室</span>
             </div>
           </div>
         </div>

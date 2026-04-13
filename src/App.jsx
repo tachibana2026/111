@@ -5,7 +5,6 @@ import Groups from './pages/Groups';
 import Map from './pages/Map';
 import LostFound from './pages/LostFound';
 import AdminLogin from './pages/Admin/Login';
-import HQLogin from './pages/Admin/HQLogin';
 import GroupDashboard from './pages/Admin/GroupDashboard';
 import HQDashboard from './pages/Admin/HQDashboard';
 
@@ -20,7 +19,6 @@ function App() {
           <Route path="/lost-found" element={<LostFound />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<GroupDashboard />} />
-          <Route path="/ryoun-hq-portal" element={<HQLogin />} />
           <Route path="/ryoun-hq-portal/dashboard" element={<HQDashboard />} />
         </Routes>
       </Layout>
