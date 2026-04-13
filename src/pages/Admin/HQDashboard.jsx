@@ -461,6 +461,30 @@ const HQDashboard = () => {
     if (error) alert('配布状況の更新に失敗しました。');
   };
 
+  const handleUpdateAllPerformanceStatus = async (group, nextStatus) => {
+    const payload = {
+      performance_day1: (group.performance_day1 || []).map(p => ({ ...p, status: nextStatus })),
+      performance_day2: (group.performance_day2 || []).map(p => ({ ...p, status: nextStatus })),
+      updated_at: new Date().toISOString()
+    };
+    const { error } = await supabase.from('groups').update(payload).eq('id', group.id);
+    if (error) alert('更新に失敗しました。');
+  };
+
+  const handleUpdateSinglePerformanceStatus = async (group, day, time, nextStatus) => {
+    const key = day === 1 ? 'performance_day1' : 'performance_day2';
+    const newList = (group[key] || []).map(p =>
+      p.time === time ? { ...p, status: nextStatus } : p
+    );
+
+    const { error } = await supabase
+      .from('groups')
+      .update({ [key]: newList, updated_at: new Date().toISOString() })
+      .eq('id', group.id);
+
+    if (error) alert('更新に失敗しました。');
+  };
+
   const handleSaveGroup = async (e) => {
     e.preventDefault();
 
@@ -675,7 +699,7 @@ const HQDashboard = () => {
                             <th className="px-8 py-6 !text-left">タイトル</th>
                             <th className="px-8 py-6 text-center">受付状況</th>
                             {dept !== '展示' && (
-                              <th className="px-8 py-6 !text-left">
+                              <th className="px-8 py-6 text-center">
                                 {dept === '公演' ? '整理券配布状況' : dept === '冊子' ? '配布状況' : '待ち時間'}
                               </th>
                             )}
@@ -687,7 +711,13 @@ const HQDashboard = () => {
                           {deptGroups.map(g => (
                             <tr key={g.id} className="hover:bg-slate-50/50 transition-colors group">
                               <td className="px-8 py-6 !text-left">
-                                <span className="text-slate-900 font-black">{g.name}</span>
+                                <button
+                                  onClick={() => openGroupModal(g)}
+                                  className="text-slate-900 font-black hover:text-brand-600 transition-colors flex items-center gap-2 group/btn"
+                                >
+                                  <span>{g.name}</span>
+                                  <Edit2 size={12} className="opacity-0 group-hover/btn:opacity-100 transition-opacity text-brand-400" />
+                                </button>
                               </td>
                               <td className="px-8 py-6 !text-left">
                                 <span className="text-slate-600 font-bold">{g.title || <span className="text-slate-200 italic font-medium">タイトル未設定</span>}</span>
@@ -709,34 +739,66 @@ const HQDashboard = () => {
                                 </div>
                               </td>
                               {dept !== '展示' && (
-                                <td className="px-8 py-6 !text-left">
-                                  {g.status === 'closed' ? (
-                                    <span className="text-slate-300 font-black text-xs px-3">-</span>
-                                  ) : (g.department === '体験' || g.department === '食品') ? (
-                                    <select
-                                      className="bg-slate-100 border border-slate-200 text-slate-900 font-black px-3 py-1.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500"
-                                      value={g.waiting_time}
-                                      onChange={(e) => handleUpdateWaitingTime(g.id, parseInt(e.target.value))}
-                                    >
-                                      {Array.from({ length: 25 }, (_, i) => i * 5).map(time => (
-                                        <option key={time} value={time}>{time} 分待ち</option>
-                                      ))}
-                                    </select>
-                                  ) : g.department === '冊子' ? (
-                                    <select
-                                      className="bg-slate-100 border border-slate-200 text-slate-900 font-black px-3 py-1.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500"
-                                      value={g.booklet_status}
-                                      onChange={(e) => handleUpdateBookletStatus(g.id, e.target.value)}
-                                    >
-                                      <option value="distributing">配布中</option>
-                                      <option value="limited">残りわずか</option>
-                                      <option value="ended">配布終了</option>
-                                    </select>
-                                  ) : (
-                                    <span className="text-slate-900 font-black bg-slate-100 px-3 py-1 rounded-xl text-xs">
-                                      {getSpecialStatus(g)}
-                                    </span>
-                                  )}
+                                <td className="px-8 py-6">
+                                  <div className="flex items-center justify-center gap-4 text-center">
+                                    {(g.status === 'closed' && g.department !== '公演') ? (
+                                      <span className="text-slate-300 font-black text-xs px-3">-</span>
+                                    ) : (g.department === '体験' || g.department === '食品') ? (
+                                      <select
+                                        className="bg-slate-100 border border-slate-200 text-slate-900 font-black px-3 py-1.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500"
+                                        value={g.waiting_time}
+                                        onChange={(e) => handleUpdateWaitingTime(g.id, parseInt(e.target.value))}
+                                      >
+                                        {Array.from({ length: 25 }, (_, i) => i * 5).map(time => (
+                                          <option key={time} value={time}>{time} 分待ち</option>
+                                        ))}
+                                      </select>
+                                    ) : g.department === '冊子' ? (
+                                      <select
+                                        className="bg-slate-100 border border-slate-200 text-slate-900 font-black px-3 py-1.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500"
+                                        value={g.booklet_status}
+                                        onChange={(e) => handleUpdateBookletStatus(g.id, e.target.value)}
+                                      >
+                                        <option value="distributing">配布中</option>
+                                        <option value="limited">残りわずか</option>
+                                        <option value="ended">配布終了</option>
+                                      </select>
+                                    ) : (
+                                      <div className="flex flex-col gap-3 py-1 min-w-[200px]">
+                                        {[1, 2].map(day => {
+                                          const dayPerf = day === 1 ? (g.performance_day1 || []) : (g.performance_day2 || []);
+                                          if (dayPerf.length === 0) return null;
+                                          return (
+                                            <div key={day} className="space-y-1.5">
+                                              <div className="flex items-center gap-2 px-1">
+                                                <div className="w-1 h-3 bg-slate-200 rounded-full"></div>
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{day}日目</span>
+                                              </div>
+                                              <div className="grid grid-cols-1 gap-1.5">
+                                                {dayPerf.map((perf, pIdx) => (
+                                                  <div key={`${day}-${perf.time}`} className="flex items-center gap-3 justify-between bg-white border border-slate-100 p-2 rounded-xl shadow-[0_2px_4px_rgba(0,0,0,0.02)] transition-all hover:border-brand-200">
+                                                    <span className="text-[11px] font-black text-slate-700 whitespace-nowrap">{perf.time}</span>
+                                                    <select
+                                                      className="bg-slate-50 border border-slate-100 text-slate-900 font-extrabold px-2 py-1 rounded-lg text-[10px] outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+                                                      value={perf.status}
+                                                      onChange={(e) => handleUpdateSinglePerformanceStatus(g, day, perf.time, e.target.value)}
+                                                    >
+                                                      <option value="none">なし</option>
+                                                      <option value="distributing">配布中</option>
+                                                      <option value="ended">終了</option>
+                                                    </select>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                        {(g.performance_day1?.length === 0 && g.performance_day2?.length === 0) && (
+                                          <span className="text-slate-300 font-black text-xs px-2 text-center py-4 border border-dashed border-slate-100 rounded-2xl">公演情報なし</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                               )}
                               <td className="px-8 py-6 text-center">
@@ -917,40 +979,51 @@ const HQDashboard = () => {
                     )}
 
                     {currentGroup?.department === '公演' && (
-                      <div className="space-y-6 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
-                        {['performance_day1', 'performance_day2'].map((key, dayIdx) => (
-                          <div key={key} className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Day {dayIdx + 1}</h4>
-                            </div>
-                            {groupFormData[key].map((perf, pIdx) => (
-                              <div key={pIdx} className="space-y-2 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[9px] font-black text-slate-300">時間</span>
-                                  <div className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 font-black w-24">
-                                    {perf.time}
+                      <div className="space-y-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                        {[
+                          { label: 'Part 1 (6/13)', key: 'performance_day1', filter: p => p.time < '13:00' },
+                          { label: 'Part 2 (6/13)', key: 'performance_day1', filter: p => p.time >= '13:00' },
+                          { label: 'Part 3 (6/14)', key: 'performance_day2', filter: p => true }
+                        ].map((section, sIdx) => {
+                          const items = groupFormData[section.key].filter(section.filter);
+                          if (items.length === 0) return null;
+
+                          return (
+                            <div key={sIdx} className="space-y-3">
+                              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{section.label}</h4>
+                              {items.map((perf) => {
+                                // 元の配列におけるインデックスを特定
+                                const originalIdx = groupFormData[section.key].findIndex(p => p.time === perf.time);
+                                return (
+                                  <div key={perf.time} className="space-y-2 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[9px] font-black text-slate-300">時間</span>
+                                      <div className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 font-black w-24">
+                                        {perf.time}
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <span className="text-[9px] font-black text-slate-300 uppercase">整理券配布状況</span>
+                                      <select
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2 py-1.5 text-[10px] text-slate-700 font-bold outline-none focus:ring-1 focus:ring-brand-500"
+                                        value={perf.status}
+                                        onChange={(e) => {
+                                          const newList = [...groupFormData[section.key]];
+                                          newList[originalIdx] = { ...perf, status: e.target.value };
+                                          setGroupFormData({ ...groupFormData, [section.key]: newList });
+                                        }}
+                                      >
+                                        <option value="none">配布なし</option>
+                                        <option value="distributing">配布中</option>
+                                        <option value="ended">配布終了</option>
+                                      </select>
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <span className="text-[9px] font-black text-slate-300 uppercase">整理券配布状況</span>
-                                  <select
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-lg px-2 py-1.5 text-[10px] text-slate-700 font-bold outline-none focus:ring-1 focus:ring-brand-500"
-                                    value={perf.status}
-                                    onChange={(e) => {
-                                      const newList = [...groupFormData[key]];
-                                      newList[pIdx] = { ...perf, status: e.target.value };
-                                      setGroupFormData({ ...groupFormData, [key]: newList });
-                                    }}
-                                  >
-                                    <option value="none">配布なし</option>
-                                    <option value="distributing">配布中</option>
-                                    <option value="ended">配布終了</option>
-                                  </select>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ))}
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 

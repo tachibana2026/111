@@ -404,45 +404,53 @@ const GroupDashboard = () => {
                 {group.department === '公演' && (
                   <div className="space-y-10 pt-4 border-t border-slate-50">
                     {[
-                      { label: 'Day 1 (6/13)', state: tempPerfDay1, setter: setTempPerfDay1 },
-                      { label: 'Day 2 (6/14)', state: tempPerfDay2, setter: setTempPerfDay2 }
-                    ].map((day, idx) => (
-                      <div key={idx} className="space-y-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-1 h-4 bg-slate-200 rounded-full"></div>
-                          <h3 className="text-sm font-black text-slate-700">{day.label}</h3>
-                        </div>
-                        <div className="space-y-3">
-                          {day.state.map((perf, pIdx) => (
-                            <div key={pIdx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 group/item">
-                              <div className="flex items-center gap-3 min-w-[120px]">
-                                <span className="text-[10px] font-black text-slate-300">時間</span>
-                                <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-base font-bold text-slate-400 w-32 shadow-sm">
-                                  {perf.time}
-                                </div>
-                              </div>
-                              <div className="flex-1 flex items-center gap-3">
-                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-tight whitespace-nowrap">整理券状況</span>
-                                  <select
-                                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/10 shadow-sm appearance-none"
-                                    value={perf.status}
-                                    onChange={(e) => {
-                                      const newSchedule = [...day.state];
-                                      newSchedule[pIdx] = { ...perf, status: e.target.value };
-                                      day.setter(newSchedule);
-                                    }}
-                                  >
-                                    <option value="none">配布なし</option>
-                                    <option value="distributing">配布中</option>
-                                    <option value="ended">配布終了</option>
-                                  </select>
-                                </div>
-                              </div>
-                          ))}
+                      { label: 'Part 1 (6/13)', key: 'tempPerfDay1', state: tempPerfDay1, setter: setTempPerfDay1, filter: p => p.time < '13:00' },
+                      { label: 'Part 2 (6/13)', key: 'tempPerfDay1', state: tempPerfDay1, setter: setTempPerfDay1, filter: p => p.time >= '13:00' },
+                      { label: 'Part 3 (6/14)', key: 'tempPerfDay2', state: tempPerfDay2, setter: setTempPerfDay2, filter: p => true }
+                    ].map((section, sIdx) => {
+                      const items = section.state.filter(section.filter);
+                      if (items.length === 0) return null;
 
+                      return (
+                        <div key={sIdx} className="space-y-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-1 h-4 bg-slate-200 rounded-full"></div>
+                            <h3 className="text-sm font-black text-slate-700">{section.label}</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {items.map((perf) => {
+                              const originalIdx = section.state.findIndex(p => p.time === perf.time);
+                              return (
+                                <div key={perf.time} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 group/item">
+                                  <div className="flex items-center gap-3 min-w-[120px]">
+                                    <span className="text-[10px] font-black text-slate-300">時間</span>
+                                    <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-base font-bold text-slate-400 w-32 shadow-sm">
+                                      {perf.time}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 flex items-center gap-3">
+                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-tight whitespace-nowrap">整理券状況</span>
+                                    <select
+                                      className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-brand-500/10 shadow-sm appearance-none"
+                                      value={perf.status}
+                                      onChange={(e) => {
+                                        const newSchedule = [...section.state];
+                                        newSchedule[originalIdx] = { ...perf, status: e.target.value };
+                                        section.setter(newSchedule);
+                                      }}
+                                    >
+                                      <option value="none">配布なし</option>
+                                      <option value="distributing">配布中</option>
+                                      <option value="ended">配布終了</option>
+                                    </select>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

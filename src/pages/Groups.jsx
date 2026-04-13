@@ -287,11 +287,25 @@ const Groups = () => {
                     {group.department === '公演' && (() => {
                       const nextPerf = getNextPerformance(group);
                       return (
-                        <div className="pt-4 border-t border-slate-50">
-                          <PerformanceList schedule={group.performance_day1} dayLabel="Day 1 (6/13)" dayNum={1} currentNextPerf={nextPerf} />
-                          <div className="mt-4">
-                            <PerformanceList schedule={group.performance_day2} dayLabel="Day 2 (6/14)" dayNum={2} currentNextPerf={nextPerf} />
-                          </div>
+                        <div className="pt-4 border-t border-slate-50 space-y-4">
+                          <PerformanceList 
+                            schedule={group.performance_day1?.filter(p => p.time < '13:00')} 
+                            dayLabel="Part 1 (6/13)" 
+                            dayNum={1} 
+                            currentNextPerf={nextPerf} 
+                          />
+                          <PerformanceList 
+                            schedule={group.performance_day1?.filter(p => p.time >= '13:00')} 
+                            dayLabel="Part 2 (6/13)" 
+                            dayNum={1} 
+                            currentNextPerf={nextPerf} 
+                          />
+                          <PerformanceList 
+                            schedule={group.performance_day2} 
+                            dayLabel="Part 3 (6/14)" 
+                            dayNum={2} 
+                            currentNextPerf={nextPerf} 
+                          />
                         </div>
                       );
                     })()}

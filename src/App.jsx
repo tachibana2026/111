@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Groups from './pages/Groups';
 import Map from './pages/Map';
 import LostFound from './pages/LostFound';
+import Timetable from './pages/Timetable';
 import AdminLogin from './pages/Admin/Login';
 import GroupDashboard from './pages/Admin/GroupDashboard';
 import HQDashboard from './pages/Admin/HQDashboard';
@@ -15,6 +16,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/groups" element={<Groups />} />
+          <Route path="/timetable" element={<Timetable />} />
           <Route path="/map" element={<Map />} />
           <Route path="/lost-found" element={<LostFound />} />
           <Route path="/admin" element={<AdminLogin />} />

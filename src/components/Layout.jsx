@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Users, Map as MapIcon, PackageSearch, UserCog } from 'lucide-react';
+import { Home, Users, Clock, Map as MapIcon, PackageSearch, UserCog } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Layout = ({ children }) => {
@@ -8,6 +8,7 @@ const Layout = ({ children }) => {
   const navItems = [
     { name: 'ホーム', path: '/', icon: Home },
     { name: '団体一覧', path: '/groups', icon: Users },
+    { name: 'タイムテーブル', path: '/timetable', icon: Clock },
     { name: 'マップ', path: '/map', icon: MapIcon },
     { name: '落とし物', path: '/lost-found', icon: PackageSearch },
     { name: '管理', path: '/admin', icon: UserCog },
