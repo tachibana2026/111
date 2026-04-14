@@ -36,6 +36,10 @@ export default {
         outfit: ['Outfit', 'sans-serif'],
         inter: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
+      boxShadow: {
+        'soft': 'var(--shadow-soft)',
+        'premium': 'var(--shadow-premium)',
+      },
     },
   },
   plugins: [],

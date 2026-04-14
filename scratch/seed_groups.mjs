@@ -5,65 +5,107 @@ const supabaseAnonKey = 'sb_publishable_dPoHJ6R5oEBcmYRNJ0u-2A_EKWDpIFW';
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const grades = ['1', '2', '3'];
-const classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+const groupsData = [
+  // 1年生 (体験)
+  ...['A','B','C','D','E','F','G','H','I'].map(c => ({ 
+    login_id: `1${c}`, name: `1年${c}組`, departments: ['体験'], building: '南館', room: `1-${['A','B','C','D','E','F','G','H','I'].indexOf(c)+1}` 
+  })),
+  // 2年生 (食品)
+  ...['A','B','C','D','E','F','G','H','I'].map(c => ({ 
+    login_id: `2${c}`, name: `2年${c}組`, departments: ['食品'], building: '南館', room: `2-${['A','B','C','D','E','F','G','H','I'].indexOf(c)+1}` 
+  })),
+  // 3年生 (食品 + 物販 など複数部門の例として 3Aをセット)
+  { 
+    login_id: '3A', name: '3年A組', title: 'たちばなダイナー', departments: ['食品', '物販'], building: '南館', room: '3-1', description: 'おいしい食事とオリジナルグッズを販売中！'
+  },
+  ...['B','C','D','E','F','G','H','I'].map(c => ({ 
+    login_id: `3${c}`, name: `3年${c}組`, departments: ['食品'], building: '南館', room: `3-${['A','B','C','D','E','F','G','H','I'].indexOf(c)+1}` 
+  })),
+  // 公演団体
+  { 
+    login_id: 'DRAMA', name: '演劇部', title: 'たちばな劇場2026', departments: ['公演'], building: '体育館', room: 'ステージ', description: '感動のステージをお届けします。',
+    performances: [
+      { part_id: 1, start_time: "09:30", end_time: "10:15", status: "none" },
+      { part_id: 2, start_time: "13:30", end_time: "14:15", status: "none" },
+      { part_id: 3, start_time: "10:00", end_time: "10:45", status: "none" }
+    ]
+  },
+  { 
+    login_id: 'WIND', name: '吹奏楽部', title: 'Summer Concert', departments: ['公演'], building: '体育館', room: 'ステージ',
+    performances: [
+      { part_id: 1, start_time: "11:00", end_time: "11:45", status: "none" },
+      { part_id: 2, start_time: "15:00", end_time: "15:45", status: "none" },
+      { part_id: 3, start_time: "11:15", end_time: "11:55", status: "none" }
+    ]
+  },
+  { 
+    login_id: 'DANCE', name: 'ダンス同好会', title: 'STREET VIBES', departments: ['公演'], building: '体育館', room: 'ステージ',
+    performances: [
+      { part_id: 1, start_time: "10:30", end_time: "11:00", status: "none" },
+      { part_id: 3, start_time: "09:15", end_time: "09:45", status: "none" }
+    ]
+  },
+  // 展示
+  { login_id: 'ART', name: '美術部', title: '凌雲展', departments: ['展示'], building: '南館', room: '美術室' },
+  { login_id: 'SCI', name: '科学部', title: 'サイエンスラボ', departments: ['展示'], building: '南館', room: '地学室' },
+  // 冊子
+  { login_id: 'BOOK', name: '文化委員会', title: '公式パンフレット配布', departments: ['冊子'], building: '各所', room: '受付' },
+  // 複数部門の例：生徒会が物販と冊子を担当
+  { login_id: 'COUNCIL', name: '生徒会', title: '本部デスク', departments: ['冊子', '物販'], building: '南館', room: '入口' }
+];
 
 async function seed() {
-  console.log('=== たちばな祭2026 正規団体データ投入 ===');
+  console.log('=== たちばな祭2026 正規化データ投入開始 ===');
   
-  // 1. 既存のメッセージを削除
-  console.log('既存メッセージを削除中...');
-  const { error: msgErr } = await supabase.from('messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  if (msgErr) console.log('メッセージ削除エラー（テーブルが空の場合無視）:', msgErr.message);
-  
-  // 2. 既存の団体データを削除
-  console.log('既存団体データを削除中...');
-  const { error: delErr } = await supabase.from('groups').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  if (delErr) {
-    console.error('団体削除エラー:', delErr.message);
-    return;
-  }
-  console.log('既存データの削除完了');
+  // 先に message などをクリーンアップ
+  await supabase.from('messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('performances').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('group_activities').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  await supabase.from('groups').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-  // 3. 正規団体データを作成
-  const groups = [];
-  for (const grade of grades) {
-    for (const cls of classes) {
-      groups.push({
-        login_id: `${grade}${cls}`,
-        password: `tachibana${grade}${cls}`,
-        name: `${grade}年${cls}組`,
-        department: grade === '1' ? '体験' : '食品',
-        grade: `${grade}年`,
-        building: '南館',
-        room: `${grade}-${classes.indexOf(cls) + 1}`,
-        description: '',
-        waiting_time: 0,
-        status: 'open',
-        editing_locked: false,
-        social_links: {},
-      });
+  for (const g of groupsData) {
+    console.log(`投入中: ${g.name}`);
+    
+    // 1. Group 挿入
+    const { data: group, error: gErr } = await supabase.from('groups').insert([{
+      login_id: g.login_id,
+      password: `tachibana${g.login_id}`,
+      name: g.name,
+      title: g.title || '',
+      building: g.building,
+      room: g.room,
+      description: g.description || '',
+      social_links: {},
+      editing_locked: false
+    }]).select().single();
+
+    if (gErr) {
+      console.error(`Group失敗: ${g.login_id}`, gErr.message);
+      continue;
+    }
+
+    // 2. Activities (部門) 挿入
+    const activities = g.departments.map(dept => ({
+      group_id: group.id,
+      department: dept,
+      status: dept === '冊子' ? 'distributing' : 'open',
+      waiting_time: 0
+    }));
+    const { error: aErr } = await supabase.from('group_activities').insert(activities);
+    if (aErr) console.error(`Activity失敗: ${g.login_id}`, aErr.message);
+
+    // 3. Performances 挿入
+    if (g.performances) {
+      const perfs = g.performances.map(p => ({
+        group_id: group.id,
+        ...p
+      }));
+      const { error: pErr } = await supabase.from('performances').insert(perfs);
+      if (pErr) console.error(`Performance失敗: ${g.login_id}`, pErr.message);
     }
   }
 
-  // 4. データを投入
-  console.log(`${groups.length}件の団体データを投入中...`);
-  const { data, error } = await supabase.from('groups').insert(groups).select();
-
-  if (error) {
-    console.error('投入エラー:', error.message);
-    return;
-  }
-
-  console.log(`✅ ${data.length}件の団体データを正常に投入しました！`);
-  console.log('');
-  console.log('--- 投入された団体一覧 ---');
-  data.sort((a, b) => a.login_id.localeCompare(b.login_id));
-  for (const g of data) {
-    console.log(`  ${g.login_id} | ${g.name} | ${g.department} | ${g.building} ${g.room} | PW: ${g.password}`);
-  }
-  console.log('');
-  console.log('=== 完了 ===');
+  console.log('✅ 全データの投入に成功しました。');
 }
 
-seed().catch(console.error);
+seed();

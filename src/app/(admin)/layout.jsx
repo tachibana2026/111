@@ -1,4 +1,3 @@
-import AdminNotificationListener from '@/components/admin/AdminNotificationListener';
 import AdminHeader from '@/components/Layout/AdminHeader';
 
 export default function AdminLayout({ children }) {
@@ -8,9 +7,6 @@ export default function AdminLayout({ children }) {
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>
-      
-      {/* Global Realtime Listener for Admins */}
-      <AdminNotificationListener />
     </div>
   );
 }
