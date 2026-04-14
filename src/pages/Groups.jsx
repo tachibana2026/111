@@ -144,7 +144,9 @@ const Groups = () => {
             return (
               <div key={i} className={`px-4 py-3 rounded-xl border flex flex-col justify-center gap-1 ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100' : isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 'bg-white text-slate-600 border-slate-100'}`}>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-black">{p.time}</span>
+                  <span className="text-xs font-black">
+                    {p.time}{p.end_time && ` - ${p.end_time}`}
+                  </span>
                   {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] uppercase tracking-tighter animate-pulse">次</span>}
                 </div>
                 <div className="text-[9px] font-bold opacity-70">{getPerfStatusText(p.status)}</div>

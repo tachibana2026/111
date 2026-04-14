@@ -131,9 +131,6 @@ const Home = () => {
               </div>
             </div>
           </div>
-          <button className="mt-8 text-sm font-bold text-brand-600 flex items-center hover:underline">
-            カレンダーに追加 <ArrowRight size={14} className="ml-1" />
-          </button>
         </motion.div>
 
         <motion.div
@@ -146,12 +143,9 @@ const Home = () => {
           <h2 className="text-xl font-black text-slate-900 mb-2">アクセス</h2>
           <p className="text-slate-600 font-bold mb-4">千葉県立船橋高等学校</p>
           <div className="grid grid-cols-1 gap-2 text-xs font-bold text-slate-400">
-            <p>JR 東船橋駅 徒歩7分</p>
-            <p>京成 船橋競馬場駅 徒歩12分</p>
+            <p>JR 東船橋駅 徒歩約10分</p>
+            <p>京成 船橋競馬場駅 徒歩約15分</p>
           </div>
-          <Link to="/map" className="mt-8 text-sm font-bold text-brand-600 flex items-center hover:underline">
-            アクセス詳細 <ArrowRight size={14} className="ml-1" />
-          </Link>
         </motion.div>
       </section>
 

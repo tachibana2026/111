@@ -13,27 +13,27 @@ const PARTS = [
 ];
 
 const TIME_SLOTS_MAP = {
-  1: Array.from({ length: 13 }, (_, i) => { // 15分刻みに細分化して表示を滑らかに
-    const totalMinutes = 9 * 60 + i * 15;
+  1: Array.from({ length: 7 }, (_, i) => { // 30分刻みに変更
+    const totalMinutes = 9 * 60 + i * 30;
     const hour = Math.floor(totalMinutes / 60);
     const minute = totalMinutes % 60;
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }),
-  2: Array.from({ length: 13 }, (_, i) => {
-    const totalMinutes = 13 * 60 + i * 15;
+  2: Array.from({ length: 7 }, (_, i) => {
+    const totalMinutes = 13 * 60 + i * 30;
     const hour = Math.floor(totalMinutes / 60);
     const minute = totalMinutes % 60;
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }),
-  3: Array.from({ length: 13 }, (_, i) => {
-    const totalMinutes = 9 * 60 + i * 15;
+  3: Array.from({ length: 7 }, (_, i) => {
+    const totalMinutes = 9 * 60 + i * 30;
     const hour = Math.floor(totalMinutes / 60);
     const minute = totalMinutes % 60;
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }),
 };
 
-const COLUMN_WIDTH = 120; // 15分あたりの幅
+const COLUMN_WIDTH = 100; // 30分あたりの幅
 
 const Timetable = () => {
   const [groups, setGroups] = useState([]);
@@ -70,20 +70,29 @@ const Timetable = () => {
     const [h, m] = timeStr.split(':').map(Number);
     const startHour = partId === 2 ? 13 : 9;
     const diffMinutes = (h * 60 + m) - (startHour * 60);
-    return (diffMinutes / 15) * COLUMN_WIDTH;
+    return (diffMinutes / 30) * COLUMN_WIDTH;
   };
 
-  const isPast = (timeStr) => {
-    const [h, m] = timeStr.split(':').map(Number);
+  const isPast = (perf) => {
+    const timeToCompare = perf.end_time || perf.time;
+    const [h, m] = timeToCompare.split(':').map(Number);
     const nowH = currentTime.getHours();
     const nowM = currentTime.getMinutes();
     
-    // 現在の時間が公演開始時間を過ぎているか（公演時間は一律30分と仮定）
-    // 正確には終了時間と比較すべきだが、ここでは開始+20分を過ぎたら「ほぼ終了」とする
+    // 終了時間が設定されている場合はその時間を、ない場合は開始+20分を基準にする
     const totalNow = nowH * 60 + nowM;
-    const totalPerfEnd = h * 60 + m + 20; 
+    const totalPerfEnd = h * 60 + m + (perf.end_time ? 0 : 20); 
     
     return totalNow > totalPerfEnd;
+  };
+
+  const getPerfWidth = (perf) => {
+    if (!perf.end_time) return COLUMN_WIDTH * 0.9; // 30分枠に対して適切なデフォルト幅
+    const [h1, m1] = perf.time.split(':').map(Number);
+    const [h2, m2] = perf.end_time.split(':').map(Number);
+    const diffMinutes = (h2 * 60 + m2) - (h1 * 60 + m1);
+    // 30分あたりの幅に対して、マージン分(8px)を引いて調整
+    return Math.max((diffMinutes / 30) * COLUMN_WIDTH - 8, 40);
   };
 
   const getStatusLabel = (status) => {
@@ -174,7 +183,7 @@ const Timetable = () => {
                       .filter(perf => perf.time >= currentPart.range[0] && perf.time < currentPart.range[1])
                       .map((perf, pIdx) => {
                         const left = getTimeLeft(perf.time, activePart);
-                        const isOver = isPast(perf.time);
+                        const isOver = isPast(perf);
                         return (
                           <motion.div
                             key={pIdx}
@@ -193,12 +202,12 @@ const Timetable = () => {
                             }`}
                             style={{ 
                               left: left + 4, 
-                              width: COLUMN_WIDTH * 1.8, // 公演時間を約27分として表示幅を調整
+                              width: getPerfWidth(perf),
                               zIndex: 5 
                             }}
                           >
                             <div className="flex justify-between items-center mb-1">
-                              <span className="text-[10px] font-black">{perf.time}</span>
+                              <span className="text-[9px] font-black leading-none">{perf.time}{perf.end_time && ` - ${perf.end_time}`}</span>
                               {isOver && <span className="text-[8px] font-black opacity-50 uppercase tracking-tighter">終了</span>}
                             </div>
                             <span className={`text-[8px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-full inline-block w-fit ${
@@ -305,7 +314,10 @@ const Timetable = () => {
                       <Clock size={16} />
                       <span className="text-[10px] font-black uppercase tracking-widest">公演時間</span>
                     </div>
-                    <span className="text-lg font-black text-slate-800">{selectedPerf?.time || '時間未設定'}</span>
+                    <span className="text-lg font-black text-slate-800">
+                      {selectedPerf?.time || '時間未設定'}
+                      {selectedPerf?.end_time && ` 〜 ${selectedPerf.end_time}`}
+                    </span>
                   </div>
                   <div className="p-5 rounded-3xl bg-slate-50 border border-slate-100 space-y-2">
                     <div className="flex items-center text-brand-600 gap-2 mb-1">

@@ -167,12 +167,18 @@ const GroupDashboard = () => {
     if (!newMessage.trim() || sending) return;
 
     setSending(true);
+    
+    // 処理中... を最低でも1秒表示するためのタイマー
+    const minWait = new Promise(resolve => setTimeout(resolve, 1500));
+
     const { data, error } = await supabase.from('messages').insert([{
       group_id: groupId,
       sender: 'group',
       content: newMessage.trim(),
       created_at: new Date().toISOString()
     }]).select().single();
+
+    await minWait;
 
     if (!error && data) {
       setMessages(prev => [...prev, data]);
@@ -210,9 +216,12 @@ const GroupDashboard = () => {
   };
 
   const handleUpdate = async () => {
-    if (group.editing_locked) return;
+    if (group.editing_locked || updating) return;
 
     setUpdating(true);
+    
+    // 処理中... を最低でも1.5秒表示
+    const minWait = new Promise(resolve => setTimeout(resolve, 1500));
 
     // 受付終了時に公演整理券を自動的に「配布終了」にするロジック
     let finalPerfDay1 = tempPerfDay1;
@@ -233,6 +242,8 @@ const GroupDashboard = () => {
         updated_at: new Date().toISOString()
       })
       .eq('id', groupId);
+
+    await minWait;
 
     if (error) {
       alert('更新に失敗しました。');
@@ -424,8 +435,9 @@ const GroupDashboard = () => {
                                 <div key={perf.time} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 group/item">
                                   <div className="flex items-center gap-3 min-w-[120px]">
                                     <span className="text-[10px] font-black text-slate-300">時間</span>
-                                    <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-base font-bold text-slate-400 w-32 shadow-sm">
-                                      {perf.time}
+                                    <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-base font-bold text-slate-400 flex items-center gap-1 min-w-[140px] shadow-sm">
+                                      <span>{perf.time}</span>
+                                      {perf.end_time && <span className="text-slate-300 font-medium">〜 {perf.end_time}</span>}
                                     </div>
                                   </div>
                                   <div className="flex-1 flex items-center gap-3">
@@ -485,7 +497,12 @@ const GroupDashboard = () => {
                   disabled={updating}
                   className="w-full btn-primary h-16 flex items-center justify-center space-x-3 shadow-lg shadow-brand-500/10"
                 >
-                  {updating ? <RefreshCw className="animate-spin" size={24} /> : (
+                  {updating ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={24} />
+                      <span className="text-xl font-black italic">処理中...</span>
+                    </>
+                  ) : (
                     <>
                       <Save size={24} />
                       <span className="text-xl font-black">更新内容を保存</span>

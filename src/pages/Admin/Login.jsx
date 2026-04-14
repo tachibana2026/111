@@ -24,8 +24,12 @@ const AdminLogin = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError('');
+
+    // 最低待ち時間
+    const minWait = new Promise(resolve => setTimeout(resolve, 1500));
 
     // 1. 本部ログインの試行 (Supabase Auth)
     try {
@@ -35,6 +39,7 @@ const AdminLogin = () => {
       });
 
       if (!authError && authData.user) {
+        await minWait;
         localStorage.setItem('ryoun_auth_type', 'hq');
         navigate('/ryoun-hq-portal/dashboard');
         setLoading(false);
@@ -57,6 +62,7 @@ const AdminLogin = () => {
         throw new Error('IDまたはパスワードが正しくありません。');
       }
 
+      await minWait;
       // ログイン成功：IDを保存してダッシュボードへ
       localStorage.setItem('ryoun_auth_type', 'group');
       localStorage.setItem('ryoun_group_id', data.id); // UUIDを保存
@@ -64,6 +70,7 @@ const AdminLogin = () => {
       navigate('/admin/dashboard');
 
     } catch (err) {
+      await minWait;
       setError(err.message);
     } finally {
       setLoading(false);
@@ -136,10 +143,13 @@ const AdminLogin = () => {
             className="w-full btn-primary h-16 flex items-center justify-center space-x-3"
           >
             {loading ? (
-              <RefreshCw className="animate-spin" size={24} />
+              <>
+                <RefreshCw className="animate-spin" size={24} />
+                <span className="text-lg font-black italic">処理中...</span>
+              </>
             ) : (
               <>
-                <span className="text-lg">ログイン</span>
+                <span className="text-lg font-black">ログイン</span>
                 <ArrowRight size={22} className="transition-transform group-hover:translate-x-1" />
               </>
             )}

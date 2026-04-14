@@ -47,6 +47,7 @@ const HQDashboard = () => {
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [selectedBroadcastGroupIds, setSelectedBroadcastGroupIds] = useState([]);
+  const [isWorking, setIsWorking] = useState(false);
   const scrollRef = useRef(null);
   const audioRef = useRef(new Audio(`${import.meta.env.BASE_URL}notification.mp3`));
 
@@ -191,13 +192,15 @@ const HQDashboard = () => {
 
   const handleBroadcastMessage = async (e) => {
     e.preventDefault();
-    if (!broadcastMessage.trim() || sending || selectedBroadcastGroupIds.length === 0) {
+    if (!broadcastMessage.trim() || sending || isWorking || selectedBroadcastGroupIds.length === 0) {
       if (selectedBroadcastGroupIds.length === 0) alert('送信先団体を選択してください。');
       return;
     }
 
     requireConfirm(`選択された団体（${selectedBroadcastGroupIds.length}団体）にメッセージを配信してもよろしいですか？`, async () => {
-      setSending(true);
+      setIsWorking(true);
+      const minWait = new Promise(resolve => setTimeout(resolve, 1500));
+      
       const targetGroups = groups.filter(g => selectedBroadcastGroupIds.includes(g.id));
       const messageData = targetGroups.map(g => ({
         group_id: g.id,
@@ -208,6 +211,8 @@ const HQDashboard = () => {
 
       const { error } = await supabase.from('messages').insert(messageData);
 
+      await minWait;
+
       if (!error) {
         setBroadcastMessage('');
         setShowBroadcastModal(false);
@@ -216,21 +221,25 @@ const HQDashboard = () => {
         console.error('Broadcast error:', error);
         alert('メッセージの一斉配信に失敗しました。');
       }
-      setSending(false);
+      setIsWorking(false);
     }, '配信する');
   };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedGroupId || sending) return;
+    if (!newMessage.trim() || !selectedGroupId || sending || isWorking) return;
 
-    setSending(true);
+    setIsWorking(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 1500));
+
     const { data, error } = await supabase.from('messages').insert([{
       group_id: selectedGroupId,
       sender: 'hq',
       content: newMessage.trim(),
       created_at: new Date().toISOString()
     }]).select().single();
+
+    await minWait;
 
     if (!error && data) {
       setMessages(prev => [...prev, data]);
@@ -239,7 +248,7 @@ const HQDashboard = () => {
       console.error('Send error:', error);
       alert('メッセージの送信に失敗しました。SQLが正しく実行されているか確認してください。');
     }
-    setSending(false);
+    setIsWorking(false);
   };
 
   const fetchAnnouncements = async () => {
@@ -280,6 +289,11 @@ const HQDashboard = () => {
 
   const handleSaveAnn = async (e) => {
     e.preventDefault();
+    if (isWorking) return;
+
+    setIsWorking(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 1500));
+
     let error;
     if (editingAnn) {
       const { error: err } = await supabase.from('announcements').update(annData).eq('id', editingAnn.id);
@@ -291,10 +305,13 @@ const HQDashboard = () => {
       error = err;
     }
 
+    await minWait;
+
     if (!error) {
       fetchAnnouncements();
       setShowAnnModal(false);
     }
+    setIsWorking(false);
   };
 
   const openAnnModal = (ann = null) => {
@@ -366,14 +383,18 @@ const HQDashboard = () => {
       : '全団体の編集を【許可】しますか？';
 
     requireConfirm(msg, async () => {
+      setIsWorking(true);
+      const minWait = new Promise(resolve => setTimeout(resolve, 1500));
       const { error } = await supabase
         .from('groups')
         .update({ editing_locked: nextLock })
         .neq('id', '00000000-0000-0000-0000-000000000000');
 
+      await minWait;
       if (!error) {
         setBulkLock(nextLock);
       }
+      setIsWorking(false);
     }, nextLock ? 'ロックする' : '解除する');
   };
 
@@ -383,6 +404,8 @@ const HQDashboard = () => {
       : '全ての団体を【受付終了】にしますか？';
 
     requireConfirm(msg, async () => {
+      setIsWorking(true);
+      const minWait = new Promise(resolve => setTimeout(resolve, 1500));
       const { error } = await supabase
         .from('groups')
         .update({
@@ -391,18 +414,24 @@ const HQDashboard = () => {
         })
         .neq('id', '00000000-0000-0000-0000-000000000000');
 
+      await minWait;
       if (error) alert('一括ステータス変更に失敗しました。');
+      setIsWorking(false);
     }, nextStatus === 'open' ? '開始する' : '終了する');
   };
 
   const handleBulkLogout = () => {
     requireConfirm('全ての団体を強制ログアウトさせますか？', async () => {
+      setIsWorking(true);
+      const minWait = new Promise(resolve => setTimeout(resolve, 1500));
       const { error } = await supabase
         .from('groups')
         .update({ last_reset_at: new Date().toISOString() })
         .neq('id', '00000000-0000-0000-0000-000000000000');
 
+      await minWait;
       if (error) alert('一括ログアウトに失敗しました。');
+      setIsWorking(false);
     }, 'ログアウト');
   };
 
@@ -436,6 +465,9 @@ const HQDashboard = () => {
   const handleToggleStatus = (group, nextStatus) => {
     const msg = nextStatus === 'open' ? `「${group.name}」の受付を開始しますか？` : `「${group.name}」の受付を終了しますか？`;
     requireConfirm(msg, async () => {
+      setIsWorking(true);
+      const minWait = new Promise(resolve => setTimeout(resolve, 1500));
+
       const payload = {
         status: nextStatus,
         updated_at: new Date().toISOString()
@@ -447,7 +479,10 @@ const HQDashboard = () => {
       }
 
       const { error } = await supabase.from('groups').update(payload).eq('id', group.id);
+      
+      await minWait;
       if (error) alert('更新に失敗しました。');
+      setIsWorking(false);
     }, nextStatus === 'open' ? '開始する' : '終了する');
   };
 
@@ -487,6 +522,10 @@ const HQDashboard = () => {
 
   const handleSaveGroup = async (e) => {
     e.preventDefault();
+    if (isWorking) return;
+
+    setIsWorking(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 1500));
 
     // 受付終了時に公演整理券を自動的に「配布終了」にするロジック
     let finalPerfDay1 = groupFormData.performance_day1;
@@ -510,9 +549,12 @@ const HQDashboard = () => {
       })
       .eq('id', editingGroup.id);
 
+    await minWait;
+
     if (!error) {
       setShowGroupModal(false);
     }
+    setIsWorking(false);
   };
 
   const toggleStatusQuickly = async (g) => {
@@ -555,6 +597,11 @@ const HQDashboard = () => {
 
   const handleSaveLost = async (e) => {
     e.preventDefault();
+    if (isWorking) return;
+
+    setIsWorking(true);
+    const minWait = new Promise(resolve => setTimeout(resolve, 1500));
+
     const payload = { ...lostData, updated_at: new Date().toISOString() };
 
     let error;
@@ -566,10 +613,13 @@ const HQDashboard = () => {
       error = err;
     }
 
+    await minWait;
+
     if (!error) {
       // fetchData(); // 購読によって自動更新される
       closeModal();
     }
+    setIsWorking(false);
   };
 
   const openModal = (item = null) => {
@@ -732,7 +782,8 @@ const HQDashboard = () => {
                                   </span>
                                   <button
                                     onClick={() => handleToggleStatus(g, g.status === 'open' ? 'closed' : 'open')}
-                                    className="p-1 text-[11px] text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                                    disabled={isWorking}
+                                    className="p-1 text-[11px] text-slate-400 font-bold hover:text-slate-600 transition-colors disabled:opacity-30"
                                   >
                                     変更
                                   </button>
@@ -811,7 +862,8 @@ const HQDashboard = () => {
                                   </span>
                                   <button
                                     onClick={() => toggleGroupLock(g.id, g.editing_locked, g.name)}
-                                    className="p-1 text-[11px] text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                                    disabled={isWorking}
+                                    className="p-1 text-[11px] text-slate-400 font-bold hover:text-slate-600 transition-colors disabled:opacity-30"
                                   >
                                     変更
                                   </button>
@@ -856,15 +908,17 @@ const HQDashboard = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleBulkStatusSet('open')}
-                    className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                    disabled={isWorking}
+                    className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                   >
-                    開始
+                    {isWorking ? '中...' : '開始'}
                   </button>
                   <button
                     onClick={() => handleBulkStatusSet('closed')}
-                    className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black text-xs shadow-lg shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                    disabled={isWorking}
+                    className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black text-xs shadow-lg shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                   >
-                    終了
+                    {isWorking ? '中...' : '終了'}
                   </button>
                 </div>
               </div>
@@ -882,15 +936,17 @@ const HQDashboard = () => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleBulkLockSet(false)}
-                    className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                    disabled={isWorking}
+                    className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                   >
-                    解除
+                    {isWorking ? '中...' : '解除'}
                   </button>
                   <button
                     onClick={() => handleBulkLockSet(true)}
-                    className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black text-xs shadow-lg shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all"
+                    disabled={isWorking}
+                    className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black text-xs shadow-lg shadow-rose-500/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                   >
-                    ロック
+                    {isWorking ? '中...' : 'ロック'}
                   </button>
                 </div>
               </div>
@@ -907,9 +963,10 @@ const HQDashboard = () => {
                 </div>
                 <button
                   onClick={handleBulkLogout}
-                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-lg shadow-slate-900/10 hover:scale-[1.02] active:scale-95 transition-all"
+                  disabled={isWorking}
+                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-lg shadow-slate-900/10 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                 >
-                  ログアウト
+                  {isWorking ? '処理中...' : 'ログアウト'}
                 </button>
               </div>
             </div>
@@ -998,8 +1055,9 @@ const HQDashboard = () => {
                                   <div key={perf.time} className="space-y-2 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                                     <div className="flex items-center gap-2">
                                       <span className="text-[9px] font-black text-slate-300">時間</span>
-                                      <div className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 font-black w-24">
-                                        {perf.time}
+                                      <div className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-500 font-black flex items-center gap-1 min-w-[120px]">
+                                        <span>{perf.time}</span>
+                                        {perf.end_time && <span className="opacity-50">〜 {perf.end_time}</span>}
                                       </div>
                                     </div>
                                     <div className="space-y-1">
@@ -1055,7 +1113,14 @@ const HQDashboard = () => {
 
                   <div className="flex gap-4 pt-4">
                     <button type="button" onClick={() => setShowGroupModal(false)} className="flex-1 py-5 text-slate-400 font-black text-sm hover:text-slate-600 transition-colors">キャンセル</button>
-                    <button type="submit" className="flex-2 btn-primary py-5 rounded-3xl font-black shadow-lg shadow-brand-500/10 text-lg">保存する</button>
+                    <button type="submit" disabled={isWorking} className="flex-2 btn-primary py-5 rounded-3xl font-black shadow-lg shadow-brand-500/10 text-lg flex items-center justify-center gap-2">
+                      {isWorking ? (
+                        <>
+                          <RefreshCw className="animate-spin" size={20} />
+                          <span className="italic">処理中...</span>
+                        </>
+                      ) : '保存する'}
+                    </button>
                   </div>
                 </form>
               </motion.div>
@@ -1146,7 +1211,14 @@ const HQDashboard = () => {
                     </div>
                     <div className="flex gap-4 pt-4">
                       <button type="button" onClick={closeModal} className="flex-1 py-5 text-slate-400 font-black text-sm hover:text-slate-600 transition-colors">キャンセル</button>
-                      <button type="submit" className="flex-2 btn-primary py-5 rounded-3xl font-black shadow-lg shadow-brand-500/10 text-lg">保存する</button>
+                      <button type="submit" disabled={isWorking} className="flex-2 btn-primary py-5 rounded-3xl font-black shadow-lg shadow-brand-500/10 text-lg flex items-center justify-center gap-2">
+                        {isWorking ? (
+                          <>
+                            <RefreshCw className="animate-spin" size={20} />
+                            <span className="italic">処理中...</span>
+                          </>
+                        ) : '保存する'}
+                      </button>
                     </div>
                   </form>
                 </motion.div>
@@ -1268,10 +1340,10 @@ const HQDashboard = () => {
                   />
                   <button
                     type="submit"
-                    disabled={!newMessage.trim() || sending}
+                    disabled={!newMessage.trim() || sending || isWorking}
                     className="w-14 h-14 bg-brand-600 text-white rounded-2xl flex items-center justify-center disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-brand-500/20 shrink-0"
                   >
-                    {sending ? <RefreshCw className="animate-spin" size={20} /> : <Send size={24} />}
+                    {isWorking ? <RefreshCw className="animate-spin" size={20} /> : <Send size={24} />}
                   </button>
                 </form>
               </>
@@ -1440,8 +1512,13 @@ const HQDashboard = () => {
 
                 <div className="flex gap-4 pt-4">
                   <button type="button" onClick={() => setShowAnnModal(false)} className="flex-1 py-5 text-slate-400 font-black text-sm hover:text-slate-600 transition-colors">キャンセル</button>
-                  <button type="submit" className="flex-2 btn-primary py-5 rounded-3xl font-black shadow-lg shadow-brand-500/10 text-lg">
-                    {editingAnn ? '更新を保存する' : '投稿'}
+                  <button type="submit" disabled={isWorking} className="flex-2 btn-primary py-5 rounded-3xl font-black shadow-lg shadow-brand-500/10 text-lg flex items-center justify-center gap-2">
+                    {isWorking ? (
+                      <>
+                        <RefreshCw className="animate-spin" size={20} />
+                        <span className="italic">処理中...</span>
+                      </>
+                    ) : (editingAnn ? '更新を保存する' : '投稿')}
                   </button>
                 </div>
               </form>
@@ -1510,8 +1587,13 @@ const HQDashboard = () => {
 
                 <div className="flex gap-4 pt-4">
                   <button type="button" onClick={() => setShowBroadcastModal(false)} className="flex-1 py-5 text-slate-400 font-black text-sm hover:text-slate-600 transition-colors">キャンセル</button>
-                  <button type="submit" disabled={sending || !broadcastMessage.trim()} className="flex-2 btn-primary py-5 rounded-3xl font-black shadow-lg shadow-brand-500/10 text-lg disabled:opacity-50 transition-all">
-                    {sending ? '送信中...' : '一斉配信する'}
+                  <button type="submit" disabled={sending || isWorking || !broadcastMessage.trim()} className="flex-2 btn-primary py-5 rounded-3xl font-black shadow-lg shadow-brand-500/10 text-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2">
+                    {isWorking ? (
+                      <>
+                        <RefreshCw className="animate-spin" size={20} />
+                        <span className="italic">処理中...</span>
+                      </>
+                    ) : '一斉配信する'}
                   </button>
                 </div>
               </form>

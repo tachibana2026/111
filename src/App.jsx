@@ -2,7 +2,6 @@ import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import Groups from './pages/Groups';
-import Map from './pages/Map';
 import LostFound from './pages/LostFound';
 import Timetable from './pages/Timetable';
 import AdminLogin from './pages/Admin/Login';
@@ -17,7 +16,6 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/groups" element={<Groups />} />
           <Route path="/timetable" element={<Timetable />} />
-          <Route path="/map" element={<Map />} />
           <Route path="/lost-found" element={<LostFound />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<GroupDashboard />} />
