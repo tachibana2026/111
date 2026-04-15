@@ -1,16 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-// ビルドは通すが、ブラウザのコンソールに状態を出す
-if (typeof window !== 'undefined') {
-  console.log('--- Supabase Connection Debug ---')
-  console.log('URL status:', supabaseUrl ? 'Defined' : 'MISSING')
-  console.log('Key status:', supabaseAnonKey ? 'Defined' : 'MISSING')
-}
-
+// Next.jsのビルド時置換を確実にするため、変数に代入せず直接 process.env を使用します
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder'
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 )
+
+// デバッグ用（ブラウザでのみ動作）
+if (typeof window !== 'undefined') {
+  console.log('Supabase initialized with:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Real URL' : 'Placeholder');
+}
