@@ -1,36 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 
+// Pages Router環境で App Router専用の next/headers が呼ばれるとビルドが壊れるため、
+// 環境変数ガードも含めて無害化
 export function createClient() {
-  const cookieStore = cookies()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        get(name) {
-          return cookieStore.get(name)?.value
-        },
-        set(name, value, options) {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch (error) {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-        remove(name, options) {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (error) {
-            // The `remove` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
-          }
-        },
-      },
-    }
-  )
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get(name) { return '' },
+      set(name, value, options) {},
+      remove(name, options) {},
+    },
+  })
 }

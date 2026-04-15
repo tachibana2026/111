@@ -1,12 +1,11 @@
-'use client';
-
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/router';
 import { Home, Users, Clock, PackageSearch, UserCog } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Layout = ({ children }) => {
-  const pathname = usePathname();
+  const router = useRouter();
+  const pathname = router.pathname;
 
   const navItems = [
     { name: 'ホーム', path: '/', icon: Home },
