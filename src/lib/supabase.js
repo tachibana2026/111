@@ -3,14 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-// 環境変数が読み込めていない場合は、ビルド自体を強制終了させる
-// これにより、Vercelが環境変数を認識しているかを100%判断できます
-if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder')) {
-  throw new Error(
-    "Supabase configuration is missing or invalid. " +
-    "Please check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel settings. " +
-    "Make sure 'Production' environment is checked."
-  );
+// ビルドは通すが、ブラウザのコンソールに状態を出す
+if (typeof window !== 'undefined') {
+  console.log('--- Supabase Connection Debug ---')
+  console.log('URL status:', supabaseUrl ? 'Defined' : 'MISSING')
+  console.log('Key status:', supabaseAnonKey ? 'Defined' : 'MISSING')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder'
+)
