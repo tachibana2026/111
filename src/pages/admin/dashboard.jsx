@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
   CheckCircle2, XCircle, LogOut, Lock, RefreshCw,
-  Save, Check, User, Shield, Clock, Info, Utensils
+  Save, Check, User, Shield, Clock, Info, Utensils, ChevronDown
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +19,7 @@ const GroupDashboard = () => {
   const [performances, setPerformances] = useState([]); // 編集用の状態
   const [publishedActivities, setPublishedActivities] = useState([]); // 現在公開中の情報 (DBから取得)
   const [publishedPerformances, setPublishedPerformances] = useState([]); // 現在公開中の情報 (DBから取得)
+  const [lastClientUpdate, setLastClientUpdate] = useState(null);
   const [now, setNow] = useState(new Date());
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -123,13 +124,14 @@ const GroupDashboard = () => {
 
     const results = await Promise.all([...activityUpdates, ...perfUpdates]);
     const errors = results.filter(r => r.error).map(r => r.error);
-    
+
     if (errors.length > 0) {
       console.error('Update Errors:', errors);
       const errMsg = errors[0]?.message || errors[0]?.details || '不明なエラー';
       alert(`情報の更新に失敗しました。\n詳細: ${errMsg}`);
     } else {
       setShowSuccess(true);
+      setLastClientUpdate(new Date());
       setTimeout(() => setShowSuccess(false), 3000);
       // Supabaseのリアルタイム購読が未設定の場合に備え、手動で即座に再取得して画面を更新する
       await fetchGroupData(group.id);
@@ -184,16 +186,17 @@ const GroupDashboard = () => {
     if (!group) return null;
     const dates = [
       group.updated_at,
+      lastClientUpdate,
       ...publishedActivities.map(a => a.updated_at),
       ...publishedPerformances.map(p => p.updated_at)
     ]
       .filter(Boolean)
       .map(d => new Date(d).getTime());
-      
+
     if (dates.length === 0) return null;
     const latest = new Date(Math.max(...dates));
     const diffMins = Math.floor((now - latest) / 60000);
-    
+
     if (diffMins < 1) return 'たった今';
     if (diffMins < 60) return `${diffMins}分前`;
     const diffHours = Math.floor(diffMins / 60);
@@ -298,8 +301,15 @@ const GroupDashboard = () => {
                       <div key={perf.id} className="flex items-center justify-between px-4 py-2 bg-slate-50/50 rounded-xl">
                         <span className="text-[10px] font-bold text-slate-400">Part {perf.part_id} ({perf.start_time})</span>
                         <div className="flex flex-col items-end gap-1">
-                          <span className={`text-xs font-black ${displayReception === 'closed' ? 'text-rose-500' : 'text-emerald-500'}`}>
-                            受付{displayReception === 'closed' ? '終了' : '中'}
+                          <span className={`text-xs font-black ${displayReception === 'closed' ? 'text-rose-500' :
+                              displayReception === 'before_open' ? 'text-slate-500' :
+                                displayReception === 'ticket_only' ? 'text-brand-500' :
+                                  'text-emerald-500'
+                            }`}>
+                            {displayReception === 'closed' ? '受付終了' :
+                              displayReception === 'before_open' ? '受付前' :
+                                displayReception === 'ticket_only' ? '整理券のみ受付' :
+                                  '受付中'}
                           </span>
                           <span className="text-[10px] font-black text-slate-400">
                             整理券{displayStatus === 'distributing' ? '配布中' : displayStatus === 'ended' ? '配布終了' : '配布なし'}
@@ -348,18 +358,31 @@ const GroupDashboard = () => {
                 <div className="space-y-6 pt-6 border-t border-slate-50">
                   <div className="flex items-center justify-between ml-1">
                     <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">現在の待ち時間</label>
-                    <span className="text-2xl font-black text-brand-600">{act.waiting_time}分</span>
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[0, 10, 20, 30, 45, 60, 90, 120].map((mins) => (
-                      <button
-                        key={mins}
-                        onClick={() => handleLocalActivityUpdate(act.id, 'waiting_time', mins)}
-                        className={`py-4 rounded-2xl text-xs font-black transition-all border-2 ${act.waiting_time === mins ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20 translate-y-[-1px]' : 'bg-white border-slate-50 text-slate-400 hover:border-brand-200 hover:text-brand-600'}`}
-                      >
-                        {mins}分
-                      </button>
-                    ))}
+                  <div className="relative">
+                    <select
+                      value={act.status === 'closed' ? 'closed' : act.waiting_time}
+                      disabled={act.status === 'closed'}
+                      onChange={(e) => handleLocalActivityUpdate(act.id, 'waiting_time', parseInt(e.target.value))}
+                      className={`w-full border-2 rounded-2xl py-5 px-6 font-black transition-all appearance-none focus:outline-none ${
+                        act.status === 'closed' 
+                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' 
+                          : 'bg-slate-50 border-slate-100 text-slate-700 focus:border-brand-500 cursor-pointer'
+                      }`}
+                    >
+                      {act.status === 'closed' ? (
+                        <option value="closed">選択不可</option>
+                      ) : (
+                        Array.from({ length: 25 }, (_, i) => i * 5).map((mins) => (
+                          <option key={mins} value={mins}>
+                            {mins === 0 ? 'なし' : `${mins}分待ち`}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <div className={`absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none ${act.status === 'closed' ? 'text-slate-300' : 'text-slate-400'}`}>
+                      <ChevronDown size={20} strokeWidth={2.5} />
+                    </div>
                   </div>
                 </div>
               )}

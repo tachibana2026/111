@@ -90,6 +90,12 @@ const Layout = ({ children }) => {
           );
         })}
       </nav>
+      {/* Footer */}
+      <footer className="py-8 px-4 flex justify-center">
+        <p className="text-[10px] md:text-[11px] font-bold text-slate-300 tracking-wider">
+          © 2026 千葉県立船橋高等学校 たちばな祭実行委員会
+        </p>
+      </footer>
     </div>
   );
 };

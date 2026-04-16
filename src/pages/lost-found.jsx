@@ -90,9 +90,6 @@ const LostFound = () => {
               >
                 <div className="flex justify-between items-start w-full gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="bg-slate-50 p-3 rounded-xl text-slate-400 group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
-                      <PackageSearch size={28} />
-                    </div>
                     <div>
                       <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
                       <div className="mt-2 flex items-center text-[10px] font-bold text-slate-400">

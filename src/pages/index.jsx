@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Clock, ArrowRight, Megaphone, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, MapPin, Clock, ArrowRight, Megaphone, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 const Home = () => {
@@ -118,11 +118,11 @@ const Home = () => {
               <div className="grid grid-cols-1 gap-2">
                 <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
                   <span className="text-sm font-bold text-slate-500">Part 1</span>
-                  <span className="text-base font-black text-slate-900">9:15 - 11:55</span>
+                  <span className="text-base font-black text-slate-900">9:15 - 12:00</span>
                 </div>
                 <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
                   <span className="text-sm font-bold text-slate-500">Part 2</span>
-                  <span className="text-base font-black text-slate-900">13:00 - 15:40</span>
+                  <span className="text-base font-black text-slate-900">13:00 - 16:00</span>
                 </div>
               </div>
             </div>
@@ -130,7 +130,7 @@ const Home = () => {
               <p className="text-[11px] font-black text-brand-500 uppercase tracking-[0.2em] ml-1">6月14日(日)</p>
               <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
                 <span className="text-sm font-bold text-slate-500">Part 3</span>
-                <span className="text-base font-black text-slate-900">9:00 - 11:55</span>
+                <span className="text-base font-black text-slate-900">9:00 - 12:00</span>
               </div>
             </div>
           </div>
@@ -140,26 +140,37 @@ const Home = () => {
           whileHover={{ y: -8 }}
           className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col items-start text-left"
         >
-          <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 mb-8 shadow-sm">
-            <MapPin size={28} />
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 mb-8 shadow-sm">
+            <AlertCircle size={28} />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-2">アクセス</h2>
-          <p className="text-slate-900 text-lg font-black mb-6">千葉県立船橋高等学校</p>
+          <h2 className="text-2xl font-black text-slate-900 mb-6">注意事項</h2>
           <div className="space-y-4 w-full">
-            <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100/50 space-y-3">
-              <div className="flex items-center space-x-3 text-slate-600">
-                <div className="w-2 h-2 rounded-full bg-brand-500"></div>
-                <p className="text-sm font-bold">JR 東船橋駅 徒歩約10分</p>
+            <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100/50 space-y-4">
+              <div className="flex items-start space-x-3 text-slate-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">上履き（またはスリッパ）と靴袋をご持参ください。</p>
               </div>
-              <div className="flex items-center space-x-3 text-slate-600">
-                <div className="w-2 h-2 rounded-full bg-brand-400"></div>
-                <p className="text-sm font-bold">京成 船橋競馬場駅 徒歩約15分</p>
+              <div className="flex items-start space-x-3 text-slate-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">駐車場はございません。公共交通機関をご利用ください。</p>
+              </div>
+              <div className="flex items-start space-x-3 text-slate-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">ゴミ箱はございません。各自でお持ち帰りください。</p>
+              </div>
+              <div className="flex items-start space-x-3 text-slate-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">校内および敷地内はすべて禁煙です。</p>
+              </div>
+              <div className="flex items-start space-x-3 text-slate-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">入場開始の15分前から開場します。それより前の来場はお控えください。</p>
+              </div>
+              <div className="flex items-start space-x-3 text-slate-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">開催時間終了の30分前に入場を締め切らせていただきます。</p>
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 font-bold leading-relaxed px-2">
-              ※駐車場はございません。公共交通機関をご利用ください。<br />
-              ※近隣施設への駐車は固くお断りいたします。
-            </p>
           </div>
         </motion.div>
       </section>

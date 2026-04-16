@@ -4,13 +4,23 @@ import {
   Users, PackageSearch, Settings, ShieldCheck,
   Lock, Unlock, Plus, Trash2, RefreshCw, MapPin,
   AlertCircle, LogOut, CheckCircle2, Clock, Edit2, XCircle,
-  User, ChevronLeft, Megaphone,
-  ChevronUp, ChevronDown, Filter, SortDesc, Search, Calendar, Utensils
+  User, ChevronLeft, Megaphone, Save,
+  ChevronUp, ChevronDown, Filter, SortDesc, Calendar, Utensils
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DEPARTMENTS = ['体験', '食品', '公演', '展示', '冊子', '物販'];
+
+const formatDateTime = (isoString) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${m}/${d} ${h}:${min}`;
+};
 
 const HQDashboard = () => {
   const [activeTab, setActiveTab] = useState('groups');
@@ -21,7 +31,13 @@ const HQDashboard = () => {
   const [isWorking, setIsWorking] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, confirmText: '実行' });
   const [announcements, setAnnouncements] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [editingLostFound, setEditingLostFound] = useState(null);
+  const [isLostFoundModalOpen, setIsLostFoundModalOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
 
   const router = useRouter();
 
@@ -57,11 +73,19 @@ const HQDashboard = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    const { data: gData } = await supabase.from('groups').select('*, group_activities(*), performances(*)').order('login_id', { ascending: true });
-    const { data: lData } = await supabase.from('lost_found').select('*').order('found_at', { ascending: false });
-    if (gData) setGroups(gData);
-    if (lData) setLostFound(lData);
-    setLoading(false);
+    try {
+      const { data: gData, error: gError } = await supabase.from('groups').select('*, group_activities(*), performances(*)').order('login_id', { ascending: true });
+      if (gError) throw gError;
+      if (gData) setGroups(gData);
+
+      const { data: lData, error: lError } = await supabase.from('lost_found').select('*').order('found_at', { ascending: false });
+      if (lError) throw lError;
+      if (lData) setLostFound(lData);
+    } catch (error) {
+      console.error('Fetch error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchAnnouncements = async () => {
@@ -77,45 +101,114 @@ const HQDashboard = () => {
     await supabase.from('group_activities').update({ waiting_time: time, updated_at: new Date().toISOString() }).eq('id', activityId);
   };
 
+  const handleBulkStatusUpdate = async (status) => {
+    setIsBulkUpdating(true);
+    try {
+      const filteredGroups = groups.filter(g => g.group_activities.some(a => a.department === selectedDept));
+      const activityIds = filteredGroups.map(g => g.group_activities.find(a => a.department === selectedDept).id);
+
+      if (activityIds.length > 0) {
+        await supabase.from('group_activities')
+          .update({ status: status, updated_at: new Date().toISOString() })
+          .in('id', activityIds);
+      }
+
+      if (selectedDept === '公演') {
+        const groupIds = filteredGroups.map(g => g.id);
+        await supabase.from('performances')
+          .update({ reception_status: status === 'open' ? 'open' : 'closed', updated_at: new Date().toISOString() })
+          .in('group_id', groupIds);
+      }
+
+      await fetchData();
+    } catch (error) {
+      console.error('Bulk update error:', error);
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleBulkLockUpdate = async (locked) => {
+    setIsBulkUpdating(true);
+    try {
+      const filteredGroups = groups.filter(g => g.group_activities.some(a => a.department === selectedDept));
+      const groupIds = filteredGroups.map(g => g.id);
+      if (groupIds.length > 0) {
+        await supabase.from('groups').update({ editing_locked: locked }).in('id', groupIds);
+      }
+      await fetchData();
+    } catch (error) {
+      console.error('Bulk lock error:', error);
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleBulkLogout = async () => {
+    setIsBulkUpdating(true);
+    try {
+      const filteredGroups = groups.filter(g => g.group_activities.some(a => a.department === selectedDept));
+      const groupIds = filteredGroups.map(g => g.id);
+      if (groupIds.length > 0) {
+        await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).in('id', groupIds);
+      }
+      await fetchData();
+    } catch (error) {
+      console.error('Bulk logout error:', error);
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleDeleteLostFound = async (id) => {
+    requireConfirm('この落とし物情報を削除しますか？', async () => {
+      await supabase.from('lost_found').delete().eq('id', id);
+      fetchData();
+    }, '削除');
+  };
+
+  const handleDeleteAnnouncement = async (id) => {
+    requireConfirm('このお知らせを削除しますか？', async () => {
+      await supabase.from('announcements').delete().eq('id', id);
+      fetchAnnouncements();
+    }, '削除');
+  };
+
   return (
-    <div className="space-y-12 pb-12">
+    <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-12 pb-12 pt-4 px-4 md:px-0">
       {/* HQ Header */}
-      <div className="bg-white border border-slate-100 rounded-[2.5rem] p-10 md:p-12 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-10">
-        <div className="flex items-center space-x-8">
-          <div className="w-24 h-24 bg-brand-600 text-white rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-brand-500/30">
-            <ShieldCheck size={48} strokeWidth={2.5} />
+      <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-10">
+        <div className="flex items-center space-x-4 md:space-x-8">
+          <div className="w-16 h-16 md:w-24 md:h-24 bg-brand-600 text-white rounded-[1.5rem] md:rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-brand-500/30 shrink-0">
+            <ShieldCheck className="w-8 h-8 md:w-12 md:h-12" strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-5xl font-black text-slate-900 tracking-tighter">本部管理システム</h1>
-            <p className="text-base font-bold text-slate-400 mt-2 flex items-center gap-3">
-              <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-              セキュア・リアルタイム・コントロール
-            </p>
+            <h1 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tighter">本部管理システム</h1>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button 
+          <button
             onClick={handleLogout}
-            className="px-10 py-5 bg-slate-50 text-slate-500 rounded-3xl text-base font-black transition-all hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 flex items-center justify-center gap-4 shadow-sm"
+            className="w-full md:w-auto px-6 md:px-10 py-4 md:py-5 bg-slate-50 text-slate-500 rounded-2xl md:rounded-3xl text-sm md:text-base font-black transition-all hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 flex items-center justify-center gap-3 md:gap-4 shadow-sm"
           >
-            <LogOut size={22} strokeWidth={2.5} />
+            <LogOut className="w-[18px] h-[18px] md:w-[22px] md:h-[22px]" strokeWidth={2.5} />
             ログアウト
           </button>
         </div>
       </div>
 
       {/* Tabs / Navigation */}
-      <div className="flex justify-center">
-        <div className="inline-flex p-2 bg-slate-100 rounded-[2rem] border border-slate-200/50 shadow-inner">
+      <div className="flex justify-start md:justify-center overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+        <div className="inline-flex p-1.5 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2rem] border border-slate-200/50 shadow-inner min-w-max md:min-w-0">
           {[
-            { id: 'groups', label: '団体管理', icon: <Users size={18} /> },
-            { id: 'lost_found', label: '落とし物', icon: <PackageSearch size={18} /> },
-            { id: 'announcements', label: 'お知らせ', icon: <Megaphone size={18} /> }
+            { id: 'groups', label: '団体管理', icon: <Users className="w-4 h-4 md:w-[18px] md:h-[18px]" /> },
+            { id: 'lost_found', label: '落とし物', icon: <PackageSearch className="w-4 h-4 md:w-[18px] md:h-[18px]" /> },
+            { id: 'announcements', label: 'お知らせ', icon: <Megaphone className="w-4 h-4 md:w-[18px] md:h-[18px]" /> }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-10 py-4 rounded-[1.5rem] text-sm font-black transition-all flex items-center gap-3 ${activeTab === tab.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-6 md:px-10 py-3 md:py-4 rounded-xl md:rounded-[1.5rem] text-[13px] md:text-sm font-black transition-all flex items-center gap-2 md:gap-3 whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
             >
               {tab.icon}
               {tab.label}
@@ -125,76 +218,115 @@ const HQDashboard = () => {
       </div>
 
       {activeTab === 'groups' && (
-        <div className="space-y-10">
-          {/* Stats Board */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { label: '総団体数', value: groups.length, icon: <User size={28} />, color: 'text-brand-600 bg-brand-50' },
-              { label: '食品団体', value: groups.filter(g => g.group_activities.some(a => a.department === '食品')).length, icon: <Utensils size={28} />, color: 'text-amber-600 bg-amber-50' },
-              { label: '公演団体', value: groups.filter(g => g.group_activities.some(a => a.department === '公演')).length, icon: <Clock size={28} />, color: 'text-sky-600 bg-sky-50' }
-            ].map(stat => (
-              <div key={stat.label} className="bg-white border border-slate-100 p-10 rounded-[3rem] shadow-sm flex items-center gap-8">
-                <div className={`w-20 h-20 ${stat.color} rounded-[2rem] flex items-center justify-center shadow-inner`}>
-                  {stat.icon}
-                </div>
-                <div>
-                  <p className="text-[13px] font-black text-slate-400 uppercase tracking-[0.2em]">{stat.label}</p>
-                  <p className="text-5xl font-black text-slate-900 mt-1">{stat.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="space-y-6 md:space-y-10">
+          <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3.5rem] shadow-sm overflow-hidden">
+            <div className="p-6 md:p-10 border-b border-slate-50 bg-white/50 backdrop-blur-xl">
+              <div className="flex flex-col space-y-4 md:space-y-8 flex-1">
+                <div className="flex flex-col space-y-8">
+                  {/* Bulk Management - Top Visual Refresh */}
+                  <div className="bg-slate-50/50 rounded-[2rem] p-6 md:p-8 border border-white shadow-inner space-y-6 md:space-y-8">
+                    <div className="flex items-center justify-between px-2">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
+                          <RefreshCw className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base md:text-lg font-black text-slate-900 tracking-tight">一括管理コントロール</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedDept}カテゴリ対象</p>
+                        </div>
+                      </div>
+                    </div>
 
-          <div className="bg-white border border-slate-100 rounded-[3.5rem] shadow-sm overflow-hidden">
-            <div className="p-10 border-b border-slate-50 bg-white/50 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-10">
-              <div className="flex flex-col space-y-8">
-                <div className="flex items-center space-x-6">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                    <Filter size={16} className="text-brand-600/50" /> カテゴリ
-                  </span>
-                  <div className="flex flex-wrap items-center gap-3">
-                    {DEPARTMENTS.map(d => (
-                      <button
-                        key={d}
-                        onClick={() => setSelectedDept(d)}
-                        className={`px-8 py-3.5 rounded-2xl text-[11px] font-black transition-all border-2 ${selectedDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}
-                      >
-                        {d}
-                      </button>
-                    ))}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                      {/* Group 1: Reception */}
+                      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付ステータス</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体を「受付中」にしますか？`, () => handleBulkStatusUpdate('open'), '一括受付開始')}
+                            disabled={isBulkUpdating}
+                            className="py-3.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] font-black border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                          >
+                            <CheckCircle2 size={14} /> 受付開始
+                          </button>
+                          <button
+                            onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体を「受付終了」にしますか？`, () => handleBulkStatusUpdate('closed'), '一括受付終了')}
+                            disabled={isBulkUpdating}
+                            className="py-3.5 rounded-xl bg-rose-50 text-rose-600 text-[11px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                          >
+                            <XCircle size={14} /> 受付終了
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Group 2: Lock Control */}
+                      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">編集制限</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体を「編集ロック」しますか？`, () => handleBulkLockUpdate(true), '一括ロック')}
+                            disabled={isBulkUpdating}
+                            className="py-3.5 rounded-xl bg-amber-50 text-amber-600 text-[11px] font-black border border-amber-100 hover:bg-amber-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                          >
+                            <Lock size={14} /> 一括ロック
+                          </button>
+                          <button
+                            onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体の「ロックを解除」しますか？`, () => handleBulkLockUpdate(false), '一括ロック解除')}
+                            disabled={isBulkUpdating}
+                            className="py-3.5 rounded-xl bg-slate-50 text-slate-500 text-[11px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                          >
+                            <Unlock size={14} /> 一括解除
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Group 3: Session Management */}
+                      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">セッション管理</span>
+                        <button
+                          onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体を「強制ログアウト」させますか？`, () => handleBulkLogout(), '一括ログアウト')}
+                          disabled={isBulkUpdating}
+                          className="py-3.5 rounded-xl bg-slate-900 text-white text-[11px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                        >
+                          <LogOut size={14} /> 全団体を強制ログアウト
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Category Filter - Bottom */}
+                  <div className="space-y-3 pt-6 border-t border-slate-100">
+                    <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                      <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-600/50" /> カテゴリ選択 (表示切り替え)
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                      {DEPARTMENTS.map(d => (
+                        <button
+                          key={d}
+                          onClick={() => setSelectedDept(d)}
+                          className={`px-4 md:px-8 py-2 md:py-3.5 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black transition-all border-2 ${selectedDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="relative group">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors" size={22} />
-                <input
-                  type="text"
-                  placeholder="団体名で検索..."
-                  className="bg-slate-50 border-transparent rounded-[2rem] py-5 pl-16 pr-10 text-base font-black text-slate-900 outline-none focus:bg-white focus:ring-4 focus:ring-brand-500/5 focus:border-brand-500 transition-all w-full md:w-96"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-slate-50/50 border-b border-slate-100 text-slate-400 font-black text-[11px] uppercase tracking-[0.2em]">
                   <tr>
                     <th className="px-10 py-8">団体情報</th>
-                    <th className="px-10 py-8 text-center">メインステータス</th>
-                    {['体験', '食品', '物販'].includes(selectedDept) && <th className="px-10 py-8 text-center">待ち時間設定</th>}
-                    {selectedDept === '冊子' && <th className="px-10 py-8 text-center">配布コントロール</th>}
-                    {selectedDept === '公演' && <th className="px-10 py-8">整理券マトリックス</th>}
-                    <th className="px-10 py-8 text-center">管理者操作</th>
+                    <th className="px-10 py-8 text-center border-l border-slate-50">ステータス / 詳細状況</th>
+                    <th className="px-10 py-8 text-center border-l border-slate-50">操作</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {groups.filter(g => {
-                    const matchDept = g.group_activities.some(a => a.department === selectedDept);
-                    const matchSearch = g.name.toLowerCase().includes(searchQuery.toLowerCase()) || (g.title && g.title.toLowerCase().includes(searchQuery.toLowerCase()));
-                    return matchDept && matchSearch;
-                  }).map(g => {
+                  {groups.filter(g => g.group_activities.some(a => a.department === selectedDept)).map(g => {
                     const act = g.group_activities.find(a => a.department === selectedDept);
                     return (
                       <tr key={g.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -208,136 +340,226 @@ const HQDashboard = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-10 py-8">
-                          <div className="flex items-center justify-center gap-4">
-                            <div className={`px-6 py-3 rounded-2xl text-xs font-black flex items-center gap-3 border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
-                              <div className={`w-2 h-2 rounded-full ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-500' : 'bg-emerald-500 animate-pulse'}`}></div>
-                              {act.status === 'closed' || act.status === 'ended' ? 'CLOSED' : 'OPEN'}
+                        <td className="px-10 py-8 border-l border-slate-50">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-500' : 'bg-emerald-500 animate-pulse'}`}></div>
+                                {act.status === 'closed' || act.status === 'ended' ? 'CLOSED' : 'OPEN'}
+                              </div>
+                              <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[10px] font-black ${g.editing_locked
+                                ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                : 'bg-slate-50 text-slate-400 border-slate-100'
+                                }`}>
+                                {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
+                                <span>{g.editing_locked ? '編集ロック中' : '編集許可中'}</span>
+                              </div>
                             </div>
-                            <button
-                              onClick={() => handleToggleActivityStatus(act, act.status === 'open' || act.status === 'distributing' ? 'closed' : (selectedDept === '冊子' ? 'distributing' : 'open'))}
-                              className="w-12 h-12 bg-white border border-slate-100 text-slate-300 rounded-xl flex items-center justify-center hover:text-brand-600 hover:border-brand-100 transition-all hover:rotate-180 shadow-sm"
-                            >
-                              <RefreshCw size={18} />
-                            </button>
+                            {['体験', '食品', '物販'].includes(selectedDept) && (
+                              <div className="text-sm font-black text-slate-700">
+                                {act.status === 'closed' ? '-' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`)}
+                              </div>
+                            )}
+                            {selectedDept === '冊子' && (
+                              <div className="flex gap-2">
+                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black ${act.status === 'distributing' ? 'bg-emerald-100 text-emerald-700' :
+                                  act.status === 'limited' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                                  }`}>
+                                  {{ distributing: '配布中', limited: '僅か', ended: '終了' }[act.status] || act.status}
+                                </span>
+                              </div>
+                            )}
+                            {selectedDept === '公演' && (
+                              <div className="flex flex-col gap-1.5 min-w-[280px]">
+                                {g.performances.sort((a, b) => {
+                                  if (a.part_id !== b.part_id) return a.part_id - b.part_id;
+                                  return a.start_time.localeCompare(b.start_time);
+                                }).map(p => (
+                                  <div key={p.id} className="flex items-center justify-between gap-4 p-2 bg-white rounded-lg border border-slate-100 shadow-sm">
+                                    <span className="text-[9px] font-black text-slate-400 w-12 tracking-tight shrink-0">Part{p.part_id} {p.start_time}</span>
+                                    <div className="flex items-center gap-3">
+                                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${p.reception_status === 'closed' ? 'bg-rose-100 text-rose-600' :
+                                        p.reception_status === 'ticket_only' ? 'bg-brand-100 text-brand-600' :
+                                          p.reception_status === 'before_open' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-600'
+                                        }`}>
+                                        {{ before_open: '受付前', ticket_only: '整理券のみ', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
+                                      </span>
+                                      <span className={`text-[8px] font-black ${p.status === 'none' ? 'text-slate-300' : 'text-slate-500'}`}>
+                                        整理券: {{ none: '-(なし)', distributing: '配布中', ended: '終了' }[p.status] || p.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </td>
-                        {['体験', '食品', '物販'].includes(selectedDept) && (
-                          <td className="px-10 py-8">
-                            <div className="flex justify-center">
-                              <select
-                                value={act.waiting_time}
-                                onChange={(e) => handleUpdateWaitingTime(act.id, parseInt(e.target.value))}
-                                disabled={act.status === 'closed'}
-                                className="bg-slate-50 border-transparent rounded-[1.2rem] px-6 py-3.5 text-sm font-black text-slate-800 focus:bg-white focus:ring-4 focus:ring-brand-500/5 outline-none disabled:opacity-30 transition-all"
-                              >
-                                {Array.from({ length: 25 }, (_, i) => i * 5).map(t => (
-                                  <option key={t} value={t}>{t === 0 ? '待ちなし' : `${t}分待ち`}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </td>
-                        )}
-                        {selectedDept === '冊子' && (
-                          <td className="px-10 py-8">
-                            <div className="flex justify-center gap-2">
-                              {[
-                                { id: 'distributing', label: '配' },
-                                { id: 'limited', label: '残' },
-                                { id: 'ended', label: '終' }
-                              ].map(s => (
-                                <button
-                                  key={s.id}
-                                  onClick={() => supabase.from('group_activities').update({ status: s.id, updated_at: new Date().toISOString() }).eq('id', act.id)}
-                                  className={`w-12 h-12 rounded-xl text-xs font-black transition-all border-2 ${act.status === s.id ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
-                                >
-                                  {s.label}
-                                </button>
-                              ))}
-                            </div>
-                          </td>
-                        )}
-                        {selectedDept === '公演' && (
-                          <td className="px-10 py-8">
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                              {g.performances.sort((a,b) => a.start_time.localeCompare(b.start_time)).map(p => (
-                                <div key={p.id} className="flex items-center gap-3">
-                                  <span className="text-[10px] font-black text-slate-400 w-12 tracking-tighter">{p.start_time}</span>
-                                  <div className="flex bg-slate-100/50 p-1 rounded-xl">
-                                    {[
-                                      { id: 'none', label: '×' },
-                                      { id: 'distributing', label: '配' },
-                                      { id: 'ended', label: '終' }
-                                    ].map(s => (
-                                      <button
-                                        key={s.id}
-                                        onClick={() => supabase.from('performances').update({ status: s.id, updated_at: new Date().toISOString() }).eq('id', p.id)}
-                                        className={`w-8 h-8 rounded-lg text-[9px] font-black transition-all ${p.status === s.id ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-300'}`}
-                                      >
-                                        {s.label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </td>
-                        )}
-                        <td className="px-10 py-8">
+                        <td className="px-10 py-8 border-l border-slate-50">
                           <div className="flex items-center justify-center gap-3">
                             <button
-                              onClick={() => requireConfirm(`編集を${g.editing_locked ? '許可' : 'ロック'}しますか？`, () => supabase.from('groups').update({ editing_locked: !g.editing_locked }).eq('id', g.id))}
-                              className={`w-12 h-12 rounded-2xl transition-all border-2 ${g.editing_locked ? 'bg-rose-50 border-rose-200 text-rose-500 shadow-lg shadow-rose-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-200 hover:text-slate-600'}`}
+                              onClick={() => {
+                                setEditingGroup(g);
+                                setIsEditModalOpen(true);
+                              }}
+                              className="px-8 py-4 bg-brand-600 text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-brand-700 transition-all shadow-xl shadow-brand-500/20 active:scale-95 group"
                             >
-                              {g.editing_locked ? <Lock size={20} strokeWidth={2.5} /> : <Unlock size={20} strokeWidth={2.5} />}
+                              <Edit2 size={18} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
+                              <span className="font-black text-sm">編集</span>
                             </button>
                             <button
-                              onClick={() => requireConfirm('強制ログアウトさせますか？', () => supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id))}
-                              className="w-12 h-12 bg-white border border-slate-50 text-slate-300 rounded-2xl hover:bg-rose-50 hover:border-rose-100 hover:text-rose-500 transition-all shadow-sm"
+                              onClick={() => requireConfirm('強制ログアウトさせますか？\n（次回のアクセス時にパスワードが再要求されます）', async () => {
+                                await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
+                                await fetchData();
+                              }, '強制ログアウト実行')}
+                              className="w-12 h-12 bg-white border border-slate-100 text-slate-300 rounded-2xl hover:bg-rose-50 hover:border-rose-100 hover:text-rose-500 transition-all shadow-sm flex items-center justify-center group"
+                              title="強制ログアウト"
                             >
-                              <LogOut size={20} strokeWidth={2.5} />
+                              <LogOut size={20} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" />
                             </button>
                           </div>
                         </td>
                       </tr>
-                    );
+                    )
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="lg:hidden divide-y divide-slate-100">
+              {groups.filter(g => g.group_activities.some(a => a.department === selectedDept)).map(g => {
+                const act = g.group_activities.find(a => a.department === selectedDept);
+                return (
+                  <div key={g.id} className="p-5 space-y-5 bg-white">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-slate-900 text-base leading-tight">{g.name}</span>
+                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{g.room}</span>
+                        </div>
+                        <p className="text-[11px] text-brand-600 font-bold line-clamp-1">{g.title || 'Official Program'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingGroup(g);
+                            setIsEditModalOpen(true);
+                          }}
+                          className="flex-1 py-3 bg-brand-600 text-white rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95"
+                        >
+                          <Edit2 size={16} strokeWidth={2.5} />
+                          <span className="font-black text-xs">編集</span>
+                        </button>
+                        <button
+                          onClick={() => requireConfirm('強制ログアウトさせますか？', async () => {
+                            await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
+                            await fetchData();
+                          }, '強制ログアウト')}
+                          className="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-300 rounded-xl flex items-center justify-center active:scale-90"
+                        >
+                          <LogOut size={16} strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">現在のステータス</span>
+                        <div className="flex items-center gap-2">
+                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
+                            {act.status === 'closed' || act.status === 'ended' ? 'CLOSED' : 'OPEN'}
+                          </div>
+                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 border ${g.editing_locked
+                            ? 'bg-amber-100 text-amber-700 border-amber-200'
+                            : 'bg-slate-100 text-slate-500 border-slate-200'
+                            }`}>
+                            {g.editing_locked ? <Lock size={10} strokeWidth={3} /> : <Unlock size={10} strokeWidth={3} />}
+                            {g.editing_locked ? 'ロック済' : '許可中'}
+                          </div>
+                        </div>
+                      </div>
+                      {['体験', '食品', '物販'].includes(selectedDept) && (
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
+                          <span className="text-[10px] font-black text-slate-400">待ち時間</span>
+                          <span className="text-sm font-black text-slate-700">
+                            {act.status === 'closed' ? '-' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`)}
+                          </span>
+                        </div>
+                      )}
+                      {selectedDept === '冊子' && (
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
+                          <span className="text-[10px] font-black text-slate-400">配布状況</span>
+                          <span className="text-sm font-black text-brand-600">
+                            {{ distributing: '配布中', limited: '僅か', ended: '終了' }[act.status] || act.status}
+                          </span>
+                        </div>
+                      )}
+                      {selectedDept === '公演' && (
+                        <div className="space-y-3 pt-2 border-t border-slate-200/50">
+                          {g.performances.sort((a, b) => {
+                            if (a.part_id !== b.part_id) return a.part_id - b.part_id;
+                            return a.start_time.localeCompare(b.start_time);
+                          }).map(p => (
+                            <div key={p.id} className="flex items-center justify-between gap-3">
+                              <span className="text-[10px] font-black text-slate-400 shrink-0">Part{p.part_id} {p.start_time}</span>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${p.reception_status === 'closed' ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'
+                                  }`}>
+                                  {{ before_open: '前', ticket_only: '券', closed: '終', open: '中' }[p.reception_status]}
+                                </span>
+                                <span className="text-[8px] font-black text-slate-500">
+                                  {{ none: '-(無)', distributing: '配中', ended: '終了' }[p.status]}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
       )}
 
       {activeTab === 'lost_found' && (
-        <div className="bg-white border border-slate-100 rounded-[3.5rem] p-12 shadow-sm space-y-10">
-          <div className="flex items-center justify-between">
-            <h3 className="text-3xl font-black text-slate-900 tracking-tight">落とし物管理</h3>
-            <button className="flex items-center gap-3 px-10 py-5 bg-brand-600 text-white rounded-[1.5rem] font-black text-sm shadow-2xl shadow-brand-500/30 hover:bg-brand-700 hover:translate-y-[-2px] transition-all">
-              <Plus size={22} strokeWidth={3} />
+        <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-12 shadow-sm space-y-6 md:space-y-10">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">落とし物管理</h3>
+            <button
+              onClick={() => {
+                setEditingLostFound({ name: '', location: '', features: '', found_at: new Date().toISOString() });
+                setIsLostFoundModalOpen(true);
+              }}
+              className="w-full md:w-auto flex items-center justify-center gap-3 px-8 md:px-10 py-4 md:py-5 bg-brand-600 text-white rounded-2xl md:rounded-[1.5rem] font-black text-sm shadow-2xl shadow-brand-500/30 hover:bg-brand-700 active:scale-95 transition-all">
+              <Plus size={20} className="md:w-5.5 md:h-5.5" strokeWidth={3} />
               新規追加
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
             {lostFound.map(item => (
-              <div key={item.id} className="bg-slate-50/50 p-8 rounded-[2.5rem] border border-slate-100 space-y-6 group hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all">
-                <div className="flex justify-between items-start">
-                  <div className="w-16 h-16 bg-white rounded-[1.5rem] flex items-center justify-center text-brand-600 shadow-sm transition-transform group-hover:scale-110">
-                    <PackageSearch size={32} />
-                  </div>
-                  <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${item.status === 'kept' ? 'bg-amber-100 text-amber-700 shadow-sm' : 'bg-emerald-100 text-emerald-700 shadow-sm'}`}>
-                    {item.status === 'kept' ? '管理中' : '返却済'}
-                  </span>
-                </div>
+              <div key={item.id} className="bg-slate-50/50 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 space-y-4 md:space-y-6 group hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all">
+                <div className="h-4"></div>
                 <div>
-                  <h4 className="font-black text-slate-900 text-xl tracking-tight">{item.item_name}</h4>
-                  <p className="text-sm text-slate-400 font-bold flex items-center gap-2 mt-2">
-                    <MapPin size={16} className="text-brand-600/50" /> {item.place_found}
+                  <h4 className="font-black text-slate-900 text-lg md:text-xl tracking-tight">{item.name}</h4>
+                  <p className="text-[11px] md:text-sm text-slate-400 font-bold flex items-center gap-2 mt-1.5 md:mt-2">
+                    <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-600/50" /> {item.location}
                   </p>
                 </div>
-                <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-300 font-black tracking-widest uppercase">{new Date(item.found_at).toLocaleDateString()}</span>
-                  <button className="text-[11px] font-black text-brand-600 hover:text-brand-700 tracking-[0.2em] uppercase">詳細・編集</button>
+                <div className="pt-4 md:pt-6 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[9px] md:text-[11px] text-slate-300 font-black tracking-widest uppercase">{formatDateTime(item.found_at)}</span>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => {
+                        setEditingLostFound(item);
+                        setIsLostFoundModalOpen(true);
+                      }}
+                      className="text-[9px] md:text-[11px] font-black text-brand-600 hover:text-brand-700 tracking-[0.2em] uppercase">編集</button>
+                    <button
+                      onClick={() => handleDeleteLostFound(item.id)}
+                      className="text-[9px] md:text-[11px] font-black text-rose-400 hover:text-rose-600 tracking-[0.2em] uppercase">削除</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -346,30 +568,45 @@ const HQDashboard = () => {
       )}
 
       {activeTab === 'announcements' && (
-        <div className="bg-white border border-slate-100 rounded-[3.5rem] p-12 shadow-sm space-y-10">
-          <div className="flex items-center justify-between">
-            <h3 className="text-3xl font-black text-slate-900 tracking-tight">お知らせ管理ユニット</h3>
-            <button className="flex items-center gap-3 px-10 py-5 bg-brand-600 text-white rounded-[1.5rem] font-black text-sm shadow-2xl shadow-brand-500/30 hover:bg-brand-700 hover:translate-y-[-2px] transition-all">
-              <Plus size={22} strokeWidth={3} />
+        <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-12 shadow-sm space-y-6 md:space-y-10">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">お知らせ管理</h3>
+            <button
+              onClick={() => {
+                setEditingAnnouncement({ title: '', content: '', is_pinned: false, sort_order: 0 });
+                setIsAnnouncementModalOpen(true);
+              }}
+              className="w-full md:w-auto flex items-center justify-center gap-3 px-8 md:px-10 py-4 md:py-5 bg-brand-600 text-white rounded-2xl md:rounded-[1.5rem] font-black text-sm shadow-2xl shadow-brand-500/30 hover:bg-brand-700 active:scale-95 transition-all">
+              <Plus className="w-5 h-5" strokeWidth={3} />
               新規発行
             </button>
           </div>
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {announcements.map(ann => (
-              <div key={ann.id} className="flex items-center gap-10 p-10 bg-slate-50/50 rounded-[3rem] border border-slate-100 hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all group">
-                <div className="w-20 h-20 bg-white rounded-[2rem] text-brand-600 shadow-sm flex items-center justify-center transition-transform group-hover:rotate-12">
-                  <Megaphone size={36} />
+              <div key={ann.id} className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-10 p-6 md:p-10 bg-slate-50/50 rounded-3xl md:rounded-[3rem] border border-slate-100 hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all group">
+                <div className="w-14 h-14 md:w-20 md:h-20 bg-white rounded-[1.2rem] md:rounded-[2rem] text-brand-600 shadow-sm flex items-center justify-center transition-transform group-hover:rotate-12 shrink-0">
+                  <Megaphone className="w-7 h-7 md:w-9 md:h-9" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-4">
-                    <h4 className="font-black text-slate-900 text-2xl tracking-tighter">{ann.title}</h4>
-                    {ann.is_pinned && <span className="bg-brand-600 text-white text-[9px] font-black px-3 py-1 rounded-full shadow-lg shadow-brand-500/20 uppercase tracking-widest">PINNED</span>}
+                <div className="flex-1 space-y-2 md:space-y-0 text-left">
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-black text-slate-900 text-xl md:text-2xl tracking-tighter">{ann.title}</h4>
+                      {ann.is_pinned && <span className="bg-brand-600 text-white text-[8px] md:text-[9px] font-black px-2 md:px-3 py-1 rounded-full shadow-lg shadow-brand-500/20 uppercase tracking-widest">PINNED</span>}
+                    </div>
+                    <span className="text-[10px] md:text-xs text-slate-400 font-mono font-bold bg-slate-100 px-2 py-0.5 rounded-lg">{ann.date ? ann.date.replace(/-/g, '.') : '-'}</span>
                   </div>
-                  <p className="text-base text-slate-400 font-bold line-clamp-1 mt-2">{ann.content}</p>
+                  <p className="text-sm md:text-base text-slate-400 font-bold line-clamp-2 md:line-clamp-1">{ann.content}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button className="w-14 h-14 bg-white border border-slate-100 text-slate-300 hover:text-brand-600 rounded-2xl transition-all flex items-center justify-center shadow-sm"><Edit2 size={22} /></button>
-                  <button className="w-14 h-14 bg-white border border-slate-100 text-slate-300 hover:text-rose-500 rounded-2xl transition-all flex items-center justify-center shadow-sm hover:border-rose-100 hover:bg-rose-50"><Trash2 size={22} /></button>
+                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                  <button
+                    onClick={() => {
+                      setEditingAnnouncement(ann);
+                      setIsAnnouncementModalOpen(true);
+                    }}
+                    className="w-12 h-12 md:w-14 md:h-14 bg-white border border-slate-100 text-slate-300 hover:text-brand-600 rounded-xl md:rounded-2xl transition-all flex items-center justify-center shadow-sm"><Edit2 className="w-5 h-5 md:w-[22px] md:h-[22px]" /></button>
+                  <button
+                    onClick={() => handleDeleteAnnouncement(ann.id)}
+                    className="w-12 h-12 md:w-14 md:h-14 bg-white border border-slate-100 text-slate-300 hover:text-rose-50 rounded-xl md:rounded-2xl transition-all flex items-center justify-center shadow-sm hover:border-rose-100 hover:bg-rose-50"><Trash2 className="w-5 h-5 md:w-[22px] md:h-[22px]" /></button>
                 </div>
               </div>
             ))}
@@ -381,14 +618,14 @@ const HQDashboard = () => {
       <AnimatePresence>
         {confirmDialog.isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100">
-              <div className="w-20 h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-                <AlertCircle size={32} />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100">
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
+                <AlertCircle className="w-7 h-7 md:w-8 md:h-8" />
               </div>
-              <h3 className="text-xl font-black text-slate-900 mb-8 leading-relaxed">{confirmDialog.message}</h3>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} className="flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 transition-colors">キャンセル</button>
-                <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(prev => ({ ...prev, isOpen: false })); }} className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all">
+              <h3 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 leading-relaxed whitespace-pre-wrap">{confirmDialog.message}</h3>
+              <div className="flex flex-col md:flex-row gap-3">
+                <button onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors">キャンセル</button>
+                <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(prev => ({ ...prev, isOpen: false })); }} className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all">
                   {confirmDialog.confirmText}
                 </button>
               </div>
@@ -396,6 +633,474 @@ const HQDashboard = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Edit Group Modal */}
+      <AnimatePresence>
+        {isEditModalOpen && editingGroup && (
+          <EditGroupModal
+            group={editingGroup}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setEditingGroup(null);
+            }}
+            onSave={fetchData}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Lost & Found Modal */}
+      <AnimatePresence>
+        {isLostFoundModalOpen && editingLostFound && (
+          <EditLostFoundModal
+            item={editingLostFound}
+            onClose={() => {
+              setIsLostFoundModalOpen(false);
+              setEditingLostFound(null);
+            }}
+            onSave={fetchData}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Announcement Modal */}
+      <AnimatePresence>
+        {isAnnouncementModalOpen && editingAnnouncement && (
+          <EditAnnouncementModal
+            announcement={editingAnnouncement}
+            onClose={() => {
+              setIsAnnouncementModalOpen(false);
+              setEditingAnnouncement(null);
+            }}
+            onSave={fetchAnnouncements}
+          />
+        )}
+      </AnimatePresence>
+    </div >
+  );
+};
+
+const EditGroupModal = ({ group, onClose, onSave }) => {
+  const [activities, setActivities] = useState(JSON.parse(JSON.stringify(group.group_activities || [])));
+  const [performances, setPerformances] = useState(JSON.parse(JSON.stringify(group.performances || [])));
+  const [editingLocked, setEditingLocked] = useState(group.editing_locked);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Update group general settings (editing_locked)
+      await supabase.from('groups').update({
+        editing_locked: editingLocked,
+        updated_at: new Date().toISOString()
+      }).eq('id', group.id);
+
+      // Update activities
+      for (const act of activities) {
+        await supabase.from('group_activities').update({
+          status: act.status,
+          waiting_time: act.waiting_time,
+          updated_at: new Date().toISOString()
+        }).eq('id', act.id);
+      }
+      // Update performances
+      for (const perf of performances) {
+        await supabase.from('performances').update({
+          status: perf.status,
+          reception_status: perf.reception_status,
+          updated_at: new Date().toISOString()
+        }).eq('id', perf.id);
+      }
+      await onSave();
+      onClose();
+    } catch (error) {
+      console.error('Save error:', error);
+      alert('保存に失敗しました');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleForceLogout = async () => {
+    if (!window.confirm('この団体を強制ログアウトさせますか？\n（次回のアクセス時にパスワードが再要求されます）')) return;
+    setIsSaving(true);
+    try {
+      await supabase.from('groups').update({
+        last_reset_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }).eq('id', group.id);
+      alert('強制ログアウトを実行しました');
+      await onSave();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+      >
+        {/* Modal Header */}
+        <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between shrink-0">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-widest">{group.building} {group.room}</span>
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">{group.name}</h2>
+            </div>
+            <p className="text-sm font-bold text-slate-400">{group.title || 'Official Program'}</p>
+          </div>
+          <button onClick={onClose} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all">
+            <XCircle size={24} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-12 custom-scrollbar">
+          {/* Admin Management Section */}
+          <div className="bg-rose-50/50 rounded-3xl p-6 border border-rose-100/50 space-y-6">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="w-5 h-5 text-rose-500" />
+              <h3 className="text-sm font-black text-rose-900 tracking-tight">本部用設定</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <button
+                onClick={() => setEditingLocked(!editingLocked)}
+                className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${editingLocked
+                  ? 'bg-white border-rose-500 text-rose-600 shadow-lg shadow-rose-500/10'
+                  : 'bg-white border-slate-100 text-slate-400 opacity-60 hover:opacity-100'
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  {editingLocked ? <Lock size={20} strokeWidth={2.5} /> : <Unlock size={20} strokeWidth={2.5} />}
+                  <span className="text-[12px] font-black uppercase tracking-widest">{editingLocked ? '編集ロック中' : '編集許可中'}</span>
+                </div>
+                <div className={`w-12 h-7 rounded-full p-1 transition-colors ${editingLocked ? 'bg-rose-500' : 'bg-slate-200'}`}>
+                  <div className={`w-5 h-5 bg-white rounded-full transition-transform ${editingLocked ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {activities.map(act => (
+            <div key={act.id} className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="h-px flex-1 bg-slate-100"></div>
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{act.department} 管理</h3>
+                <div className="h-px flex-1 bg-slate-100"></div>
+              </div>
+
+              {act.department !== '公演' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
+                    <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
+                      {act.department === '冊子' ? (
+                        ['distributing', 'limited', 'ended'].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => setActivities(prev => prev.map(a => a.id === act.id ? { ...a, status: s } : a))}
+                            className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${act.status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                          >
+                            {{ distributing: '配布中', limited: '残り僅か', ended: '終了' }[s]}
+                          </button>
+                        ))
+                      ) : (
+                        ['open', 'closed'].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => setActivities(prev => prev.map(a => a.id === act.id ? { ...a, status: s } : a))}
+                            className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${act.status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                          >
+                            {s === 'open' ? '受付中' : '受付終了'}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {['体験', '食品', '物販'].includes(act.department) && (
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">待ち時間</label>
+                      <select
+                        value={act.waiting_time}
+                        onChange={(e) => setActivities(prev => prev.map(a => a.id === act.id ? { ...a, waiting_time: parseInt(e.target.value) } : a))}
+                        className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black text-slate-700 outline-none transition-all"
+                      >
+                        {Array.from({ length: 25 }, (_, i) => i * 5).map(t => (
+                          <option key={t} value={t}>{t === 0 ? '待ちなし' : `${t}分待ち`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {act.department === '公演' && (
+                <div className="space-y-6">
+                  {performances.sort((a, b) => {
+                    if (a.part_id !== b.part_id) return a.part_id - b.part_id;
+                    return a.start_time.localeCompare(b.start_time);
+                  }).map(perf => (
+                    <div key={perf.id} className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 space-y-6">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-900 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-brand-600" />
+                          Part{perf.part_id} ({perf.start_time})
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
+                          <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1 overflow-x-auto scrollbar-hide">
+                            {['before_open', 'open', 'ticket_only', 'closed'].map(s => (
+                              <button
+                                key={s}
+                                onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
+                                className={`px-2 py-2 rounded-lg text-[8px] font-black whitespace-nowrap transition-all ${perf.reception_status === s ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                              >
+                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布</label>
+                          <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
+                            {['none', 'distributing', 'ended'].map(s => (
+                              <button
+                                key={s}
+                                onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
+                                className={`flex-1 py-2 rounded-lg text-[8px] font-black transition-all ${perf.status === s ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                              >
+                                {{ none: '初期値', distributing: '配布中', ended: '終了' }[s]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-6 md:p-10 border-t border-slate-50 bg-slate-50/30 flex gap-4 shrink-0">
+          <button
+            disabled={isSaving}
+            onClick={onClose}
+            className="flex-1 py-5 text-slate-400 font-black text-sm hover:bg-white rounded-2xl transition-all border border-transparent hover:border-slate-200"
+          >
+            キャンセル
+          </button>
+          <button
+            disabled={isSaving}
+            onClick={handleSave}
+            className="flex-[2] py-5 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-3"
+          >
+            {isSaving ? <RefreshCw className="animate-spin w-5 h-5" /> : <Save className="w-5 h-5" />}
+            <span>設定を保存して閉じる</span>
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const EditLostFoundModal = ({ item, onClose, onSave }) => {
+  const [formData, setFormData] = useState({ ...item });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Remove id from formData if it exists for insert
+      const { id, ...saveData } = formData;
+
+      let res;
+      if (item.id) {
+        res = await supabase.from('lost_found').update({
+          ...saveData
+        }).eq('id', item.id);
+      } else {
+        res = await supabase.from('lost_found').insert([
+          { ...saveData }
+        ]);
+      }
+
+      if (res.error) throw res.error;
+
+      await onSave();
+      onClose();
+    } catch (error) {
+      console.error('Save error:', error);
+      alert('保存に失敗しました: ' + (error.message || '不明なエラー'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between">
+          <h2 className="text-xl md:text-2xl font-black text-slate-900">落とし物登録・編集</h2>
+          <button onClick={onClose} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all">
+            <XCircle size={20} />
+          </button>
+        </div>
+        <div className="p-6 md:p-10 space-y-6 overflow-y-auto">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">品名</label>
+            <input
+              type="text"
+              value={formData.name || ''}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+              placeholder="品名を入力してください"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">拾得場所</label>
+            <input
+              type="text"
+              value={formData.location || ''}
+              onChange={e => setFormData({ ...formData, location: e.target.value })}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+              placeholder="拾得場所を入力してください"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">特徴・詳細</label>
+            <textarea
+              value={formData.features || ''}
+              onChange={e => setFormData({ ...formData, features: e.target.value })}
+              rows={3}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all resize-none"
+              placeholder="特徴･詳細を入力してください"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">拾得日時</label>
+            <input
+              type="datetime-local"
+              value={formData.found_at ? new Date(new Date(formData.found_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+              onChange={e => setFormData({ ...formData, found_at: new Date(e.target.value).toISOString() })}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+            />
+          </div>
+        </div>
+        <div className="p-6 md:p-10 border-t border-slate-50 bg-slate-50/30 flex gap-4">
+          <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black text-sm">キャンセル</button>
+          <button onClick={handleSave} disabled={isSaving} className="flex-[2] py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+            {isSaving ? <RefreshCw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
+            保存する
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+const EditAnnouncementModal = ({ announcement, onClose, onSave }) => {
+  const [formData, setFormData] = useState({ ...announcement });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const { id, ...saveData } = formData;
+      const finalData = {
+        ...saveData,
+        date: new Date().toISOString().split('T')[0]
+      };
+      
+      let res;
+      if (announcement.id) {
+        res = await supabase.from('announcements').update(finalData).eq('id', announcement.id);
+      } else {
+        res = await supabase.from('announcements').insert([finalData]);
+      }
+
+      if (res.error) throw res.error;
+
+      await onSave();
+      onClose();
+    } catch (error) {
+      console.error('Save error:', error);
+      alert('保存に失敗しました: ' + (error.message || '不明なエラー'));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between">
+          <h2 className="text-xl md:text-2xl font-black text-slate-900">お知らせ登録</h2>
+          <button onClick={onClose} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all">
+            <XCircle size={20} />
+          </button>
+        </div>
+        <div className="p-6 md:p-10 space-y-6 overflow-y-auto">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">タイトル</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+              placeholder="タイトルを入力してください"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">内容</label>
+            <textarea
+              value={formData.content}
+              onChange={e => setFormData({ ...formData, content: e.target.value })}
+              rows={4}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all resize-none"
+              placeholder="詳細を入力してください"
+            />
+          </div>
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-black text-slate-700">ピン留め</span>
+            </div>
+            <button
+              onClick={() => setFormData({ ...formData, is_pinned: !formData.is_pinned })}
+              className={`w-12 h-6 rounded-full p-1 transition-colors ${formData.is_pinned ? 'bg-brand-600' : 'bg-slate-300'}`}
+            >
+              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${formData.is_pinned ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">表示順 (小さいほど上)</label>
+            <input
+              type="number"
+              value={formData.sort_order}
+              onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
+              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+            />
+          </div>
+        </div>
+        <div className="p-6 md:p-10 border-t border-slate-50 bg-slate-50/30 flex gap-4">
+          <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black text-sm">キャンセル</button>
+          <button onClick={handleSave} disabled={isSaving} className="flex-[2] py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+            {isSaving ? <RefreshCw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
+            保存する
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 };

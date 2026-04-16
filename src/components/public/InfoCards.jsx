@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function InfoCards() {
   return (
@@ -42,14 +42,28 @@ export default function InfoCards() {
         whileHover={{ y: -4 }}
         className="bg-white border border-slate-100 rounded-3xl p-8 shadow-sm flex flex-col items-start text-left"
       >
-        <div className="w-12 h-12 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 mb-6">
-          <MapPin size={24} />
+        <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 mb-6">
+          <AlertCircle size={24} />
         </div>
-        <h2 className="text-xl font-black text-slate-900 mb-2">アクセス</h2>
-        <p className="text-slate-600 font-bold mb-4">千葉県立船橋高等学校</p>
-        <div className="grid grid-cols-1 gap-2 text-xs font-bold text-slate-400">
-          <p>JR 東船橋駅 徒歩約10分</p>
-          <p>京成 船橋競馬場駅 徒歩約15分</p>
+        <h2 className="text-xl font-black text-slate-900 mb-4">注意事項</h2>
+        <div className="space-y-3 w-full">
+          <div className="space-y-2">
+            <div className="flex items-start space-x-2 text-slate-500">
+              <div className="w-1 h-1 rounded-full bg-amber-400 mt-1.5 shrink-0"></div>
+              <p className="text-xs font-bold text-slate-600">上履きを持参してください</p>
+            </div>
+            <div className="flex items-start space-x-2 text-slate-500">
+              <div className="w-1 h-1 rounded-full bg-amber-400 mt-1.5 shrink-0"></div>
+              <p className="text-xs font-bold text-slate-600">公共交通機関を利用してください</p>
+            </div>
+            <div className="flex items-start space-x-2 text-slate-500">
+              <div className="w-1 h-1 rounded-full bg-amber-400 mt-1.5 shrink-0"></div>
+              <p className="text-xs font-bold text-slate-600">ゴミの持ち帰りに協力ください</p>
+            </div>
+          </div>
+          <p className="text-[9px] text-slate-400 font-bold border-t border-slate-50 pt-3">
+            ※近隣への迷惑駐車は禁止です
+          </p>
         </div>
       </motion.div>
     </section>
