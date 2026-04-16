@@ -106,9 +106,9 @@ const LostFound = () => {
                 </div>
 
                 <div className="w-full space-y-4">
-                  <div className="flex items-center text-sm text-slate-600 font-bold bg-slate-50/80 px-4 py-3 rounded-xl border border-slate-100">
-                    <MapPin size={16} className="mr-2 text-brand-600" />
-                    <span>場所: {item.location}</span>
+                  <div className="p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
+                    <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">拾得場所</span>
+                    <p className="text-slate-700 text-sm font-bold leading-relaxed">{item.location}</p>
                   </div>
 
                   <div className="p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
