@@ -578,7 +578,7 @@ const HQDashboard = () => {
               }}
               className="w-full md:w-auto flex items-center justify-center gap-3 px-8 md:px-10 py-4 md:py-5 bg-brand-600 text-white rounded-2xl md:rounded-[1.5rem] font-black text-sm shadow-2xl shadow-brand-500/30 hover:bg-brand-700 active:scale-95 transition-all">
               <Plus className="w-5 h-5" strokeWidth={3} />
-              新規発行
+              新規
             </button>
           </div>
           <div className="space-y-4 md:space-y-6">

@@ -119,7 +119,7 @@ const AdminLogin = () => {
               <input
                 type="password"
                 required
-                placeholder="••••••••"
+                placeholder="パスワードを入力"
                 className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl py-5 pl-16 pr-8 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-300"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -146,7 +146,7 @@ const AdminLogin = () => {
             {loading ? (
               <div className="flex items-center space-x-4">
                 <RefreshCw className="animate-spin" size={28} />
-                <span className="text-xl font-black italic">LOGIN...</span>
+                <span className="text-xl font-black">認証中...</span>
               </div>
             ) : (
               <div className="flex items-center space-x-4 group">
@@ -160,7 +160,7 @@ const AdminLogin = () => {
         <div className="pt-8 text-center border-t border-slate-50">
           <p className="text-[11px] text-slate-400 font-bold tracking-tight leading-relaxed">
             ログインできない場合は<br />
-            <span className="text-brand-600">本部 (仮校舎2F)</span> までお越しください。
+            <span className="text-brand-600">文化委員会本部 (仮校舎2F)</span> までお越しください。
           </p>
         </div>
       </motion.div>
