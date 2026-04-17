@@ -174,12 +174,12 @@ const Timetable = ({ initialPerformances }) => {
             <h1 className="text-4xl font-black tracking-tight">タイムテーブル</h1>
           </div>
 
-          <div className="inline-flex w-fit p-1.5 bg-slate-100 rounded-[1.5rem] border border-slate-200/50 shadow-inner">
+          <div className="flex w-full p-1.5 bg-slate-100 rounded-[1.5rem] border border-slate-200/50 shadow-inner">
             {PARTS.map(part => (
               <button
                 key={part.id}
                 onClick={() => setActivePart(part.id)}
-                className={`px-8 py-3 rounded-[1.2rem] text-xs font-black transition-all flex items-center justify-center min-w-[100px] ${activePart === part.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 px-4 py-3 rounded-[1.2rem] text-xs font-black transition-all flex items-center justify-center ${activePart === part.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 {part.name}
               </button>
