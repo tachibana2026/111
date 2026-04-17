@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, Bell, AlertTriangle, Info } from 'lucide-react';
+import { Calendar, Bell, AlertTriangle, Info, Instagram } from 'lucide-react';
 
 const Home = () => {
 
@@ -179,6 +179,33 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Social Section */}
+      <section className="px-2 max-w-7xl mx-auto">
+        <motion.div
+          whileHover={{ y: -5 }}
+          className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6"
+        >
+          <div className="flex items-center gap-6">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-purple-200">
+              <Instagram size={32} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-slate-900">公式Instagram</h2>
+              <p className="text-slate-500 font-bold text-sm">文化委員会が最新情報を発信中！</p>
+            </div>
+          </div>
+
+          <a 
+            href="https://www.instagram.com/kf.bunkaiin" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-8 py-4 bg-white rounded-2xl font-black text-slate-900 shadow-sm border border-purple-100 hover:shadow-md hover:scale-105 active:scale-95 transition-all group"
+          >
+            <span>@kf.bunkaiin をフォロー</span>
+            <span className="text-purple-500 group-hover:translate-x-1 transition-transform">→</span>
+          </a>
+        </motion.div>
+      </section>
 
     </div>
   );
