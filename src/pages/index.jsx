@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, Bell, AlertTriangle, Info } from 'lucide-react';
+import { Calendar, AlertTriangle, Info } from 'lucide-react';
 
 const Home = () => {
 
@@ -178,11 +178,9 @@ const Home = () => {
           </motion.div>
         </div>
       </section>
-
-
     </div>
   );
 };
 
 export default Home;
-
+export default Home;
