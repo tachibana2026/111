@@ -63,11 +63,11 @@ const Layout = ({ children }) => {
 
       <header className="fixed top-0 left-0 w-full h-20 hidden md:flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/50 z-50 shadow-sm">
         <Link href="/" className="flex items-center space-x-4 transition-transform active:scale-95 group">
-          <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20 group-hover:rotate-6 transition-transform">
-            <span className="text-white font-black text-lg">凌</span>
+          <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-brand-500/10 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <img src="/favicon.png" alt="Logo" className="w-full h-full object-cover" />
           </div>
           <div className="flex flex-col -space-y-1">
-            <span className="text-xl font-bold text-slate-900 tracking-tight">凌雲たちばな祭 2026</span>
+            <span className="text-xl font-bold text-slate-900 tracking-tight">たちばな祭2026</span>
           </div>
         </Link>
         <nav className="flex space-x-2">

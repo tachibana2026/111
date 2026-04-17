@@ -18,11 +18,11 @@ export default function PublicHeader() {
   return (
     <header className="fixed top-0 left-0 w-full h-16 hidden md:flex items-center justify-between px-8 bg-white/90 backdrop-blur-md border-b border-slate-100 z-50">
       <Link href="/" className="flex items-center space-x-3 transition-transform active:scale-95">
-        <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
-          <span className="text-white font-black text-sm">凌</span>
+        <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm">
+          <img src="/favicon.png" alt="Logo" className="w-full h-full object-cover" />
         </div>
         <div className="flex flex-col -space-y-1">
-          <span className="text-lg font-bold text-slate-900 tracking-tight">凌雲たちばな祭 2026</span>
+          <span className="text-lg font-bold text-slate-900 tracking-tight">たちばな祭2026</span>
         </div>
       </Link>
       <nav className="flex space-x-1">

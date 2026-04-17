@@ -58,11 +58,6 @@ const LostFound = ({ initialItems }) => {
                     </div>
                   </div>
                 </div>
-                {item.updated_at && (
-                  <div className="text-[10px] font-bold text-slate-300 whitespace-nowrap bg-slate-50 px-2 py-1 rounded-md">
-                    新着
-                  </div>
-                )}
               </div>
 
               <div className="w-full space-y-4">
@@ -94,7 +89,7 @@ const LostFound = ({ initialItems }) => {
 export async function getStaticProps() {
   const { data, error } = await supabase
     .from('lost_found')
-    .select('id, name, found_at, location, features, updated_at')
+    .select('id, name, found_at, location, features')
     .order('found_at', { ascending: false });
 
   if (error) {
