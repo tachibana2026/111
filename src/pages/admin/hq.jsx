@@ -4,11 +4,13 @@ import {
   Users, PackageSearch, Settings, ShieldCheck,
   Lock, Unlock, Plus, Trash2, RefreshCw, MapPin,
   AlertCircle, LogOut, CheckCircle2, Clock, Edit2, XCircle,
+  AlertTriangle,
   User, ChevronLeft, Save,
   ChevronUp, ChevronDown, Filter, SortDesc, Calendar, Utensils
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
+import { triggerRevalidate } from '../../lib/revalidate';
 
 const DEPARTMENTS = ['体験', '食品', '公演', '展示', '冊子', '物販'];
 
@@ -22,6 +24,21 @@ const formatDateTime = (isoString) => {
   return `${m}/${d} ${h}:${min}`;
 };
 
+const renderFormattedMessage = (message) => {
+  if (!message) return null;
+  const parts = message.split(/(【[^】]+】)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('【') && part.endsWith('】')) {
+      return (
+        <span key={index} className="text-amber-600 px-0.5">
+          {part.slice(1, -1)}
+        </span>
+      );
+    }
+    return part;
+  });
+};
+
 const HQDashboard = () => {
   const [activeTab, setActiveTab] = useState('groups');
   const [selectedDept, setSelectedDept] = useState('体験');
@@ -29,7 +46,7 @@ const HQDashboard = () => {
   const [lostFound, setLostFound] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, confirmText: '実行' });
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, confirmText: '実行', icon: null });
   const [editingGroup, setEditingGroup] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -38,17 +55,24 @@ const HQDashboard = () => {
 
   const router = useRouter();
 
-  const requireConfirm = (message, onConfirm, confirmText = '実行する') => {
-    setConfirmDialog({ isOpen: true, message, onConfirm, confirmText });
+  const requireConfirm = (message, onConfirm, confirmText = '実行する', icon = null) => {
+    setConfirmDialog({ isOpen: true, message, onConfirm, confirmText, icon });
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('ryoun_auth_type');
-    localStorage.removeItem('ryoun_group_id');
-    localStorage.removeItem('ryoun_password');
-    localStorage.removeItem('ryoun_login_at');
-    router.push('/admin');
+    requireConfirm(
+      '本部管理画面から\n【ログアウト】しますか？',
+      async () => {
+        await supabase.auth.signOut();
+        localStorage.removeItem('ryoun_auth_type');
+        localStorage.removeItem('ryoun_group_id');
+        localStorage.removeItem('ryoun_password');
+        localStorage.removeItem('ryoun_login_at');
+        router.push('/admin');
+      },
+      'ログアウト',
+      <LogOut className="w-7 h-7 md:w-8 md:h-8" />
+    );
   };
 
   useEffect(() => {
@@ -87,10 +111,12 @@ const HQDashboard = () => {
 
   const handleToggleActivityStatus = async (activity, nextStatus) => {
     await supabase.from('group_activities').update({ status: nextStatus, updated_at: new Date().toISOString() }).eq('id', activity.id);
+    triggerRevalidate();
   };
 
   const handleUpdateWaitingTime = async (activityId, time) => {
     await supabase.from('group_activities').update({ waiting_time: time, updated_at: new Date().toISOString() }).eq('id', activityId);
+    triggerRevalidate();
   };
 
   const handleBulkStatusUpdate = async (status) => {
@@ -113,6 +139,7 @@ const HQDashboard = () => {
       }
 
       await fetchData();
+      triggerRevalidate();
     } catch (error) {
       console.error('Bulk update error:', error);
     } finally {
@@ -129,6 +156,7 @@ const HQDashboard = () => {
         await supabase.from('groups').update({ editing_locked: locked }).in('id', groupIds);
       }
       await fetchData();
+      triggerRevalidate();
     } catch (error) {
       console.error('Bulk lock error:', error);
     } finally {
@@ -153,9 +181,10 @@ const HQDashboard = () => {
   };
 
   const handleDeleteLostFound = async (id) => {
-    requireConfirm('この落とし物情報を削除しますか？', async () => {
+    requireConfirm('この落とし物情報を\n【削除】しますか？', async () => {
       await supabase.from('lost_found').delete().eq('id', id);
       fetchData();
+      triggerRevalidate();
     }, '削除');
   };
 
@@ -170,7 +199,7 @@ const HQDashboard = () => {
             <ShieldCheck className="w-8 h-8 md:w-12 md:h-12" strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tighter">本部管理システム</h1>
+            <h1 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tighter">本部管理画面</h1>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -185,8 +214,8 @@ const HQDashboard = () => {
       </div>
 
       {/* Tabs / Navigation */}
-      <div className="flex justify-start md:justify-center overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-        <div className="inline-flex p-1.5 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2rem] border border-slate-200/50 shadow-inner min-w-max md:min-w-0">
+      <div className="flex w-full overflow-hidden pb-2 md:pb-0">
+        <div className="flex w-full p-1.5 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2.5rem] border border-slate-200/50 shadow-inner">
           {[
             { id: 'groups', label: '団体管理', icon: <Users className="w-4 h-4 md:w-[18px] md:h-[18px]" /> },
             { id: 'lost_found', label: '落とし物', icon: <PackageSearch className="w-4 h-4 md:w-[18px] md:h-[18px]" /> }
@@ -194,7 +223,7 @@ const HQDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 md:px-10 py-3 md:py-4 rounded-xl md:rounded-[1.5rem] text-[13px] md:text-sm font-black transition-all flex items-center gap-2 md:gap-3 whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 justify-center px-6 md:px-10 py-3 md:py-4 rounded-xl md:rounded-[1.5rem] text-[13px] md:text-sm font-black transition-all flex items-center gap-2 md:gap-3 whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
             >
               {tab.icon}
               {tab.label}
@@ -229,14 +258,14 @@ const HQDashboard = () => {
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付ステータス</span>
                         <div className="grid grid-cols-2 gap-2">
                           <button
-                            onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体を「受付中」にしますか？`, () => handleBulkStatusUpdate('open'), '一括受付開始')}
+                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の受付状況を\n【受付中】にしますか？`, () => handleBulkStatusUpdate('open'), '受付開始')}
                             disabled={isBulkUpdating}
                             className="py-3.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] font-black border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                           >
                             <CheckCircle2 size={14} /> 受付開始
                           </button>
                           <button
-                            onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体を「受付終了」にしますか？`, () => handleBulkStatusUpdate('closed'), '一括受付終了')}
+                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の受付状況を\n【受付終了】にしますか？`, () => handleBulkStatusUpdate('closed'), '受付終了')}
                             disabled={isBulkUpdating}
                             className="py-3.5 rounded-xl bg-rose-50 text-rose-600 text-[11px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                           >
@@ -247,17 +276,17 @@ const HQDashboard = () => {
 
                       {/* Group 2: Lock Control */}
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">編集制限</span>
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">編集権限</span>
                         <div className="grid grid-cols-2 gap-2">
                           <button
-                            onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体を「編集ロック」しますか？`, () => handleBulkLockUpdate(true), '一括ロック')}
+                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の編集権限を\n【剥奪】しますか？`, () => handleBulkLockUpdate(true), '権限剥奪')}
                             disabled={isBulkUpdating}
                             className="py-3.5 rounded-xl bg-amber-50 text-amber-600 text-[11px] font-black border border-amber-100 hover:bg-amber-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                           >
                             <Lock size={14} /> 一括ロック
                           </button>
                           <button
-                            onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体の「ロックを解除」しますか？`, () => handleBulkLockUpdate(false), '一括ロック解除')}
+                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の編集権限を\n【付与】しますか？`, () => handleBulkLockUpdate(false), '権限付与')}
                             disabled={isBulkUpdating}
                             className="py-3.5 rounded-xl bg-slate-50 text-slate-500 text-[11px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                           >
@@ -270,11 +299,11 @@ const HQDashboard = () => {
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">セッション管理</span>
                         <button
-                          onClick={() => requireConfirm(`${selectedDept}カテゴリの全団体を「強制ログアウト」させますか？`, () => handleBulkLogout(), '一括ログアウト')}
+                          onClick={() => requireConfirm(`${selectedDept}部門 全団体のセッションを\n【強制ログアウト】させますか？`, () => handleBulkLogout(), '強制ログアウト')}
                           disabled={isBulkUpdating}
                           className="py-3.5 rounded-xl bg-slate-900 text-white text-[11px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                         >
-                          <LogOut size={14} /> 全団体を強制ログアウト
+                          <LogOut size={14} /> 強制ログアウト
                         </button>
                       </div>
                     </div>
@@ -283,7 +312,7 @@ const HQDashboard = () => {
                   {/* Category Filter - Bottom */}
                   <div className="space-y-3 pt-6 border-t border-slate-100">
                     <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                      <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-600/50" /> カテゴリ選択 (表示切り替え)
+                      <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-600/50" /> 部門選択
                     </span>
                     <div className="flex flex-wrap items-center gap-2 md:gap-3">
                       {DEPARTMENTS.map(d => (
@@ -307,7 +336,7 @@ const HQDashboard = () => {
                 <thead className="bg-slate-50/50 border-b border-slate-100 text-slate-400 font-black text-[11px] uppercase tracking-[0.2em]">
                   <tr>
                     <th className="px-10 py-8">団体情報</th>
-                    <th className="px-10 py-8 text-center border-l border-slate-50">ステータス / 詳細状況</th>
+                    <th className="px-10 py-8 text-center border-l border-slate-50">現在公開中の情報</th>
                     <th className="px-10 py-8 text-center border-l border-slate-50">操作</th>
                   </tr>
                 </thead>
@@ -393,7 +422,7 @@ const HQDashboard = () => {
                               <span className="font-black text-sm">編集</span>
                             </button>
                             <button
-                              onClick={() => requireConfirm('強制ログアウトさせますか？\n（次回のアクセス時にパスワードが再要求されます）', async () => {
+                              onClick={() => requireConfirm('強制ログアウトを実行しますか？', async () => {
                                 await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
                                 await fetchData();
                               }, '強制ログアウト実行')}
@@ -417,31 +446,31 @@ const HQDashboard = () => {
                 const act = g.group_activities.find(a => a.department === selectedDept);
                 return (
                   <div key={g.id} className="p-5 space-y-5 bg-white">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-black text-slate-900 text-base leading-tight">{g.name}</span>
-                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{g.room}</span>
+                          <span className="font-black text-slate-900 text-base leading-tight truncate">{g.name}</span>
+                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold shrink-0">{g.room}</span>
                         </div>
                         <p className="text-[11px] text-brand-600 font-bold line-clamp-1">{g.title || 'Official Program'}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => {
                             setEditingGroup(g);
                             setIsEditModalOpen(true);
                           }}
-                          className="flex-1 py-3 bg-brand-600 text-white rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95"
+                          className="px-4 py-3 bg-brand-600 text-white rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95"
                         >
                           <Edit2 size={16} strokeWidth={2.5} />
-                          <span className="font-black text-xs">編集</span>
+                          <span className="font-black text-xs whitespace-nowrap">編集</span>
                         </button>
                         <button
                           onClick={() => requireConfirm('強制ログアウトさせますか？', async () => {
                             await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
                             await fetchData();
                           }, '強制ログアウト')}
-                          className="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-300 rounded-xl flex items-center justify-center active:scale-90"
+                          className="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-300 rounded-xl flex items-center justify-center active:scale-90 shadow-sm"
                         >
                           <LogOut size={16} strokeWidth={2.5} />
                         </button>
@@ -559,11 +588,13 @@ const HQDashboard = () => {
       <AnimatePresence>
         {confirmDialog.isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100">
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100 text-slate-800">
               <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
-                <AlertCircle className="w-7 h-7 md:w-8 md:h-8" />
+                {confirmDialog.icon || <AlertTriangle className="w-7 h-7 md:w-8 md:h-8" />}
               </div>
-              <h3 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 leading-relaxed whitespace-pre-wrap">{confirmDialog.message}</h3>
+              <h3 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 leading-relaxed whitespace-pre-wrap">
+                {renderFormattedMessage(confirmDialog.message)}
+              </h3>
               <div className="flex flex-col md:flex-row gap-3">
                 <button onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors">キャンセル</button>
                 <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(prev => ({ ...prev, isOpen: false })); }} className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all">
@@ -640,6 +671,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
         }).eq('id', perf.id);
       }
       await onSave();
+      triggerRevalidate();
       onClose();
     } catch (error) {
       console.error('Save error:', error);
@@ -793,13 +825,13 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                 onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
                                 className={`px-2 py-2 rounded-lg text-[8px] font-black whitespace-nowrap transition-all ${perf.reception_status === s ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                               >
-                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ受付', closed: '受付終了' }[s]}
                               </button>
                             ))}
                           </div>
                         </div>
                         <div className="space-y-3">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布</label>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
                           <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
                             {['none', 'distributing', 'ended'].map(s => (
                               <button
@@ -807,7 +839,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                 onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
                                 className={`flex-1 py-2 rounded-lg text-[8px] font-black transition-all ${perf.status === s ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                               >
-                                {{ none: '初期値', distributing: '配布中', ended: '終了' }[s]}
+                                {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
                               </button>
                             ))}
                           </div>
@@ -836,7 +868,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
             className="flex-[2] py-5 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-3"
           >
             {isSaving ? <RefreshCw className="animate-spin w-5 h-5" /> : <Save className="w-5 h-5" />}
-            <span>設定を保存して閉じる</span>
+            <span>更新する</span>
           </button>
         </div>
       </motion.div>
@@ -868,6 +900,7 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
       if (res.error) throw res.error;
 
       await onSave();
+      triggerRevalidate();
       onClose();
     } catch (error) {
       console.error('Save error:', error);

@@ -53,6 +53,29 @@ export default function Hero() {
             自分たちの理想のたちばな祭を作っていきたいという願いを込めました。
           </p>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+          className="mt-8 max-w-lg mx-auto"
+        >
+          <div className="bg-white/60 backdrop-blur-md border border-brand-100/50 rounded-2xl p-4 shadow-xl shadow-brand-500/5 flex items-center space-x-3">
+            <span className="bg-brand-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">お知らせ</span>
+            <p className="text-[10px] md:text-xs font-bold text-slate-700 text-left leading-relaxed">
+              たちばな祭2026は限定公開で行います。詳しくは
+              <a 
+                href="https://cms1.chiba-c.ed.jp/funako/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-brand-600 hover:text-brand-700 underline underline-offset-4 decoration-2 mx-1"
+              >
+                本校ホームページ
+              </a>
+              でご確認ください。
+            </p>
+          </div>
+        </motion.div>
       </motion.div>
     </section>
   );

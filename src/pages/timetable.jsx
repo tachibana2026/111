@@ -20,9 +20,9 @@ const TIME_SLOTS_MAP = {
 
 const COLUMN_WIDTH = 100; // 30分あたりの幅
 
-const Timetable = () => {
-  const [performances, setPerformances] = useState([]);
-  const [loading, setLoading] = useState(true);
+const Timetable = ({ initialPerformances }) => {
+  const [performances, setPerformances] = useState(initialPerformances);
+  const [loading, setLoading] = useState(false);
   const [activePart, setActivePart] = useState(1);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedPerf, setSelectedPerf] = useState(null);
@@ -30,35 +30,24 @@ const Timetable = () => {
   const scrollContainerRef = useRef(null);
 
   useEffect(() => {
-    fetchPerformances();
+    // Current time ticking is fine as it's purely client-side logic
     const interval = setInterval(() => setCurrentTime(new Date()), 30000);
-
-    const sub = supabase
-      .channel('timetable_changes')
-      .on('postgres_changes', { event: '*', table: 'performances' }, fetchPerformances)
-      .on('postgres_changes', { event: '*', table: 'groups' }, fetchPerformances)
-      .subscribe();
-
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(sub);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (!loading && performances.length > 0 && scrollContainerRef.current) {
-      // 描画を確実にするため少し遅延させてスクロール
       const timer = setTimeout(() => {
         scrollToCurrentTime(true);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [loading, activePart]);
+  }, [loading, activePart, performances]);
 
   const scrollToCurrentTime = (smooth = false) => {
     const festDate = activePart === 3 ? '2026-06-14' : '2026-06-13';
-    const isSameDay = currentTime.toISOString().split('T')[0] === festDate;
-    if (!isSameDay) return;
+    // Simplified date check for development: if it's not June 2026, don't auto-scroll
+    if (!currentTime.toISOString().startsWith('2026-06')) return;
 
     const range = PARTS.find(p => p.id === activePart).range;
     const [startH, startM] = range[0].split(':').map(Number);
@@ -74,7 +63,6 @@ const Timetable = () => {
       const diffMinutes = totalNow - totalStart;
       const left = (diffMinutes / 30) * COLUMN_WIDTH;
 
-      // 少し余裕（40pxほど）を持たせてスクロール
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTo({
           left: Math.max(0, left - 40),
@@ -84,17 +72,6 @@ const Timetable = () => {
     }
   };
 
-  const fetchPerformances = async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from('performances')
-      .select('*, groups(*)')
-      .order('part_id', { ascending: true })
-      .order('start_time', { ascending: true });
-
-    if (data) setPerformances(data);
-    setLoading(false);
-  };
 
   const getTimeLeft = (timeStr, partId) => {
     const [h, m] = timeStr.split(':').map(Number);
@@ -360,5 +337,25 @@ const Timetable = () => {
     </div>
   );
 };
+
+export async function getStaticProps() {
+  const { data, error } = await supabase
+    .from('performances')
+    .select('*, groups(*)')
+    .order('part_id', { ascending: true })
+    .order('start_time', { ascending: true });
+
+  if (error) {
+    console.error('getStaticProps fetch error:', error);
+    return { props: { initialPerformances: [] }, revalidate: 60 };
+  }
+
+  return {
+    props: {
+      initialPerformances: data || [],
+    },
+    revalidate: 3600,
+  };
+}
 
 export default Timetable;

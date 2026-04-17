@@ -2,10 +2,26 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
   CheckCircle2, XCircle, LogOut, Lock, RefreshCw,
-  Save, Check, User, Shield, Clock, Info, Utensils, ChevronDown
+  Save, Check, User, Shield, Clock, Info, Utensils, ChevronDown, Edit2
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
+import { triggerRevalidate } from '../../lib/revalidate';
+
+const renderFormattedMessage = (message) => {
+  if (!message) return null;
+  const parts = message.split(/(【[^】]+】)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('【') && part.endsWith('】')) {
+      return (
+        <span key={index} className="text-amber-600 px-0.5">
+          {part.slice(1, -1)}
+        </span>
+      );
+    }
+    return part;
+  });
+};
 
 const GroupDashboard = () => {
   const router = useRouter();
@@ -135,6 +151,7 @@ const GroupDashboard = () => {
       setTimeout(() => setShowSuccess(false), 3000);
       // Supabaseのリアルタイム購読が未設定の場合に備え、手動で即座に再取得して画面を更新する
       await fetchGroupData(group.id);
+      triggerRevalidate();
     }
     setUpdating(false);
   };
@@ -175,10 +192,10 @@ const GroupDashboard = () => {
   const confirmLogout = () => {
     setConfirmDialog({
       isOpen: true,
-      message: 'ログアウトしますか？',
+      message: '管理画面から\n【ログアウト】しますか？',
       confirmText: 'ログアウト',
       onConfirm: handleLogout,
-      icon: <LogOut size={48} strokeWidth={2.5} />
+      icon: <LogOut className="w-7 h-7 md:w-8 md:h-8" strokeWidth={2.5} />
     });
   };
 
@@ -330,9 +347,9 @@ const GroupDashboard = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-xl flex items-center justify-center">
-                    {act.department === '食品' ? <Utensils size={24} strokeWidth={2.5} /> : <Info size={24} strokeWidth={2.5} />}
+                    <Edit2 size={24} strokeWidth={2.5} />
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">{act.department} 情報編集</h2>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">情報編集</h2>
                 </div>
               </div>
 
@@ -527,52 +544,36 @@ const GroupDashboard = () => {
         </div>
       </div>
 
-      {/* Custom Confirm Modal */}
       <AnimatePresence>
         {confirmDialog.isOpen && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6 z-[200]">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white/80 backdrop-blur-xl w-full max-w-md p-12 rounded-[3.5rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border border-white text-center space-y-10 relative overflow-hidden"
+              className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100 text-slate-800"
             >
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-400 via-sky-400 to-brand-400"></div>
-
-              <motion.div
-                initial={{ rotate: -10, scale: 0.8 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ type: "spring", damping: 12 }}
-                className="w-24 h-24 bg-brand-500/10 text-brand-600 rounded-[2.5rem] flex items-center justify-center mx-auto relative group"
-              >
-                <div className="absolute inset-0 bg-brand-500/20 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative z-10">
-                  {confirmDialog.icon || <Shield size={48} strokeWidth={2.5} />}
-                </div>
-              </motion.div>
-
-              <div className="flex flex-col items-center space-y-4">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight whitespace-pre-line leading-tight text-center">
-                  {confirmDialog.message}
-                </h2>
-                <div className="w-12 h-1 bg-slate-100 rounded-full"></div>
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
+                {confirmDialog.icon || <Shield size={32} strokeWidth={2.5} />}
               </div>
-
-              <div className="flex flex-col items-center gap-3 pt-4 w-full">
+              <h2 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 leading-relaxed whitespace-pre-wrap">
+                {renderFormattedMessage(confirmDialog.message)}
+              </h2>
+              <div className="flex flex-col md:flex-row gap-3">
+                <button
+                  onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                  className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors"
+                >
+                  キャンセル
+                </button>
                 <button
                   onClick={() => {
                     if (confirmDialog.onConfirm) confirmDialog.onConfirm();
                     setConfirmDialog({ ...confirmDialog, isOpen: false });
                   }}
-                  className="w-full max-w-[280px] bg-slate-900 text-white py-5 rounded-3xl font-black text-sm shadow-2xl shadow-slate-900/20 hover:bg-slate-800 transition-all hover:translate-y-[-2px] active:scale-95"
+                  className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all"
                 >
                   {confirmDialog.confirmText}
-                </button>
-                <button
-                  onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-                  className="w-full max-w-[280px] py-5 text-slate-400 hover:text-slate-600 font-black text-sm transition-all active:scale-95"
-                >
-                  キャンセル
                 </button>
               </div>
             </motion.div>

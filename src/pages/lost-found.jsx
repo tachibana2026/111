@@ -3,44 +3,14 @@ import { supabase } from '../lib/supabase';
 import { PackageSearch, Clock, MapPin, Info, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const LostFound = () => {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+const LostFound = ({ initialItems }) => {
+  const [items, setItems] = useState(initialItems);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchItems();
+  // Note: Client-side fetching and Realtime subscriptions are disabled 
+  // to protect the free tier from heavy traffic.
+  // Data is updated via On-demand ISR triggered by admin actions.
 
-    const subscription = supabase
-      .channel('lost_found_changes')
-      .on('postgres_changes', { event: '*', table: 'lost_found' }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setItems(current => [payload.new, ...current]);
-        } else if (payload.eventType === 'UPDATE') {
-          setItems(current => current.map(item => item.id === payload.new.id ? payload.new : item));
-        } else if (payload.eventType === 'DELETE') {
-          setItems(current => current.filter(item => item.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, []);
-
-  const fetchItems = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('lost_found').select('*').order('found_at', { ascending: false });
-
-    if (error) {
-      console.error('Fetch error:', error);
-    }
-
-    if (data) {
-      setItems(data);
-    }
-    setLoading(false);
-  };
 
   const formatDate = (isoString) => {
     const d = new Date(isoString);
@@ -66,7 +36,7 @@ const LostFound = () => {
         <div className="space-y-2">
           <h2 className="text-xl font-black text-slate-900">受け取り方法</h2>
           <p className="text-slate-600 leading-relaxed font-bold">
-            心当たりのある方は、<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部（仮校舎2F）</span>までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
+            心当たりのある方は、<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (仮校舎2F)</span>までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
           </p>
         </div>
       </div>
@@ -81,7 +51,6 @@ const LostFound = () => {
           <AnimatePresence mode="popLayout">
             {items.map((item, idx) => (
               <motion.div
-                layout
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -131,5 +100,24 @@ const LostFound = () => {
     </div>
   );
 };
+
+export async function getStaticProps() {
+  const { data, error } = await supabase
+    .from('lost_found')
+    .select('*')
+    .order('found_at', { ascending: false });
+
+  if (error) {
+    console.error('getStaticProps fetch error:', error);
+    return { props: { initialItems: [] }, revalidate: 60 };
+  }
+
+  return {
+    props: {
+      initialItems: data || [],
+    },
+    revalidate: 3600,
+  };
+}
 
 export default LostFound;

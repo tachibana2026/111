@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, Bell } from 'lucide-react';
+import { Calendar, Bell, AlertTriangle, Info } from 'lucide-react';
 
 const Home = () => {
 
@@ -56,84 +56,127 @@ const Home = () => {
               自分たちの理想のたちばな祭を作っていきたいという願いを込めました。
             </p>
           </div>
+
         </motion.div>
       </section>
 
       {/* Info Cards */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-8 px-2">
+      <section className="space-y-8 px-2 max-w-7xl mx-auto">
+        {/* お知らせ（限定公開案内） - 横長配置 */}
         <motion.div
-          whileHover={{ y: -8 }}
-          className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col items-start text-left"
+          whileHover={{ y: -5 }}
+          className="bg-amber-50 border border-amber-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm relative overflow-hidden flex flex-col items-start gap-6"
         >
-          <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 mb-8 shadow-sm">
-            <Calendar size={28} />
+          <div className="absolute -top-10 -right-10 w-60 h-60 bg-amber-200/20 rounded-full blur-3xl -z-10" />
+          
+          <div className="flex items-center gap-6 shrink-0 w-full">
+            <div className="w-16 h-16 rounded-2xl bg-amber-200 flex items-center justify-center text-amber-700 shadow-sm shrink-0">
+              <Info size={32} />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 whitespace-nowrap">お知らせ</h2>
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-6">開催日時</h2>
-          <div className="space-y-6 w-full">
-            <div className="space-y-3">
-              <p className="text-[11px] font-black text-brand-500 uppercase tracking-[0.2em] ml-1">6月13日(土)</p>
-              <div className="grid grid-cols-1 gap-2">
-                <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
-                  <span className="text-sm font-bold text-slate-500">Part 1</span>
-                  <span className="text-base font-black text-slate-900">9:15 - 12:15</span>
-                </div>
-                <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
-                  <span className="text-sm font-bold text-slate-500">Part 2</span>
-                  <span className="text-base font-black text-slate-900">13:00 - 16:00</span>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <p className="text-[11px] font-black text-brand-500 uppercase tracking-[0.2em] ml-1">6月14日(日)</p>
-              <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
-                <span className="text-sm font-bold text-slate-500">Part 3</span>
-                <span className="text-base font-black text-slate-900">9:00 - 12:15</span>
-              </div>
-            </div>
+
+          <div className="w-full">
+            <p className="text-base md:text-xl font-bold text-amber-950 leading-relaxed">
+              たちばな祭2026は限定公開で行います。<br />
+              詳しくは
+              <a 
+                href="https://cms1.chiba-c.ed.jp/funako/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-brand-600 hover:text-brand-700 underline underline-offset-[8px] decoration-3 mx-2 active:scale-95 transition-all inline-block"
+              >
+                本校ホームページ
+              </a>
+              でご確認ください。
+            </p>
           </div>
         </motion.div>
 
-        <motion.div
-          whileHover={{ y: -8 }}
-          className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col items-start text-left"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 mb-8 shadow-sm">
-            <Bell size={28} />
-          </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-6">お知らせ</h2>
-          <div className="space-y-4 w-full">
-            <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100/50 space-y-4">
-              <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">上履き（またはスリッパ）と靴袋をご持参ください。</p>
+        {/* 下部 2カラムグリッド */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* 開催日時 */}
+          <motion.div
+            whileHover={{ y: -8 }}
+            className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col items-start text-left"
+          >
+            <div className="flex items-center gap-6 mb-8 w-full">
+              <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 shadow-sm shrink-0">
+                <Calendar size={28} />
               </div>
-              <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">駐車場はございません。公共交通機関をご利用ください。</p>
+              <h2 className="text-2xl font-black text-slate-900">開催日時</h2>
+            </div>
+            <div className="space-y-6 w-full grow flex flex-col justify-center">
+              <div className="space-y-3">
+                <p className="text-[11px] font-black text-brand-500 uppercase tracking-[0.2em] ml-1">6月13日(土)</p>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
+                    <span className="text-sm font-bold text-slate-500">Part 1</span>
+                    <span className="text-base font-black text-slate-900">9:15 - 12:15</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
+                    <span className="text-sm font-bold text-slate-500">Part 2</span>
+                    <span className="text-base font-black text-slate-900">13:00 - 16:00</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">ゴミ箱はございません。各自でお持ち帰りください。</p>
-              </div>
-              <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">校内および敷地内はすべて禁煙です。</p>
-              </div>
-              <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">入場開始の<span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-brand-100/50 text-brand-700 font-black border border-brand-200 mx-1">15分前</span>から開場します。それより前の来場はお控えください。</p>
-              </div>
-              <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">開催時間終了の<span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-brand-100/50 text-brand-700 font-black border border-brand-200 mx-1">30分前</span>に入場を締め切らせていただきます。</p>
-              </div>
-              <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">お支払いには<span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-brand-100/50 text-brand-700 font-black border border-brand-200 mx-1">現金、クレジットカード、交通系ICカード</span>がご利用いただけます。</p>
+              <div className="space-y-3">
+                <p className="text-[11px] font-black text-brand-500 uppercase tracking-[0.2em] ml-1">6月14日(日)</p>
+                <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
+                  <span className="text-sm font-bold text-slate-500">Part 3</span>
+                  <span className="text-base font-black text-slate-900">9:00 - 12:15</span>
+                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+
+          {/* 注意事項 */}
+          <motion.div
+            whileHover={{ y: -8 }}
+            className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col items-start text-left"
+          >
+            <div className="flex items-center gap-6 mb-8 w-full">
+              <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 shadow-sm shrink-0">
+                <AlertTriangle size={28} />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900">注意事項</h2>
+            </div>
+            <div className="space-y-4 w-full">
+              <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100/50 space-y-4">
+                <div className="flex items-start space-x-3 text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                  <p className="text-sm font-bold">上履き（またはスリッパ）と靴袋をご持参ください。</p>
+                </div>
+                <div className="flex items-start space-x-3 text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                  <p className="text-sm font-bold">駐車場はございません。公共交通機関をご利用ください。</p>
+                </div>
+                <div className="flex items-start space-x-3 text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                  <p className="text-sm font-bold">ゴミ箱はございません。各自でお持ち帰りください。</p>
+                </div>
+                <div className="flex items-start space-x-3 text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                  <p className="text-sm font-bold">校内および敷地内はすべて禁煙です。</p>
+                </div>
+                <div className="flex items-start space-x-3 text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                  <p className="text-sm font-bold">入場開始の<span className="text-brand-600 font-black mx-1">15分前</span>から開場します。それより前の来場はお控えください。</p>
+                </div>
+                <div className="flex items-start space-x-3 text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                  <p className="text-sm font-bold">開催時間終了の<span className="text-brand-600 font-black mx-1">30分前</span>に入場を締め切らせていただきます。</p>
+                </div>
+                <div className="flex items-start space-x-3 text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                  <p className="text-sm font-bold leading-relaxed">
+                    お支払いには<span className="text-brand-600 font-black mx-1">現金、クレジットカード、交通系ICカード</span>がご利用いただけます。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </section>
 
 

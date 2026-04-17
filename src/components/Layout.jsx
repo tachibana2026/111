@@ -34,10 +34,29 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col pb-24 md:pb-0 md:pt-20 bg-slate-50/30">
+    <div className="min-h-screen flex flex-col pb-28 md:pb-0 md:pt-20 bg-slate-50/30">
       <Head>
         <title>{getPageTitle()}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta name="google-site-verification" content="vPtf7XF5A3UF7EC6PKbwyGE3bvmheVPGOQvMzfO1PqM" />
+        {pathname !== '/' && <meta name="robots" content="noindex, nofollow" />}
+        <meta name="description" content="千葉県立船橋高等学校 たちばな祭 2026 公式サイト。凌雲 - 雲よりも高く突き抜ける。団体の紹介、タイムテーブル、落とし物情報などを掲載しています。" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={getPageTitle()} />
+        <meta property="og:description" content="凌雲2026 - 千葉県立船橋高等学校たちばな祭公式サイト。開催日時や団体紹介、最新情報をお届けします。" />
+        <meta property="og:image" content="/og-image.png" />
+
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:title" content={getPageTitle()} />
+        <meta property="twitter:description" content="凌雲2026 - 千葉県立船橋高等学校たちばな祭公式サイト。開催日時や団体紹介、最新情報をお届けします。" />
+        <meta property="twitter:image" content="/og-image.png" />
+
+        {/* Favicon */}
+        <link rel="icon" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </Head>
 
       {/* Desktop Header */}
@@ -87,7 +106,7 @@ const Layout = ({ children }) => {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg h-20 md:hidden bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[2.5rem] flex justify-around items-center px-4 z-50 shadow-2xl shadow-brand-900/10">
+      <nav className="fixed bottom-0 left-0 w-full h-24 md:hidden bg-white/90 backdrop-blur-xl border-t border-white/50 rounded-t-[2.5rem] flex justify-around items-center px-4 pb-6 z-50 shadow-[0_-10px_40px_-5px_rgba(0,0,0,0.05)]">
         {navItems.map((item) => {
           const isActive = pathname === item.path || (item.path === '/admin' && isAdminPage);
           return (
