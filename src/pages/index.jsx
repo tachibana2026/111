@@ -68,7 +68,7 @@ const Home = () => {
           className="bg-amber-50 border border-amber-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm relative overflow-hidden flex flex-col items-start gap-6"
         >
           <div className="absolute -top-10 -right-10 w-60 h-60 bg-amber-200/20 rounded-full blur-3xl -z-10" />
-          
+
           <div className="flex items-center gap-6 shrink-0 w-full">
             <div className="w-16 h-16 rounded-2xl bg-amber-200 flex items-center justify-center text-amber-700 shadow-sm shrink-0">
               <Info size={32} />
@@ -79,16 +79,16 @@ const Home = () => {
           <div className="w-full">
             <p className="text-base md:text-xl font-bold text-amber-950 leading-relaxed">
               たちばな祭2026は限定公開で行います。<br />
-              詳しくは
-              <a 
-                href="https://cms1.chiba-c.ed.jp/funako/" 
-                target="_blank" 
+              詳細が決まりましたら
+              <a
+                href="https://cms1.chiba-c.ed.jp/funako/"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand-600 hover:text-brand-700 underline underline-offset-[8px] decoration-3 mx-2 active:scale-95 transition-all inline-block"
               >
                 本校ホームページ
               </a>
-              でご確認ください。
+              でお知らせします。
             </p>
           </div>
         </motion.div>
@@ -182,5 +182,4 @@ const Home = () => {
   );
 };
 
-export default Home;
 export default Home;

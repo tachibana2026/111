@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import {
-  Clock, MapPin, RefreshCw, ChevronLeft, ChevronRight,
-  Info, Calendar, Filter, Users, SortDesc, Search
-} from 'lucide-react';
+import { Clock, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PARTS = [
@@ -22,7 +19,6 @@ const COLUMN_WIDTH = 100; // 30分あたりの幅
 
 const Timetable = ({ initialPerformances }) => {
   const [performances, setPerformances] = useState(initialPerformances);
-  const [loading, setLoading] = useState(false);
   const [activePart, setActivePart] = useState(1);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedPerf, setSelectedPerf] = useState(null);
@@ -36,13 +32,13 @@ const Timetable = ({ initialPerformances }) => {
   }, []);
 
   useEffect(() => {
-    if (!loading && performances.length > 0 && scrollContainerRef.current) {
+    if (performances.length > 0 && scrollContainerRef.current) {
       const timer = setTimeout(() => {
         scrollToCurrentTime(true);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [loading, activePart, performances]);
+  }, [activePart, performances]);
 
   const scrollToCurrentTime = (smooth = false) => {
     const festDate = activePart === 3 ? '2026-06-14' : '2026-06-13';
@@ -153,14 +149,6 @@ const Timetable = ({ initialPerformances }) => {
     return status === 'closed' ? '受付終了' : '受付中';
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32">
-        <RefreshCw className="animate-spin text-brand-600 mb-6" size={40} />
-        <p className="text-slate-400 text-sm font-bold tracking-widest uppercase">データを読み込み中...</p>
-      </div>
-    );
-  }
 
   const currentPart = PARTS.find(p => p.id === activePart);
   const timeSlots = TIME_SLOTS_MAP[activePart];
@@ -341,7 +329,7 @@ const Timetable = ({ initialPerformances }) => {
 export async function getStaticProps() {
   const { data, error } = await supabase
     .from('performances')
-    .select('*, groups(*)')
+    .select('id, group_id, part_id, start_time, end_time, status, reception_status, groups(id, title, name, building, room)')
     .order('part_id', { ascending: true })
     .order('start_time', { ascending: true });
 

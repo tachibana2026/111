@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Search, Filter, SortDesc, Instagram, Twitter, ExternalLink, RefreshCw, MapPin } from 'lucide-react';
+import { Filter, SortDesc, Instagram, Twitter, ExternalLink, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
@@ -75,7 +75,6 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
 
 const Groups = ({ initialGroups }) => {
   const [groups, setGroups] = useState(initialGroups);
-  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('groups');
   const [filterDept, setFilterDept] = useState('すべて');
   const [filterGrade, setFilterGrade] = useState('すべて');
@@ -87,8 +86,6 @@ const Groups = ({ initialGroups }) => {
   // Note: Client-side fetching and Realtime subscriptions are disabled 
   // to protect the free tier from heavy traffic.
   // Data is updated via On-demand ISR triggered by admin actions.
-
-
   const getStatusColor = (activity) => {
     const { department, waiting_time, status } = activity;
 
@@ -156,8 +153,8 @@ const Groups = ({ initialGroups }) => {
     return groups
       .filter(g =>
         (filterDept === 'すべて' || g.group_activities.some(a => a.department === filterDept)) &&
-        (filterGrade === 'すべて' || 
-          (filterGrade === '有志' 
+        (filterGrade === 'すべて' ||
+          (filterGrade === '有志'
             ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year))
             : g.name.startsWith(filterGrade)
           )
@@ -265,130 +262,121 @@ const Groups = ({ initialGroups }) => {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-32">
-          <RefreshCw className="animate-spin text-brand-600 mb-6" size={40} />
-          <p className="text-slate-400 text-sm font-bold tracking-widest uppercase">データを読み込み中...</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <AnimatePresence mode="popLayout">
+          {filteredGroups.map((group) => (
+            <motion.div
+              key={group.id}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className={`bg-white border border-slate-100 rounded-[2rem] p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.group_activities.every(a => a.status === 'closed' || a.status === 'ended') ? 'opacity-60 saturate-50' : ''}`}
+            >
+              <div className="flex justify-between items-start mb-5">
+                <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex flex-wrap items-center gap-2 mb-2.5">
+                    {group.group_activities.map((act, idx) => (
+                      <span key={idx} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
+                        {act.department}
+                      </span>
+                    ))}
+                    <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-50 text-slate-500 font-black uppercase tracking-wider whitespace-nowrap">
+                      {group.name}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 leading-tight mb-1.5">
+                    {group.title || group.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-bold flex items-center shrink-0">
+                    <MapPin size={12} className="mr-1.5 text-slate-300" />
+                    {group.building} {group.room}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 scale-90 origin-top-right">
+                  {group.group_activities.map((act, idx) => (
+                    <div key={idx} className={`status-badge border shadow-sm ${getStatusColor(act)}`}>
+                      {getStatusText(act)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex-grow space-y-6">
+                <p className="text-sm text-slate-500 font-bold leading-relaxed line-clamp-3">
+                  {group.description}
+                </p>
+
+                {group.group_activities.some(a => a.department === '公演') && (() => {
+                  const nextPerf = getNextPerformance(group);
+                  return (
+                    <div className="pt-6 border-t border-slate-50 space-y-6">
+                      <PerformanceList
+                        schedule={group.performances || []}
+                        dayLabel="Part 1 (6/13)"
+                        partId={1}
+                        currentNextPerf={nextPerf}
+                        groups={groups}
+                        setSelectedGroup={setSelectedGroup}
+                        setSelectedPerf={setSelectedPerf}
+                      />
+                      <PerformanceList
+                        schedule={group.performances || []}
+                        dayLabel="Part 2 (6/13)"
+                        partId={2}
+                        currentNextPerf={nextPerf}
+                        groups={groups}
+                        setSelectedGroup={setSelectedGroup}
+                        setSelectedPerf={setSelectedPerf}
+                      />
+                      <PerformanceList
+                        schedule={group.performances || []}
+                        dayLabel="Part 3 (6/14)"
+                        partId={3}
+                        currentNextPerf={nextPerf}
+                        groups={groups}
+                        setSelectedGroup={setSelectedGroup}
+                        setSelectedPerf={setSelectedPerf}
+                      />
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="flex justify-between items-center pt-5 mt-auto border-t border-slate-50">
+                <div className="flex space-x-4">
+                  {group.social_links?.instagram && (
+                    <a href={group.social_links.instagram} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-pink-500 transition-colors">
+                      <Instagram size={18} />
+                    </a>
+                  )}
+                  {group.social_links?.twitter && (
+                    <a href={group.social_links.twitter} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-sky-500 transition-colors">
+                      <Twitter size={18} />
+                    </a>
+                  )}
+                  {group.social_links?.website && (
+                    <a href={group.social_links.website} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-brand-600 transition-colors">
+                      <ExternalLink size={18} />
+                    </a>
+                  )}
+                </div>
+                <div className="text-[10px] font-bold text-slate-300 tracking-tighter">
+                  {group.updated_at ? (
+                    `更新: ${Math.floor((new Date() - new Date(group.updated_at)) / 60000)}分前`
+                  ) : (
+                    'データなし'
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+      {filteredGroups.length === 0 && (
+        <div className="text-center py-32 text-slate-300 font-bold tracking-widest uppercase">
+          検索結果が見つかりませんでした
         </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence mode="popLayout">
-              {filteredGroups.map((group) => (
-                <motion.div
-                  key={group.id}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.2 }}
-                  className={`bg-white border border-slate-100 rounded-[2rem] p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.group_activities.every(a => a.status === 'closed' || a.status === 'ended') ? 'opacity-60 saturate-50' : ''}`}
-                >
-                  <div className="flex justify-between items-start mb-5">
-                    <div className="flex-1 min-w-0 pr-2">
-                      <div className="flex flex-wrap items-center gap-2 mb-2.5">
-                        {group.group_activities.map((act, idx) => (
-                          <span key={idx} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
-                            {act.department}
-                          </span>
-                        ))}
-                        <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-50 text-slate-500 font-black uppercase tracking-wider whitespace-nowrap">
-                          {group.name}
-                        </span>
-                      </div>
-                      <h3 className="text-xl font-black text-slate-900 leading-tight mb-1.5">
-                        {group.title || group.name}
-                      </h3>
-                      <p className="text-[11px] text-slate-400 font-bold flex items-center shrink-0">
-                        <MapPin size={12} className="mr-1.5 text-slate-300" />
-                        {group.building} {group.room}
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-2 scale-90 origin-top-right">
-                      {group.group_activities.map((act, idx) => (
-                        <div key={idx} className={`status-badge border shadow-sm ${getStatusColor(act)}`}>
-                          {getStatusText(act)}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex-grow space-y-6">
-                    <p className="text-sm text-slate-500 font-bold leading-relaxed line-clamp-3">
-                      {group.description}
-                    </p>
-
-                    {group.group_activities.some(a => a.department === '公演') && (() => {
-                      const nextPerf = getNextPerformance(group);
-                      return (
-                        <div className="pt-6 border-t border-slate-50 space-y-6">
-                          <PerformanceList
-                            schedule={group.performances || []}
-                            dayLabel="Part 1 (6/13)"
-                            partId={1}
-                            currentNextPerf={nextPerf}
-                            groups={groups}
-                            setSelectedGroup={setSelectedGroup}
-                            setSelectedPerf={setSelectedPerf}
-                          />
-                          <PerformanceList
-                            schedule={group.performances || []}
-                            dayLabel="Part 2 (6/13)"
-                            partId={2}
-                            currentNextPerf={nextPerf}
-                            groups={groups}
-                            setSelectedGroup={setSelectedGroup}
-                            setSelectedPerf={setSelectedPerf}
-                          />
-                          <PerformanceList
-                            schedule={group.performances || []}
-                            dayLabel="Part 3 (6/14)"
-                            partId={3}
-                            currentNextPerf={nextPerf}
-                            groups={groups}
-                            setSelectedGroup={setSelectedGroup}
-                            setSelectedPerf={setSelectedPerf}
-                          />
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="flex justify-between items-center pt-5 mt-auto border-t border-slate-50">
-                    <div className="flex space-x-4">
-                      {group.social_links?.instagram && (
-                        <a href={group.social_links.instagram} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-pink-500 transition-colors">
-                          <Instagram size={18} />
-                        </a>
-                      )}
-                      {group.social_links?.twitter && (
-                        <a href={group.social_links.twitter} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-sky-500 transition-colors">
-                          <Twitter size={18} />
-                        </a>
-                      )}
-                      {group.social_links?.website && (
-                        <a href={group.social_links.website} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-brand-600 transition-colors">
-                          <ExternalLink size={18} />
-                        </a>
-                      )}
-                    </div>
-                    <div className="text-[10px] font-bold text-slate-300 tracking-tighter">
-                      {group.updated_at ? (
-                        `更新: ${Math.floor((new Date() - new Date(group.updated_at)) / 60000)}分前`
-                      ) : (
-                        'データなし'
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-          {filteredGroups.length === 0 && (
-            <div className="text-center py-32 text-slate-300 font-bold tracking-widest uppercase">
-              検索結果が見つかりませんでした
-            </div>
-          )}
-        </>
       )}
 
       {/* Performance Detail Modal */}
@@ -451,7 +439,7 @@ const Groups = ({ initialGroups }) => {
 export async function getStaticProps() {
   const { data, error } = await supabase
     .from('groups')
-    .select('*, group_activities(*), performances(*)');
+    .select('id, title, name, description, building, room, social_links, updated_at, group_activities(department, waiting_time, status), performances(id, group_id, part_id, start_time, end_time, status, reception_status)');
 
   if (error) {
     console.error('getStaticProps fetch error:', error);
@@ -464,7 +452,7 @@ export async function getStaticProps() {
     },
     // On-demand revalidation is used, but a fallback revalidation 
     // every hour is a good safety measure.
-    revalidate: 3600, 
+    revalidate: 3600,
   };
 }
 
