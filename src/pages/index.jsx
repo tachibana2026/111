@@ -1,48 +1,8 @@
-import { useState, useEffect, Fragment } from 'react';
-import { supabase } from '../lib/supabase';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, MapPin, Clock, ArrowRight, Megaphone, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
-import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { Calendar, Bell } from 'lucide-react';
 
 const Home = () => {
-  const [announcements, setAnnouncements] = useState([]);
-  const [expandedId, setExpandedId] = useState(null);
 
-  useEffect(() => {
-    const fetchAnnouncements = async () => {
-      const { data } = await supabase
-        .from('announcements')
-        .select('*')
-        .order('is_pinned', { ascending: false })
-        .order('sort_order', { ascending: true })
-        .order('date', { ascending: false })
-        .limit(10);
-      if (data) setAnnouncements(data);
-    };
-
-    fetchAnnouncements();
-
-    const sub = supabase
-      .channel('public_announcements')
-      .on('postgres_changes', { event: '*', table: 'announcements' }, fetchAnnouncements)
-      .subscribe();
-
-    return () => supabase.removeChannel(sub);
-  }, []);
-
-  const renderWithLinks = (text) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-    return parts.map((part, i) =>
-      urlRegex.test(part) ? (
-        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-ryoun-sky hover:underline break-all font-medium">
-          {part}
-        </a>
-      ) : (
-        <Fragment key={i}>{part}</Fragment>
-      )
-    );
-  };
 
   return (
     <div className="space-y-10 pb-12">
@@ -80,9 +40,6 @@ const Home = () => {
             transition={{ delay: 0.3, duration: 0.8 }}
             className="mb-10 space-y-4"
           >
-            <p className="text-xs md:text-sm font-black text-brand-600 tracking-[0.3em] uppercase">
-              Chiba Prefectural Funabashi High School
-            </p>
             <p className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
               千葉県立船橋高等学校 たちばな祭
             </p>
@@ -118,7 +75,7 @@ const Home = () => {
               <div className="grid grid-cols-1 gap-2">
                 <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
                   <span className="text-sm font-bold text-slate-500">Part 1</span>
-                  <span className="text-base font-black text-slate-900">9:15 - 12:00</span>
+                  <span className="text-base font-black text-slate-900">9:15 - 12:15</span>
                 </div>
                 <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
                   <span className="text-sm font-bold text-slate-500">Part 2</span>
@@ -130,7 +87,7 @@ const Home = () => {
               <p className="text-[11px] font-black text-brand-500 uppercase tracking-[0.2em] ml-1">6月14日(日)</p>
               <div className="flex justify-between items-center bg-slate-50/50 px-6 py-4 rounded-2xl border border-slate-100/50">
                 <span className="text-sm font-bold text-slate-500">Part 3</span>
-                <span className="text-base font-black text-slate-900">9:00 - 12:00</span>
+                <span className="text-base font-black text-slate-900">9:00 - 12:15</span>
               </div>
             </div>
           </div>
@@ -140,104 +97,46 @@ const Home = () => {
           whileHover={{ y: -8 }}
           className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col items-start text-left"
         >
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 mb-8 shadow-sm">
-            <AlertCircle size={28} />
+          <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 mb-8 shadow-sm">
+            <Bell size={28} />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-6">注意事項</h2>
+          <h2 className="text-2xl font-black text-slate-900 mb-6">お知らせ</h2>
           <div className="space-y-4 w-full">
             <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100/50 space-y-4">
               <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
                 <p className="text-sm font-bold">上履き（またはスリッパ）と靴袋をご持参ください。</p>
               </div>
               <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
                 <p className="text-sm font-bold">駐車場はございません。公共交通機関をご利用ください。</p>
               </div>
               <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
                 <p className="text-sm font-bold">ゴミ箱はございません。各自でお持ち帰りください。</p>
               </div>
               <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
                 <p className="text-sm font-bold">校内および敷地内はすべて禁煙です。</p>
               </div>
               <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">入場開始の15分前から開場します。それより前の来場はお控えください。</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">入場開始の<span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-brand-100/50 text-brand-700 font-black border border-brand-200 mx-1">15分前</span>から開場します。それより前の来場はお控えください。</p>
               </div>
               <div className="flex items-start space-x-3 text-slate-600">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
-                <p className="text-sm font-bold">開催時間終了の30分前に入場を締め切らせていただきます。</p>
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">開催時間終了の<span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-brand-100/50 text-brand-700 font-black border border-brand-200 mx-1">30分前</span>に入場を締め切らせていただきます。</p>
+              </div>
+              <div className="flex items-start space-x-3 text-slate-600">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                <p className="text-sm font-bold">お支払いには<span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-brand-100/50 text-brand-700 font-black border border-brand-200 mx-1">現金、クレジットカード、交通系ICカード</span>がご利用いただけます。</p>
               </div>
             </div>
           </div>
         </motion.div>
       </section>
 
-      {/* Announcements Section */}
-      <section className="bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden shadow-sm mx-2">
-        <div className="px-8 py-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-          <div className="flex items-center space-x-3">
-            <div className="w-1.5 h-6 bg-brand-600 rounded-full"></div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">お知らせ</h2>
-          </div>
-        </div>
-        <div className="divide-y divide-slate-50">
-          <AnimatePresence>
-            {announcements.length > 0 ? (
-              announcements.map((news) => (
-                <div key={news.id} className="relative">
-                  <div
-                    onClick={() => setExpandedId(expandedId === news.id ? null : news.id)}
-                    className={`px-6 py-5 cursor-pointer hover:bg-slate-50 transition-colors ${expandedId === news.id ? 'bg-slate-50/50' : ''}`}
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          {news.is_pinned && (
-                            <span className="px-1.5 py-0.5 rounded bg-brand-600 text-white text-[9px] font-black uppercase tracking-tighter">
-                              重要
-                            </span>
-                          )}
-                          <span className="text-[10px] text-slate-400 font-bold font-mono">
-                            {news.date.replace(/-/g, '.')}
-                          </span>
-                        </div>
-                        <h3 className={`text-base font-bold truncate ${expandedId === news.id ? 'text-brand-700' : 'text-slate-800'}`}>
-                          {news.title}
-                        </h3>
-                      </div>
-                      <div className="shrink-0 text-slate-300">
-                        {expandedId === news.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                      </div>
-                    </div>
 
-                    <AnimatePresence>
-                      {expandedId === news.id && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="pt-4 text-slate-600 text-sm font-medium leading-relaxed whitespace-pre-wrap">
-                            {renderWithLinks(news.content)}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-12 text-center text-slate-300 font-bold italic">
-                現在、新しいお知らせはありません。
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
-      </section>
     </div>
   );
 };

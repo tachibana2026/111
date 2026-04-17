@@ -4,7 +4,7 @@ import {
   Users, PackageSearch, Settings, ShieldCheck,
   Lock, Unlock, Plus, Trash2, RefreshCw, MapPin,
   AlertCircle, LogOut, CheckCircle2, Clock, Edit2, XCircle,
-  User, ChevronLeft, Megaphone, Save,
+  User, ChevronLeft, Save,
   ChevronUp, ChevronDown, Filter, SortDesc, Calendar, Utensils
 } from 'lucide-react';
 import { useRouter } from 'next/router';
@@ -30,14 +30,11 @@ const HQDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isWorking, setIsWorking] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, confirmText: '実行' });
-  const [announcements, setAnnouncements] = useState([]);
   const [editingGroup, setEditingGroup] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [editingLostFound, setEditingLostFound] = useState(null);
   const [isLostFoundModalOpen, setIsLostFoundModalOpen] = useState(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
-  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
 
   const router = useRouter();
 
@@ -58,14 +55,12 @@ const HQDashboard = () => {
     const authType = localStorage.getItem('ryoun_auth_type');
     if (authType !== 'hq') { router.push('/admin'); return; }
     fetchData();
-    fetchAnnouncements();
 
     const channels = [
       supabase.channel('hq_realtime')
         .on('postgres_changes', { event: '*', table: 'groups' }, fetchData)
         .on('postgres_changes', { event: '*', table: 'group_activities' }, fetchData)
         .on('postgres_changes', { event: '*', table: 'performances' }, fetchData)
-        .on('postgres_changes', { event: '*', table: 'announcements' }, fetchAnnouncements)
         .on('postgres_changes', { event: '*', table: 'lost_found' }, fetchData).subscribe()
     ];
     return () => channels.forEach(c => supabase.removeChannel(c));
@@ -88,10 +83,7 @@ const HQDashboard = () => {
     }
   };
 
-  const fetchAnnouncements = async () => {
-    const { data } = await supabase.from('announcements').select('*').order('is_pinned', { ascending: false }).order('sort_order', { ascending: true });
-    if (data) setAnnouncements(data);
-  };
+
 
   const handleToggleActivityStatus = async (activity, nextStatus) => {
     await supabase.from('group_activities').update({ status: nextStatus, updated_at: new Date().toISOString() }).eq('id', activity.id);
@@ -167,12 +159,7 @@ const HQDashboard = () => {
     }, '削除');
   };
 
-  const handleDeleteAnnouncement = async (id) => {
-    requireConfirm('このお知らせを削除しますか？', async () => {
-      await supabase.from('announcements').delete().eq('id', id);
-      fetchAnnouncements();
-    }, '削除');
-  };
+
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-12 pb-12 pt-4 px-4 md:px-0">
@@ -202,8 +189,7 @@ const HQDashboard = () => {
         <div className="inline-flex p-1.5 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2rem] border border-slate-200/50 shadow-inner min-w-max md:min-w-0">
           {[
             { id: 'groups', label: '団体管理', icon: <Users className="w-4 h-4 md:w-[18px] md:h-[18px]" /> },
-            { id: 'lost_found', label: '落とし物', icon: <PackageSearch className="w-4 h-4 md:w-[18px] md:h-[18px]" /> },
-            { id: 'announcements', label: 'お知らせ', icon: <Megaphone className="w-4 h-4 md:w-[18px] md:h-[18px]" /> }
+            { id: 'lost_found', label: '落とし物', icon: <PackageSearch className="w-4 h-4 md:w-[18px] md:h-[18px]" /> }
           ].map(tab => (
             <button
               key={tab.id}
@@ -567,52 +553,7 @@ const HQDashboard = () => {
         </div>
       )}
 
-      {activeTab === 'announcements' && (
-        <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-12 shadow-sm space-y-6 md:space-y-10">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">お知らせ管理</h3>
-            <button
-              onClick={() => {
-                setEditingAnnouncement({ title: '', content: '', is_pinned: false, sort_order: 0 });
-                setIsAnnouncementModalOpen(true);
-              }}
-              className="w-full md:w-auto flex items-center justify-center gap-3 px-8 md:px-10 py-4 md:py-5 bg-brand-600 text-white rounded-2xl md:rounded-[1.5rem] font-black text-sm shadow-2xl shadow-brand-500/30 hover:bg-brand-700 active:scale-95 transition-all">
-              <Plus className="w-5 h-5" strokeWidth={3} />
-              新規
-            </button>
-          </div>
-          <div className="space-y-4 md:space-y-6">
-            {announcements.map(ann => (
-              <div key={ann.id} className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-10 p-6 md:p-10 bg-slate-50/50 rounded-3xl md:rounded-[3rem] border border-slate-100 hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all group">
-                <div className="w-14 h-14 md:w-20 md:h-20 bg-white rounded-[1.2rem] md:rounded-[2rem] text-brand-600 shadow-sm flex items-center justify-center transition-transform group-hover:rotate-12 shrink-0">
-                  <Megaphone className="w-7 h-7 md:w-9 md:h-9" />
-                </div>
-                <div className="flex-1 space-y-2 md:space-y-0 text-left">
-                  <div className="flex flex-col md:flex-row md:items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-black text-slate-900 text-xl md:text-2xl tracking-tighter">{ann.title}</h4>
-                      {ann.is_pinned && <span className="bg-brand-600 text-white text-[8px] md:text-[9px] font-black px-2 md:px-3 py-1 rounded-full shadow-lg shadow-brand-500/20 uppercase tracking-widest">PINNED</span>}
-                    </div>
-                    <span className="text-[10px] md:text-xs text-slate-400 font-mono font-bold bg-slate-100 px-2 py-0.5 rounded-lg">{ann.date ? ann.date.replace(/-/g, '.') : '-'}</span>
-                  </div>
-                  <p className="text-sm md:text-base text-slate-400 font-bold line-clamp-2 md:line-clamp-1">{ann.content}</p>
-                </div>
-                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                  <button
-                    onClick={() => {
-                      setEditingAnnouncement(ann);
-                      setIsAnnouncementModalOpen(true);
-                    }}
-                    className="w-12 h-12 md:w-14 md:h-14 bg-white border border-slate-100 text-slate-300 hover:text-brand-600 rounded-xl md:rounded-2xl transition-all flex items-center justify-center shadow-sm"><Edit2 className="w-5 h-5 md:w-[22px] md:h-[22px]" /></button>
-                  <button
-                    onClick={() => handleDeleteAnnouncement(ann.id)}
-                    className="w-12 h-12 md:w-14 md:h-14 bg-white border border-slate-100 text-slate-300 hover:text-rose-50 rounded-xl md:rounded-2xl transition-all flex items-center justify-center shadow-sm hover:border-rose-100 hover:bg-rose-50"><Trash2 className="w-5 h-5 md:w-[22px] md:h-[22px]" /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {/* Confirm Dialog */}
       <AnimatePresence>
@@ -662,19 +603,7 @@ const HQDashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* Announcement Modal */}
-      <AnimatePresence>
-        {isAnnouncementModalOpen && editingAnnouncement && (
-          <EditAnnouncementModal
-            announcement={editingAnnouncement}
-            onClose={() => {
-              setIsAnnouncementModalOpen(false);
-              setEditingAnnouncement(null);
-            }}
-            onSave={fetchAnnouncements}
-          />
-        )}
-      </AnimatePresence>
+
     </div >
   );
 };
@@ -1010,99 +939,6 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
   );
 };
 
-const EditAnnouncementModal = ({ announcement, onClose, onSave }) => {
-  const [formData, setFormData] = useState({ ...announcement });
-  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const { id, ...saveData } = formData;
-      const finalData = {
-        ...saveData,
-        date: new Date().toISOString().split('T')[0]
-      };
-      
-      let res;
-      if (announcement.id) {
-        res = await supabase.from('announcements').update(finalData).eq('id', announcement.id);
-      } else {
-        res = await supabase.from('announcements').insert([finalData]);
-      }
-
-      if (res.error) throw res.error;
-
-      await onSave();
-      onClose();
-    } catch (error) {
-      console.error('Save error:', error);
-      alert('保存に失敗しました: ' + (error.message || '不明なエラー'));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
-      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between">
-          <h2 className="text-xl md:text-2xl font-black text-slate-900">お知らせ登録</h2>
-          <button onClick={onClose} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all">
-            <XCircle size={20} />
-          </button>
-        </div>
-        <div className="p-6 md:p-10 space-y-6 overflow-y-auto">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">タイトル</label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={e => setFormData({ ...formData, title: e.target.value })}
-              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
-              placeholder="タイトルを入力してください"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">内容</label>
-            <textarea
-              value={formData.content}
-              onChange={e => setFormData({ ...formData, content: e.target.value })}
-              rows={4}
-              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all resize-none"
-              placeholder="詳細を入力してください"
-            />
-          </div>
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-black text-slate-700">ピン留め</span>
-            </div>
-            <button
-              onClick={() => setFormData({ ...formData, is_pinned: !formData.is_pinned })}
-              className={`w-12 h-6 rounded-full p-1 transition-colors ${formData.is_pinned ? 'bg-brand-600' : 'bg-slate-300'}`}
-            >
-              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${formData.is_pinned ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-          </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">表示順 (小さいほど上)</label>
-            <input
-              type="number"
-              value={formData.sort_order}
-              onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
-            />
-          </div>
-        </div>
-        <div className="p-6 md:p-10 border-t border-slate-50 bg-slate-50/30 flex gap-4">
-          <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black text-sm">キャンセル</button>
-          <button onClick={handleSave} disabled={isSaving} className="flex-[2] py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-            {isSaving ? <RefreshCw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
-            保存する
-          </button>
-        </div>
-      </motion.div>
-    </div>
-  );
-};
 
 export default HQDashboard;

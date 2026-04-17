@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabase';
-import { User, Lock, ArrowRight, ShieldAlert, RefreshCw } from 'lucide-react';
+import { User, Lock, ArrowRight, ShieldAlert, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const AdminLogin = () => {
   const [groupId, setGroupId] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -117,13 +118,20 @@ const AdminLogin = () => {
             <div className="relative group">
               <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors" size={22} />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 placeholder="パスワードを入力"
-                className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl py-5 pl-16 pr-8 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-300"
+                className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl py-5 pl-16 pr-14 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-300"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 p-2 transition-colors outline-none"
+              >
+                {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+              </button>
             </div>
           </div>
 

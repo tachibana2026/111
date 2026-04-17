@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Home, Users, Clock, PackageSearch, UserCog } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Head from 'next/head';
 
 const Layout = ({ children }) => {
   const router = useRouter();
@@ -17,9 +18,30 @@ const Layout = ({ children }) => {
 
   const isAdminPage = pathname.startsWith('/admin') || pathname.startsWith('/Admin') || pathname.startsWith('/ryoun-hq-portal');
 
+  // ページタイトルを決定
+  const getPageTitle = () => {
+    if (pathname === '/') return 'たちばな祭2026';
+    
+    // navItemsから検索
+    const currentItem = navItems.find(item => item.path === pathname);
+    if (currentItem) return `${currentItem.name} | たちばな祭2026`;
+
+    // 管理画面のサブページ
+    if (pathname === '/admin/hq') return '本部管理 | たちばな祭2026';
+    if (pathname === '/admin/dashboard') return '団体管理 | たちばな祭2026';
+
+    return 'たちばな祭2026';
+  };
+
   return (
     <div className="min-h-screen flex flex-col pb-24 md:pb-0 md:pt-20 bg-slate-50/30">
+      <Head>
+        <title>{getPageTitle()}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+      </Head>
+
       {/* Desktop Header */}
+
       <header className="fixed top-0 left-0 w-full h-20 hidden md:flex items-center justify-between px-10 bg-white/70 backdrop-blur-xl border-b border-white/50 z-50 shadow-sm">
         <Link href="/" className="flex items-center space-x-4 transition-transform active:scale-95 group">
           <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20 group-hover:rotate-6 transition-transform">

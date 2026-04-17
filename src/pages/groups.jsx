@@ -40,11 +40,11 @@ const Groups = () => {
     const { data, error } = await supabase
       .from('groups')
       .select('*, group_activities(*), performances(*)');
-    
+
     if (error) {
       console.error('Fetch error:', error);
     }
-    
+
     if (data) {
       setGroups(data);
     }
@@ -53,13 +53,13 @@ const Groups = () => {
 
   const getStatusColor = (activity) => {
     const { department, waiting_time, status } = activity;
-    
+
     if (department === '冊子') {
       if (status === 'ended') return 'bg-slate-100 text-slate-400 border-slate-200';
       if (status === 'limited') return 'bg-amber-50 text-amber-600 border-amber-200';
       return 'bg-emerald-50 text-emerald-600 border-emerald-200';
     }
-    
+
     if (status === 'closed') return 'bg-slate-50 border-slate-200 text-slate-500';
 
     if (department === '展示' || department === '公演') {
@@ -118,7 +118,7 @@ const Groups = () => {
   };
 
   const filteredGroups = groups
-    .filter(g => 
+    .filter(g =>
       (filterDept === 'すべて' || g.group_activities.some(a => a.department === filterDept)) &&
       (filterGrade === 'すべて' || g.name.startsWith(filterGrade)) &&
       (filterBuilding === 'すべて' || g.building === filterBuilding)
@@ -144,7 +144,7 @@ const Groups = () => {
   const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf }) => {
     const partSchedule = schedule.filter(p => p.part_id === partId);
     if (partSchedule.length === 0) return null;
-    
+
     const now = new Date();
     const festDate = partId === 3 ? '2026-06-14' : '2026-06-13';
 
@@ -161,7 +161,7 @@ const Groups = () => {
       if (currentReception === 'closed') receptionStatus = '受付終了';
       else if (currentReception === 'ticket_only') receptionStatus = '整理券のみ';
       else if (currentReception === 'before_open') receptionStatus = '受付前';
-      
+
       return { ticketStatus, receptionStatus, currentReception };
     };
 
@@ -176,8 +176,8 @@ const Groups = () => {
             const isNext = currentNextPerf && p.id === currentNextPerf.id;
             const { ticketStatus, receptionStatus, currentReception } = getPerfStatusText(p);
             return (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 onClick={(e) => {
                   e.stopPropagation();
                   const targetGroup = groups.find(g => g.id === p.group_id);
@@ -213,58 +213,58 @@ const Groups = () => {
           <div className="w-2 h-10 bg-brand-600 rounded-full shadow-lg shadow-brand-500/20"></div>
           <h1 className="text-4xl font-black tracking-tight">発表団体</h1>
         </div>
-        
+
         {/* Filters */}
         <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm space-y-8">
-           <div className="flex flex-col space-y-8">
-             <div className="flex flex-col space-y-4">
-               <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                 <Filter size={12} className="text-brand-600/50" /> 学年
-                </span>
-               <div className="flex flex-wrap items-center gap-2.5">
-                 {GRADES.map(g => (
-                   <button 
-                    key={g} 
+          <div className="flex flex-col space-y-8">
+            <div className="flex flex-col space-y-4">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                <Filter size={12} className="text-brand-600/50" /> 学年
+              </span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {GRADES.map(g => (
+                  <button
+                    key={g}
                     onClick={() => setFilterGrade(g)}
                     className={`w-24 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterGrade === g ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                   >
-                     {g}
-                   </button>
-                 ))}
-               </div>
-             </div>
-             <div className="flex flex-col space-y-4">
-               <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                 <Filter size={12} className="text-brand-600/50" /> 部門
-                </span>
-               <div className="flex flex-wrap items-center gap-2.5">
-                 {DEPARTMENTS.map(d => (
-                   <button 
-                    key={d} 
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col space-y-4">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                <Filter size={12} className="text-brand-600/50" /> 部門
+              </span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {DEPARTMENTS.map(d => (
+                  <button
+                    key={d}
                     onClick={() => setFilterDept(d)}
                     className={`w-24 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                   >
-                     {d}
-                   </button>
-                 ))}
-               </div>
-             </div>
-             <div className="flex flex-col space-y-4">
-               <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                 <Filter size={12} className="text-brand-600/50" /> 場所
-                </span>
-               <div className="flex flex-wrap items-center gap-2.5">
-                 {BUILDINGS.map(b => (
-                   <button 
-                    key={b} 
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col space-y-4">
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                <Filter size={12} className="text-brand-600/50" /> 場所
+              </span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                {BUILDINGS.map(b => (
+                  <button
+                    key={b}
                     onClick={() => setFilterBuilding(b)}
                     className={`w-24 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterBuilding === b ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                   >
-                     {b}
-                   </button>
-                 ))}
-               </div>
-             </div>
+                  >
+                    {b}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -274,7 +274,7 @@ const Groups = () => {
             <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
               <SortDesc size={14} className="text-brand-600/50" /> 並び替え
             </span>
-            <select 
+            <select
               className="custom-select min-w-[180px]"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -344,23 +344,23 @@ const Groups = () => {
                       const nextPerf = getNextPerformance(group);
                       return (
                         <div className="pt-6 border-t border-slate-50 space-y-6">
-                          <PerformanceList 
-                            schedule={group.performances || []} 
-                            dayLabel="Part 1 (6/13)" 
-                            partId={1} 
-                            currentNextPerf={nextPerf} 
+                          <PerformanceList
+                            schedule={group.performances || []}
+                            dayLabel="Part 1 (6/13)"
+                            partId={1}
+                            currentNextPerf={nextPerf}
                           />
-                          <PerformanceList 
-                            schedule={group.performances || []} 
-                            dayLabel="Part 2 (6/13)" 
-                            partId={2} 
-                            currentNextPerf={nextPerf} 
+                          <PerformanceList
+                            schedule={group.performances || []}
+                            dayLabel="Part 2 (6/13)"
+                            partId={2}
+                            currentNextPerf={nextPerf}
                           />
-                          <PerformanceList 
-                            schedule={group.performances || []} 
-                            dayLabel="Part 3 (6/14)" 
-                            partId={3} 
-                            currentNextPerf={nextPerf} 
+                          <PerformanceList
+                            schedule={group.performances || []}
+                            dayLabel="Part 3 (6/14)"
+                            partId={3}
+                            currentNextPerf={nextPerf}
                           />
                         </div>
                       );
