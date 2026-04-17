@@ -40,18 +40,18 @@ const Layout = ({ children }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="google-site-verification" content="vPtf7XF5A3UF7EC6PKbwyGE3bvmheVPGOQvMzfO1PqM" />
         {pathname !== '/' && <meta name="robots" content="noindex, nofollow" />}
-        <meta name="description" content="千葉県立船橋高等学校 たちばな祭 2026 公式サイト。凌雲 - 雲よりも高く突き抜ける。団体の紹介、タイムテーブル、落とし物情報などを掲載しています。" />
+        <meta name="description" content="千葉県立船橋高等学校 文化祭公式サイト" />
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:title" content={getPageTitle()} />
-        <meta property="og:description" content="凌雲2026 - 千葉県立船橋高等学校たちばな祭公式サイト。開催日時や団体紹介、最新情報をお届けします。" />
+        <meta property="og:description" content="千葉県立船橋高等学校 文化祭公式サイト" />
         <meta property="og:image" content="/og-image.png" />
 
         {/* Twitter */}
         <meta property="twitter:card" content="summary_large_image" />
         <meta property="twitter:title" content={getPageTitle()} />
-        <meta property="twitter:description" content="凌雲2026 - 千葉県立船橋高等学校たちばな祭公式サイト。開催日時や団体紹介、最新情報をお届けします。" />
+        <meta property="twitter:description" content="千葉県立船橋高等学校 文化祭公式サイト" />
         <meta property="twitter:image" content="/og-image.png" />
 
         {/* Favicon */}
