@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Filter, SortDesc, Instagram, Twitter, ExternalLink, MapPin } from 'lucide-react';
+import { Filter, SortDesc, Instagram, Twitter, ExternalLink, MapPin, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
@@ -82,6 +82,7 @@ const Groups = ({ initialGroups }) => {
   const [sortBy, setSortBy] = useState('class');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedPerf, setSelectedPerf] = useState(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Note: Client-side fetching and Realtime subscriptions are disabled 
   // to protect the free tier from heavy traffic.
@@ -189,57 +190,87 @@ const Groups = ({ initialGroups }) => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm space-y-8">
-          <div className="flex flex-col space-y-8">
-            <div className="flex flex-col space-y-4">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                <Filter size={12} className="text-brand-600/50" /> 学年
-              </span>
-              <div className="flex flex-wrap items-center gap-2.5">
-                {GRADES.map(g => (
-                  <button
-                    key={g}
-                    onClick={() => setFilterGrade(g)}
-                    className={`w-24 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterGrade === g ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                  >
-                    {g}
-                  </button>
-                ))}
+        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-8 shadow-sm overflow-hidden">
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="w-full flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-4 text-slate-900">
+              <div className="bg-brand-50 p-3 rounded-2xl text-brand-600 shadow-sm transition-transform group-hover:scale-110">
+                <Filter size={20} strokeWidth={2.5} />
+              </div>
+              <div className="text-left">
+                <h2 className="text-xl font-black tracking-tight">フィルター表示</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">学年・部門・場所で絞り込む</p>
               </div>
             </div>
-            <div className="flex flex-col space-y-4">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                <Filter size={12} className="text-brand-600/50" /> 部門
-              </span>
-              <div className="flex flex-wrap items-center gap-2.5">
-                {DEPARTMENTS.map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setFilterDept(d)}
-                    className={`w-24 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
+            <div className={`p-2 rounded-full transition-all duration-300 ${isFilterOpen ? 'bg-brand-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
+              <ChevronDown size={20} />
             </div>
-            <div className="flex flex-col space-y-4">
-              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                <Filter size={12} className="text-brand-600/50" /> 場所
-              </span>
-              <div className="flex flex-wrap items-center gap-2.5">
-                {BUILDINGS.map(b => (
-                  <button
-                    key={b}
-                    onClick={() => setFilterBuilding(b)}
-                    className={`w-24 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterBuilding === b ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          </button>
+
+          <AnimatePresence>
+            {isFilterOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                animate={{ height: 'auto', opacity: 1, marginTop: 32 }}
+                exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-col space-y-8 pb-4">
+                  <div className="flex flex-col space-y-4">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                      <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 学年・有志
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {GRADES.map(g => (
+                        <button
+                          key={g}
+                          onClick={() => setFilterGrade(g)}
+                          className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterGrade === g ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col space-y-4">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                      <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 部門
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {DEPARTMENTS.map(d => (
+                        <button
+                          key={d}
+                          onClick={() => setFilterDept(d)}
+                          className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-col space-y-4">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                      <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 場所
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      {BUILDINGS.map(b => (
+                        <button
+                          key={b}
+                          onClick={() => setFilterBuilding(b)}
+                          className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterBuilding === b ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                        >
+                          {b}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Sort Controls */}

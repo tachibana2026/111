@@ -26,16 +26,16 @@ const LostFound = ({ initialItems }) => {
       </div>
 
       {/* Guide Section */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center gap-6 shadow-sm">
-        <div className="bg-brand-50 p-4 rounded-2xl text-brand-600 shadow-sm">
-          <Info size={30} strokeWidth={2.5} />
-        </div>
-        <div className="space-y-2">
+      <div className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 space-y-4 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="bg-brand-50 p-3 rounded-xl text-brand-600 shadow-sm shrink-0">
+            <Info size={24} strokeWidth={2.5} />
+          </div>
           <h2 className="text-xl font-black text-slate-900">受け取り方法</h2>
-          <p className="text-slate-600 leading-relaxed font-bold">
-            心当たりのある方は、<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (仮校舎2F)</span>までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
-          </p>
         </div>
+        <p className="text-slate-600 leading-relaxed font-bold">
+          心当たりのある方は、<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (仮校舎2F)</span>までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
