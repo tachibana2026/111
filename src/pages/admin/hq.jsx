@@ -4,7 +4,7 @@ import {
   Users, PackageSearch, Settings, ShieldCheck,
   Lock, Unlock, Plus, Trash2, RefreshCw, MapPin,
   AlertCircle, LogOut, CheckCircle2, Clock, Edit2, XCircle,
-  AlertTriangle, Info,
+  AlertTriangle, Info, Ticket,
   User, ChevronLeft, Save,
   ChevronUp, ChevronDown, Filter, SortDesc, Calendar, Utensils
 } from 'lucide-react';
@@ -483,7 +483,7 @@ const HQDashboard = () => {
                           </div>
                         </td>
                         <td className="px-10 py-8 border-l border-slate-50">
-                          <div className="flex flex-col items-center gap-4">
+                          <div className="flex items-center justify-center gap-4 flex-wrap max-w-[600px] mx-auto text-center">
                             <div className="flex items-center gap-3">
                               <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
                                 <div className={`w-1.5 h-1.5 rounded-full ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-500' : g.reception_status === 'before_open' ? 'bg-slate-300' : 'bg-emerald-500 animate-pulse'}`}></div>
@@ -497,18 +497,24 @@ const HQDashboard = () => {
                                 <span>{g.editing_locked ? '編集ロック中' : '編集許可中'}</span>
                               </div>
                             </div>
-                            {g.has_waiting_time && (
-                              <div className="text-sm font-black text-slate-700">
-                                {g.reception_status === 'closed' ? '-' : (g.reception_status === 'before_open' ? '' : (g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`))}
+                            {g.has_waiting_time && g.reception_status !== 'closed' && g.reception_status !== 'ended' && g.reception_status !== 'before_open' && (
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black border-2 ${
+                                g.waiting_time === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                g.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                                'bg-rose-50 border-rose-100 text-rose-600'
+                              }`}>
+                                {g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`}
                               </div>
                             )}
-                            {g.has_ticket_status && g.ticket_status !== 'none' && (
-                              <div className="flex gap-2">
-                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black ${g.ticket_status === 'distributing' ? 'bg-emerald-100 text-emerald-700' :
-                                  g.ticket_status === 'limited' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-                                  }`}>
-                                  {{ distributing: '配布中', limited: '僅か', ended: '終了' }[g.ticket_status] || g.ticket_status}
-                                </span>
+                            {g.has_ticket_status && (
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${
+                                g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                g.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                                g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                'bg-slate-50 border-slate-100 text-slate-400'
+                              }`}>
+                                <Ticket size={12} strokeWidth={3} className={g.ticket_status === 'none' ? 'opacity-40' : ''} />
+                                {{ distributing: '配布中', limited: '僅か', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
                               </div>
                             )}
                             {selectedDept === '公演' && (
@@ -641,11 +647,16 @@ const HQDashboard = () => {
                           </span>
                         </div>
                       )}
-                      {g.has_ticket_status && g.ticket_status !== 'none' && (
+                      {g.has_ticket_status && (
                         <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
                           <span className="text-[10px] font-black text-slate-400">配布状況</span>
-                          <span className="text-sm font-black text-brand-600">
-                            {{ distributing: '配布中', limited: '僅か', ended: '終了' }[g.ticket_status] || g.ticket_status}
+                          <span className={`text-[10px] font-black px-3 py-1 rounded-full ${
+                            g.ticket_status === 'distributing' ? 'bg-emerald-50 text-emerald-600' :
+                            g.ticket_status === 'limited' ? 'bg-amber-50 text-amber-600' :
+                            g.ticket_status === 'ended' ? 'bg-rose-50 text-rose-600' :
+                            'bg-slate-50 text-slate-400'
+                          }`}>
+                            {{ distributing: '配布中', limited: '僅か', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
                           </span>
                         </div>
                       )}
@@ -937,13 +948,13 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                       <div className="space-y-4">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
                         <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
-                          {['none', 'distributing', 'limited', 'ended'].map(s => (
+                          {['none', 'distributing', 'ended'].map(s => (
                             <button
                               key={s}
                               onClick={() => setEditData(prev => ({ ...prev, ticket_status: s }))}
                               className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${editData.ticket_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
                             >
-                              {{ none: 'なし', distributing: '配布中', limited: '僅か', ended: '終了' }[s]}
+                              {{ none: 'なし', distributing: '配布中', ended: '終了' }[s]}
                             </button>
                           ))}
                         </div>
