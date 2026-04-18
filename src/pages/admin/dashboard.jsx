@@ -7,6 +7,8 @@ import {
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerRevalidate } from '../../lib/revalidate';
+import Portal from '../../components/Portal';
+
 
 const renderFormattedMessage = (message) => {
   if (!message) return null;
@@ -569,38 +571,40 @@ const GroupDashboard = () => {
 
       <AnimatePresence>
         {confirmDialog.isOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100 text-slate-800"
-            >
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
-                {confirmDialog.icon || <Shield size={32} strokeWidth={2.5} />}
-              </div>
-              <h2 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 leading-relaxed whitespace-pre-wrap">
-                {renderFormattedMessage(confirmDialog.message)}
-              </h2>
-              <div className="flex flex-col md:flex-row gap-3">
-                <button
-                  onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-                  className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors"
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirmDialog.onConfirm) confirmDialog.onConfirm();
-                    setConfirmDialog({ ...confirmDialog, isOpen: false });
-                  }}
-                  className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all"
-                >
-                  {confirmDialog.confirmText}
-                </button>
-              </div>
-            </motion.div>
-          </div>
+          <Portal>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100 text-slate-800"
+              >
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
+                  {confirmDialog.icon || <Shield size={32} strokeWidth={2.5} />}
+                </div>
+                <h2 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 leading-relaxed whitespace-pre-wrap">
+                  {renderFormattedMessage(confirmDialog.message)}
+                </h2>
+                <div className="flex flex-col md:flex-row gap-3">
+                  <button
+                    onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                    className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+                      setConfirmDialog({ ...confirmDialog, isOpen: false });
+                    }}
+                    className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all"
+                  >
+                    {confirmDialog.confirmText}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </Portal>
         )}
       </AnimatePresence>
     </div>

@@ -11,6 +11,8 @@ import {
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerRevalidate } from '../../lib/revalidate';
+import Portal from '../../components/Portal';
+
 
 const DEPARTMENTS = ['体験', '食品', '公演', '展示', '冊子', '物販'];
 
@@ -658,50 +660,56 @@ const HQDashboard = () => {
       {/* Confirm Dialog */}
       <AnimatePresence>
         {confirmDialog.isOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100 text-slate-800">
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
-                {confirmDialog.icon || <AlertTriangle className="w-7 h-7 md:w-8 md:h-8" />}
-              </div>
-              <h3 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 leading-relaxed whitespace-pre-wrap">
-                {renderFormattedMessage(confirmDialog.message)}
-              </h3>
-              <div className="flex flex-col md:flex-row gap-3">
-                <button onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors">キャンセル</button>
-                <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(prev => ({ ...prev, isOpen: false })); }} className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all">
-                  {confirmDialog.confirmText}
-                </button>
-              </div>
-            </motion.div>
-          </div>
+          <Portal>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
+              <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100 text-slate-800">
+                <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
+                  {confirmDialog.icon || <AlertTriangle className="w-7 h-7 md:w-8 md:h-8" />}
+                </div>
+                <h3 className="text-lg md:text-xl font-black text-slate-900 mb-6 md:mb-8 leading-relaxed whitespace-pre-wrap">
+                  {renderFormattedMessage(confirmDialog.message)}
+                </h3>
+                <div className="flex flex-col md:flex-row gap-3">
+                  <button onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors">キャンセル</button>
+                  <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(prev => ({ ...prev, isOpen: false })); }} className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all">
+                    {confirmDialog.confirmText}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          </Portal>
         )}
       </AnimatePresence>
 
       {/* Edit Group Modal */}
       <AnimatePresence>
         {isEditModalOpen && editingGroup && (
-          <EditGroupModal
-            group={editingGroup}
-            onClose={() => {
-              setIsEditModalOpen(false);
-              setEditingGroup(null);
-            }}
-            onSave={fetchData}
-          />
+          <Portal>
+            <EditGroupModal
+              group={editingGroup}
+              onClose={() => {
+                setIsEditModalOpen(false);
+                setEditingGroup(null);
+              }}
+              onSave={fetchData}
+            />
+          </Portal>
         )}
       </AnimatePresence>
 
       {/* Lost & Found Modal */}
       <AnimatePresence>
         {isLostFoundModalOpen && editingLostFound && (
-          <EditLostFoundModal
-            item={editingLostFound}
-            onClose={() => {
-              setIsLostFoundModalOpen(false);
-              setEditingLostFound(null);
-            }}
-            onSave={fetchData}
-          />
+          <Portal>
+            <EditLostFoundModal
+              item={editingLostFound}
+              onClose={() => {
+                setIsLostFoundModalOpen(false);
+                setEditingLostFound(null);
+              }}
+              onSave={fetchData}
+            />
+          </Portal>
         )}
       </AnimatePresence>
 
@@ -979,61 +987,63 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
-      <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between">
-          <h2 className="text-xl md:text-2xl font-black text-slate-900">落とし物登録・編集</h2>
-        </div>
-        <div className="p-6 md:p-10 space-y-6 overflow-y-auto">
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">品名</label>
-            <input
-              type="text"
-              value={formData.name || ''}
-              onChange={e => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
-              placeholder="品名を入力してください"
-            />
+    <Portal>
+      <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
+        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between">
+            <h2 className="text-xl md:text-2xl font-black text-slate-900">落とし物登録・編集</h2>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">拾得場所</label>
-            <input
-              type="text"
-              value={formData.location || ''}
-              onChange={e => setFormData({ ...formData, location: e.target.value })}
-              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
-              placeholder="拾得場所を入力してください"
-            />
+          <div className="p-6 md:p-10 space-y-6 overflow-y-auto">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">品名</label>
+              <input
+                type="text"
+                value={formData.name || ''}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+                placeholder="品名を入力してください"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">拾得場所</label>
+              <input
+                type="text"
+                value={formData.location || ''}
+                onChange={e => setFormData({ ...formData, location: e.target.value })}
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+                placeholder="拾得場所を入力してください"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">特徴・詳細</label>
+              <textarea
+                value={formData.features || ''}
+                onChange={e => setFormData({ ...formData, features: e.target.value })}
+                rows={3}
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all resize-none"
+                placeholder="特徴･詳細を入力してください"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">拾得日時</label>
+              <input
+                type="datetime-local"
+                value={formData.found_at ? new Date(new Date(formData.found_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                onChange={e => setFormData({ ...formData, found_at: new Date(e.target.value).toISOString() })}
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">特徴・詳細</label>
-            <textarea
-              value={formData.features || ''}
-              onChange={e => setFormData({ ...formData, features: e.target.value })}
-              rows={3}
-              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all resize-none"
-              placeholder="特徴･詳細を入力してください"
-            />
+          <div className="p-6 md:p-10 border-t border-slate-50 bg-slate-50/30 flex gap-4">
+            <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black text-sm">キャンセル</button>
+            <button onClick={handleSave} disabled={isSaving} className="flex-[2] py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-2">
+              {isSaving ? <RefreshCw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
+              保存する
+            </button>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">拾得日時</label>
-            <input
-              type="datetime-local"
-              value={formData.found_at ? new Date(new Date(formData.found_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
-              onChange={e => setFormData({ ...formData, found_at: new Date(e.target.value).toISOString() })}
-              className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
-            />
-          </div>
-        </div>
-        <div className="p-6 md:p-10 border-t border-slate-50 bg-slate-50/30 flex gap-4">
-          <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black text-sm">キャンセル</button>
-          <button onClick={handleSave} disabled={isSaving} className="flex-[2] py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-2">
-            {isSaving ? <RefreshCw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}
-            保存する
-          </button>
-        </div>
-      </motion.div>
-    </div>
+        </motion.div>
+      </div>
+    </Portal>
   );
 };
 

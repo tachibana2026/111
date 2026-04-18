@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Clock, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Portal from '../components/Portal';
+
 
 const PARTS = [
   { id: 1, name: 'Part 1', day: 1, range: ['09:00', '12:00'] },
@@ -282,58 +284,60 @@ const Timetable = ({ initialPerformances }) => {
         </div>
       </div>
 
-      <AnimatePresence>
-        {selectedPerf && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedPerf(null)}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2rem] p-10 max-w-sm w-full shadow-2xl border border-slate-100 space-y-8"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest">
-                    {selectedPerf.start_time} 公演
-                  </span>
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 leading-tight">{selectedGroup.title || selectedGroup.name}</h2>
-                <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
-                  <MapPin size={14} />
-                  <span>{selectedGroup.building} {selectedGroup.room}</span>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">公演受付</span>
-                    <span className={`text-sm font-black text-center ${selectedPerf.currentReception === 'closed' ? 'text-rose-500' : selectedPerf.currentReception === 'ticket_only' ? 'text-amber-600' : selectedPerf.currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
-                      {getReceptionLabel(selectedPerf.currentReception || 'open')}
-                    </span>
-                  </div>
-                  <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">整理券</span>
-                    <span className="text-sm font-black text-slate-500">
-                      {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status)}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-400 font-medium leading-relaxed text-center">
-                  整理券は紙での配布となります。<br />
-                  詳細は各団体にご確認ください。
-                </p>
-              </div>
-
-              <button
-                onClick={() => setSelectedPerf(null)}
-                className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all active:scale-95"
+      <Portal>
+        <AnimatePresence>
+          {selectedPerf && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedPerf(null)}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white rounded-[2rem] p-10 max-w-sm w-full shadow-2xl border border-slate-100 space-y-8"
+                onClick={e => e.stopPropagation()}
               >
-                閉じる
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest">
+                      {selectedPerf.start_time} 公演
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-900 leading-tight">{selectedGroup.title || selectedGroup.name}</h2>
+                  <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
+                    <MapPin size={14} />
+                    <span>{selectedGroup.building} {selectedGroup.room}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">公演受付</span>
+                      <span className={`text-sm font-black text-center ${selectedPerf.currentReception === 'closed' ? 'text-rose-500' : selectedPerf.currentReception === 'ticket_only' ? 'text-amber-600' : selectedPerf.currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
+                        {getReceptionLabel(selectedPerf.currentReception || 'open')}
+                      </span>
+                    </div>
+                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
+                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">整理券</span>
+                      <span className="text-sm font-black text-slate-500">
+                        {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed text-center">
+                    整理券は紙での配布となります。<br />
+                    詳細は各団体にご確認ください。
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedPerf(null)}
+                  className="w-full py-5 bg-brand-600 text-white rounded-2xl font-black shadow-lg shadow-brand-500/20 hover:bg-brand-700 transition-all active:scale-95"
+                >
+                  閉じる
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </Portal>
     </div>
   );
 };
