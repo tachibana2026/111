@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Calendar, AlertTriangle, Info } from 'lucide-react';
+import { Calendar, AlertTriangle, Info, MessageSquare, ArrowRight } from 'lucide-react';
 
 const Home = () => {
 
@@ -177,6 +177,37 @@ const Home = () => {
             </div>
           </motion.div>
         </div>
+      </section>
+
+      {/* Feedback Section */}
+      <section className="px-2 max-w-7xl mx-auto pb-12">
+        <motion.a
+          href="https://forms.gle/KQ7icJ7HWBaHyUdFA"
+          target="_blank"
+          rel="noopener noreferrer"
+          whileHover={{ y: -5, scale: 1.01 }}
+          whileActive={{ scale: 0.98 }}
+          className="block w-full bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-xl relative overflow-hidden group transition-all"
+        >
+          <div className="absolute top-0 right-0 w-96 h-96 bg-brand-600/20 rounded-full blur-[100px] -z-10 group-hover:bg-brand-500/30 transition-colors" />
+          
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-8">
+              <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-white shadow-sm shrink-0">
+                <MessageSquare size={32} />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black text-white">サイトへのご意見・ご要望</h2>
+                <p className="text-slate-400 font-bold">より良いサイト制作のため、ご協力をお願いします</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 bg-white/10 px-8 py-4 rounded-2xl text-white font-black group-hover:bg-white/20 transition-all">
+              <span>フォームを開く</span>
+              <ArrowRight size={20} className="transition-transform group-hover:translate-x-2" />
+            </div>
+          </div>
+        </motion.a>
       </section>
     </div>
   );
