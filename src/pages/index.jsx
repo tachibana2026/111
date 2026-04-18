@@ -191,7 +191,7 @@ const Home = () => {
         >
           <div className="absolute top-0 right-0 w-96 h-96 bg-brand-600/20 rounded-full blur-[100px] -z-10 group-hover:bg-brand-500/30 transition-colors" />
 
-          <div className="flex flex-col items-center text-center gap-8">
+          <div className="flex flex-col items-start text-left gap-8">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-white shadow-sm shrink-0">
                 <MessageSquare size={24} />
@@ -201,7 +201,7 @@ const Home = () => {
             
             <p className="text-slate-400 font-bold max-w-xl">不具合の報告・ご意見はこちらからお願いします。</p>
 
-            <div className="flex items-center gap-4 bg-white/10 px-10 py-5 rounded-2xl text-white font-black group-hover:bg-white/20 transition-all">
+            <div className="flex items-center gap-4 bg-white/10 px-10 py-5 rounded-2xl text-white font-black group-hover:bg-white/20 transition-all w-fit">
               <span>フォームを開く</span>
               <ArrowRight size={20} className="transition-transform group-hover:translate-x-2" />
             </div>
