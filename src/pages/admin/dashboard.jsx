@@ -315,7 +315,7 @@ const GroupDashboard = () => {
             {publishedActivities.filter(act => act.department !== '公演').map(act => (
               <div key={act.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-xs font-black text-slate-500">{act.department}</span>
-                <span className={`text-xl font-black ${act.status === 'closed' || act.status === 'ended' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                <span className={`text-xl font-black ${act.status === 'closed' || act.status === 'ended' ? 'text-rose-500' : act.status === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
                   {act.department === '冊子' ? (
                     { distributing: '配布中', limited: '残りわずか', ended: '配布終了' }[act.status] || '配布中'
                   ) : (['体験', '食品', '物販'].includes(act.department)) ? (
