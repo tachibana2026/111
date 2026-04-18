@@ -489,7 +489,7 @@ const HQDashboard = () => {
                                 <div className={`w-1.5 h-1.5 rounded-full ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-500' : g.reception_status === 'before_open' ? 'bg-slate-300' : 'bg-emerald-500 animate-pulse'}`}></div>
                                 {g.reception_status === 'closed' || g.reception_status === 'ended' ? '受付終了' : g.reception_status === 'before_open' ? '受付前' : '受付中'}
                               </div>
-                              <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[10px] font-black ${g.editing_locked
+                              <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 text-[10px] font-black transition-all ${g.editing_locked
                                 ? 'bg-rose-50 text-rose-600 border-rose-100'
                                 : 'bg-slate-50 text-slate-400 border-slate-100'
                                 }`}>
@@ -513,8 +513,8 @@ const HQDashboard = () => {
                                 g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                                 'bg-slate-50 border-slate-100 text-slate-400'
                               }`}>
-                                <Ticket size={12} strokeWidth={3} className={g.ticket_status === 'none' ? 'opacity-40' : ''} />
-                                {{ distributing: '配布中', limited: '僅か', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
+                                <Ticket size={12} strokeWidth={3} />
+                                {{ distributing: '配布中', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
                               </div>
                             )}
                             {selectedDept === '公演' && (
@@ -630,11 +630,11 @@ const HQDashboard = () => {
                           <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : g.reception_status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
                             {g.reception_status === 'closed' || g.reception_status === 'ended' ? '受付終了' : g.reception_status === 'before_open' ? '受付前' : '受付中'}
                           </div>
-                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 border ${g.editing_locked
-                            ? 'bg-rose-100 text-rose-700 border-rose-200'
-                            : 'bg-slate-100 text-slate-500 border-slate-200'
+                          <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 transition-all ${g.editing_locked
+                            ? 'bg-rose-50 text-rose-600 border-rose-100'
+                            : 'bg-slate-50 text-slate-400 border-slate-100'
                             }`}>
-                            {g.editing_locked ? <Lock size={10} strokeWidth={3} /> : <Unlock size={10} strokeWidth={3} />}
+                            {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
                             {g.editing_locked ? 'ロック済' : '許可中'}
                           </div>
                         </div>
@@ -650,14 +650,14 @@ const HQDashboard = () => {
                       {g.has_ticket_status && (
                         <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
                           <span className="text-[10px] font-black text-slate-400">配布状況</span>
-                          <span className={`text-[10px] font-black px-3 py-1 rounded-full ${
-                            g.ticket_status === 'distributing' ? 'bg-emerald-50 text-emerald-600' :
-                            g.ticket_status === 'limited' ? 'bg-amber-50 text-amber-600' :
-                            g.ticket_status === 'ended' ? 'bg-rose-50 text-rose-600' :
-                            'bg-slate-50 text-slate-400'
+                          <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 transition-all ${
+                            g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                            g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                            'bg-slate-50 border-slate-100 text-slate-400'
                           }`}>
-                            {{ distributing: '配布中', limited: '僅か', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
-                          </span>
+                            <Ticket size={12} strokeWidth={3} />
+                            {{ distributing: '配布中', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
+                          </div>
                         </div>
                       )}
                       {selectedDept === '公演' && g.performances?.length > 0 && (
