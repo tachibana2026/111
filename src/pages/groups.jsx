@@ -244,8 +244,11 @@ const Groups = ({ initialGroups }) => {
           return a.room.localeCompare(b.room, 'ja');
         }
 
-        // 名前順（有志はタイトル、クラスはクラス名でソート）
+        // 名前順（よみがな先頭文字があれば優先、次いでクラス名・タイトルでソート）
         const getSortKey = (g) => {
+          // よみがな先頭文字（1文字）があれば、それを基準にする
+          if (g.name_initial) return g.name_initial + (g.name || '');
+          
           const isYearGroup = ['1年', '2年', '3年'].some(year => g.name.startsWith(year));
           return isYearGroup ? g.name : (g.title || g.name);
         };
@@ -253,6 +256,8 @@ const Groups = ({ initialGroups }) => {
         return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
       });
   }, [groups, filterDept, filterGrade, filterBuilding, sortBy]);
+
+  const filteredGroupsCount = useMemo(() => filteredGroups.length, [filteredGroups]);
 
   return (
     <div className="space-y-8 pb-12">
@@ -545,7 +550,7 @@ const Groups = ({ initialGroups }) => {
 export async function getStaticProps() {
   const { data, error } = await supabase
     .from('groups')
-    .select('id, title, name, description, building, room, social_links, updated_at, department, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, performances(id, group_id, part_id, start_time, end_time, status, reception_status)');
+    .select('id, title, name, description, building, room, social_links, updated_at, department, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, name_initial, performances(id, group_id, part_id, start_time, end_time, status, reception_status)');
 
   if (error) {
     console.error('getStaticProps fetch error:', error);
