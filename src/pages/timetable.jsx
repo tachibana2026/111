@@ -265,7 +265,7 @@ const Timetable = ({ initialPerformances }) => {
                                       }`}>
                                       {currentReception === 'ticket_only' ? '整理券のみ' : getReceptionLabel(currentReception)}
                                     </span>
-                                    <span className="text-[8px] font-black uppercase tracking-tight px-1.5 py-0.5 rounded-md inline-block w-fit bg-slate-100 text-slate-500">
+                                    <span className="text-[8px] font-black uppercase tracking-tight px-1.5 py-0.5 rounded-md inline-block w-fit bg-slate-100 text-slate-400">
                                       {getStatusLabel(computedTicket)}
                                     </span>
                                   </>
@@ -316,7 +316,7 @@ const Timetable = ({ initialPerformances }) => {
                     </div>
                     <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
                       <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">整理券</span>
-                      <span className="text-sm font-black text-slate-500">
+                      <span className="text-sm font-black text-slate-400">
                         {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status)}
                       </span>
                     </div>

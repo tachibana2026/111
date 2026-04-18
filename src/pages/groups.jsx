@@ -65,7 +65,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
               </div>
               <div className="flex flex-col gap-0.5">
                 <div className={`text-[9px] font-black ${currentReception === 'closed' ? 'text-rose-500' : currentReception === 'ticket_only' ? 'text-amber-600' : currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>{receptionStatus}</div>
-                <div className="text-[9px] font-bold opacity-70">{ticketStatus}</div>
+                <div className="text-[9px] font-black text-slate-400">{ticketStatus}</div>
               </div>
             </div>
           );
@@ -131,7 +131,7 @@ const Groups = ({ initialGroups }) => {
       return 'bg-emerald-50 text-emerald-600 border-emerald-200';
     }
 
-    if (status === 'closed') return 'bg-slate-50 border-slate-200 text-slate-500';
+    if (status === 'closed') return 'bg-slate-50 border-slate-200 text-slate-400';
     if (status === 'before_open') return 'bg-slate-50 border-slate-200 text-slate-400';
 
     if (department === '展示' || department === '公演') {
@@ -482,7 +482,7 @@ const Groups = ({ initialGroups }) => {
                     </div>
                     <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
                       <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">整理券</span>
-                      <span className="text-sm font-black text-slate-500">
+                      <span className="text-sm font-black text-slate-400">
                         {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status)}
                       </span>
                     </div>
