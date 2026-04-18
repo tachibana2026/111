@@ -4,7 +4,7 @@ import {
   Users, PackageSearch, Settings, ShieldCheck,
   Lock, Unlock, Plus, Trash2, RefreshCw, MapPin,
   AlertCircle, LogOut, CheckCircle2, Clock, Edit2, XCircle,
-  AlertTriangle,
+  AlertTriangle, Info,
   User, ChevronLeft, Save,
   ChevronUp, ChevronDown, Filter, SortDesc, Calendar, Utensils
 } from 'lucide-react';
@@ -128,7 +128,10 @@ const HQDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: gData, error: gError } = await supabase.from('groups').select('*, group_activities(*), performances(*)').order('login_id', { ascending: true });
+      const { data: gData, error: gError } = await supabase
+        .from('groups')
+        .select('id, name, title, building, room, department, updated_at, last_reset_at, editing_locked, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, performances(id, group_id, part_id, start_time, end_time, status, reception_status)')
+        .order('name');
       if (gError) throw gError;
       if (gData) setGroups(gData);
 
@@ -144,26 +147,21 @@ const HQDashboard = () => {
 
 
 
-  const handleToggleActivityStatus = async (activity, nextStatus) => {
-    await supabase.from('group_activities').update({ status: nextStatus, updated_at: new Date().toISOString() }).eq('id', activity.id);
-    triggerRevalidate();
-  };
-
-  const handleUpdateWaitingTime = async (activityId, time) => {
-    await supabase.from('group_activities').update({ waiting_time: time, updated_at: new Date().toISOString() }).eq('id', activityId);
+  const handleUpdateWaitingTime = async (groupId, time) => {
+    await supabase.from('groups').update({ waiting_time: time, updated_at: new Date().toISOString() }).eq('id', groupId);
     triggerRevalidate();
   };
 
   const handleBulkStatusUpdate = async (status) => {
     setIsBulkUpdating(true);
     try {
-      const filteredGroups = groups.filter(g => g.group_activities.some(a => a.department === selectedDept));
-      const activityIds = filteredGroups.map(g => g.group_activities.find(a => a.department === selectedDept).id);
+      const filteredGroups = groups.filter(g => g.department?.split(',').map(d => d.trim()).includes(selectedDept));
+      const groupIds = filteredGroups.map(g => g.id);
 
-      if (activityIds.length > 0) {
-        await supabase.from('group_activities')
-          .update({ status: status, updated_at: new Date().toISOString() })
-          .in('id', activityIds);
+      if (groupIds.length > 0) {
+        await supabase.from('groups')
+          .update({ reception_status: status, updated_at: new Date().toISOString() })
+          .in('id', groupIds);
       }
 
       if (selectedDept === '公演') {
@@ -193,7 +191,7 @@ const HQDashboard = () => {
   const handleBulkLockUpdate = async (locked) => {
     setIsBulkUpdating(true);
     try {
-      const filteredGroups = groups.filter(g => g.group_activities.some(a => a.department === selectedDept));
+      const filteredGroups = groups.filter(g => g.department === selectedDept);
       const groupIds = filteredGroups.map(g => g.id);
       if (groupIds.length > 0) {
         await supabase.from('groups').update({ 
@@ -213,7 +211,7 @@ const HQDashboard = () => {
   const handleBulkLogout = async () => {
     setIsBulkUpdating(true);
     try {
-      const filteredGroups = groups.filter(g => g.group_activities.some(a => a.department === selectedDept));
+      const filteredGroups = groups.filter(g => g.department === selectedDept);
       const groupIds = filteredGroups.map(g => g.id);
       if (groupIds.length > 0) {
         await supabase.from('groups').update({ 
@@ -263,6 +261,64 @@ const HQDashboard = () => {
           </button>
         </div>
       </div>
+
+      {/* HQ Status Control */}
+      {(() => {
+        const hqGroup = groups.find(g => g.name === '文化委員会');
+        if (!hqGroup) return null;
+        
+        const handleHQStatusUpdate = async (status) => {
+          try {
+            const { error } = await supabase.from('groups').update({ 
+              reception_status: status 
+            }).eq('id', hqGroup.id);
+            if (error) throw error;
+            fetchData();
+          } catch (e) {
+            console.error(e);
+          }
+        };
+
+        return (
+          <div className="bg-white border border-brand-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-brand-500/5 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group">
+            <div className="flex items-center gap-5 md:gap-7 relative z-10">
+              <div className="w-12 h-12 md:w-14 md:h-14 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-6 h-6 md:w-8 md:h-8" />
+              </div>
+              <div>
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-5">
+                  <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight">文化委員会本部 受付状況</h2>
+                  <div className={`w-fit px-4 py-1.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 transition-all cursor-default ${
+                    hqGroup.reception_status === 'open' ? 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm shadow-emerald-500/10' :
+                    hqGroup.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                    'bg-rose-50 border-rose-100 text-rose-600 shadow-sm shadow-rose-500/10'
+                  }`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${hqGroup.reception_status === 'open' ? 'bg-emerald-500 animate-pulse' : hqGroup.reception_status === 'before_open' ? 'bg-slate-300' : 'bg-rose-500'}`}></div>
+                    {{ open: '受付中', before_open: '受付前', closed: '受付終了'}[hqGroup.reception_status]}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto relative z-10">
+              {[
+                { id: 'before_open', label: '受付前', color: 'hover:bg-slate-600 hover:text-white bg-slate-50 text-slate-500', icon: <Clock size={14} /> },
+                { id: 'open', label: '受付中', color: 'hover:bg-emerald-600 hover:text-white bg-emerald-50 text-emerald-600', icon: <CheckCircle2 size={14} /> },
+                { id: 'closed', label: '終了', color: 'hover:bg-rose-600 hover:text-white bg-rose-50 text-rose-600', icon: <XCircle size={14} /> }
+              ].map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => requireConfirm(`本部受付状況を\n【${s.label}】に変更しますか？`, () => handleHQStatusUpdate(s.id), s.label)}
+                  className={`flex-1 md:flex-none px-4 md:px-8 py-4 md:py-5 rounded-2xl text-[10px] md:text-[11px] font-black transition-all border border-transparent whitespace-nowrap flex items-center justify-center gap-2 active:scale-95 ${hqGroup.reception_status === s.id ? 'opacity-30 cursor-not-allowed pointer-events-none' : s.color}`}
+                >
+                  {s.icon}
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Tabs / Navigation */}
       <div className="flex w-full overflow-hidden pb-2 md:pb-0">
@@ -406,12 +462,18 @@ const HQDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {groups.filter(g => g.group_activities.some(a => a.department === selectedDept)).map(g => {
-                    const act = g.group_activities.find(a => a.department === selectedDept);
+                  {groups.filter(g => g.department?.split(',').map(d => d.trim()).includes(selectedDept)).map(g => {
                     return (
                       <tr key={g.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-10 py-8">
-                          <div className="flex flex-col gap-1">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {g.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
+                                <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
+                                  {dept}
+                                </span>
+                              ))}
+                            </div>
                             <span className="font-black text-slate-900 text-lg">{g.name}</span>
                             <div className="flex items-center gap-3">
                               <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{g.building} {g.room}</span>
@@ -423,9 +485,9 @@ const HQDashboard = () => {
                         <td className="px-10 py-8 border-l border-slate-50">
                           <div className="flex flex-col items-center gap-4">
                             <div className="flex items-center gap-3">
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : act.status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-500' : act.status === 'before_open' ? 'bg-slate-300' : 'bg-emerald-500 animate-pulse'}`}></div>
-                                {act.status === 'closed' || act.status === 'ended' ? '受付終了' : act.status === 'before_open' ? '受付前' : '受付中'}
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-500' : g.reception_status === 'before_open' ? 'bg-slate-300' : 'bg-emerald-500 animate-pulse'}`}></div>
+                                {g.reception_status === 'closed' || g.reception_status === 'ended' ? '受付終了' : g.reception_status === 'before_open' ? '受付前' : '受付中'}
                               </div>
                               <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[10px] font-black ${g.editing_locked
                                 ? 'bg-rose-50 text-rose-600 border-rose-100'
@@ -435,17 +497,17 @@ const HQDashboard = () => {
                                 <span>{g.editing_locked ? '編集ロック中' : '編集許可中'}</span>
                               </div>
                             </div>
-                            {['体験', '食品', '物販'].includes(selectedDept) && (
+                            {g.has_waiting_time && (
                               <div className="text-sm font-black text-slate-700">
-                                {act.status === 'closed' ? '-' : (act.status === 'before_open' ? '' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`))}
+                                {g.reception_status === 'closed' ? '-' : (g.reception_status === 'before_open' ? '' : (g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`))}
                               </div>
                             )}
-                            {selectedDept === '冊子' && (
+                            {g.has_ticket_status && g.ticket_status !== 'none' && (
                               <div className="flex gap-2">
-                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black ${act.status === 'distributing' ? 'bg-emerald-100 text-emerald-700' :
-                                  act.status === 'limited' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                                <span className={`px-4 py-1.5 rounded-full text-[10px] font-black ${g.ticket_status === 'distributing' ? 'bg-emerald-100 text-emerald-700' :
+                                  g.ticket_status === 'limited' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
                                   }`}>
-                                  {{ distributing: '配布中', limited: '僅か', ended: '終了' }[act.status] || act.status}
+                                  {{ distributing: '配布中', limited: '僅か', ended: '終了' }[g.ticket_status] || g.ticket_status}
                                 </span>
                               </div>
                             )}
@@ -512,12 +574,18 @@ const HQDashboard = () => {
 
             {/* Mobile Card View */}
             <div className="lg:hidden divide-y divide-slate-100">
-              {groups.filter(g => g.group_activities.some(a => a.department === selectedDept)).map(g => {
-                const act = g.group_activities.find(a => a.department === selectedDept);
+              {groups.filter(g => g.department?.split(',').map(d => d.trim()).includes(selectedDept)).map(g => {
                 return (
                   <div key={g.id} className="p-5 space-y-5 bg-white">
                     <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-1 min-w-0">
+                      <div className="space-y-2 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {g.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
+                            <span key={dept} className="text-[8px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
+                              {dept}
+                            </span>
+                          ))}
+                        </div>
                         <div className="flex items-center gap-2">
                           <span className="font-black text-slate-900 text-base leading-tight truncate">{g.name}</span>
                           <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold shrink-0">{g.room}</span>
@@ -553,8 +621,8 @@ const HQDashboard = () => {
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">現在のステータス</span>
                         <div className="flex items-center gap-2">
-                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : act.status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
-                            {act.status === 'closed' || act.status === 'ended' ? '受付終了' : act.status === 'before_open' ? '受付前' : '受付中'}
+                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : g.reception_status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
+                            {g.reception_status === 'closed' || g.reception_status === 'ended' ? '受付終了' : g.reception_status === 'before_open' ? '受付前' : '受付中'}
                           </div>
                           <div className={`px-3 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 border ${g.editing_locked
                             ? 'bg-rose-100 text-rose-700 border-rose-200'
@@ -565,23 +633,23 @@ const HQDashboard = () => {
                           </div>
                         </div>
                       </div>
-                      {['体験', '食品', '物販'].includes(selectedDept) && (
+                      {g.has_waiting_time && (
                         <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
                           <span className="text-[10px] font-black text-slate-400">待ち時間</span>
                           <span className="text-sm font-black text-slate-700">
-                            {act.status === 'closed' ? '-' : (act.status === 'before_open' ? '' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`))}
+                            {g.reception_status === 'closed' ? '-' : (g.reception_status === 'before_open' ? '' : (g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`))}
                           </span>
                         </div>
                       )}
-                      {selectedDept === '冊子' && (
+                      {g.has_ticket_status && g.ticket_status !== 'none' && (
                         <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
                           <span className="text-[10px] font-black text-slate-400">配布状況</span>
                           <span className="text-sm font-black text-brand-600">
-                            {{ distributing: '配布中', limited: '僅か', ended: '終了' }[act.status] || act.status}
+                            {{ distributing: '配布中', limited: '僅か', ended: '終了' }[g.ticket_status] || g.ticket_status}
                           </span>
                         </div>
                       )}
-                      {selectedDept === '公演' && (
+                      {selectedDept === '公演' && g.performances?.length > 0 && (
                         <div className="space-y-3 pt-2 border-t border-slate-200/50">
                           {g.performances.sort((a, b) => {
                             if (a.part_id !== b.part_id) return a.part_id - b.part_id;
@@ -590,7 +658,9 @@ const HQDashboard = () => {
                             <div key={p.id} className="flex items-center justify-between gap-3">
                               <span className="text-[10px] font-black text-slate-400 shrink-0">Part{p.part_id} {p.start_time}</span>
                               <div className="flex items-center gap-2">
-                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${p.reception_status === 'closed' ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'
+                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${p.reception_status === 'closed' ? 'bg-rose-50 text-rose-500' :
+                                  p.reception_status === 'ticket_only' ? 'bg-brand-50 text-brand-500' :
+                                    p.reception_status === 'before_open' ? 'bg-slate-50 text-slate-500' : 'bg-emerald-50 text-emerald-500'
                                   }`}>
                                   {{ before_open: '前', ticket_only: '券', closed: '終', open: '中' }[p.reception_status]}
                                 </span>
@@ -719,7 +789,11 @@ const HQDashboard = () => {
 };
 
 const EditGroupModal = ({ group, onClose, onSave }) => {
-  const [activities, setActivities] = useState(JSON.parse(JSON.stringify(group.group_activities || [])));
+  const [editData, setEditData] = useState({
+    reception_status: group.reception_status || 'before_open',
+    waiting_time: group.waiting_time || 0,
+    ticket_status: group.ticket_status || 'none'
+  });
   const [performances, setPerformances] = useState(JSON.parse(JSON.stringify(group.performances || [])));
   const [editingLocked, setEditingLocked] = useState(group.editing_locked);
   const [isSaving, setIsSaving] = useState(false);
@@ -727,20 +801,14 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Update group general settings (editing_locked)
+      // Update group general settings & status
       await supabase.from('groups').update({
         editing_locked: editingLocked,
+        reception_status: editData.reception_status,
+        waiting_time: editData.waiting_time,
+        ticket_status: editData.ticket_status,
         updated_at: new Date().toISOString()
       }).eq('id', group.id);
-
-      // Update activities
-      for (const act of activities) {
-        await supabase.from('group_activities').update({
-          status: act.status,
-          waiting_time: act.waiting_time,
-          updated_at: new Date().toISOString()
-        }).eq('id', act.id);
-      }
       // Update performances
       for (const perf of performances) {
         await supabase.from('performances').update({
@@ -823,62 +891,87 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
             </div>
           </div>
 
-          {activities.map(act => (
-            <div key={act.id} className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="h-px flex-1 bg-slate-100"></div>
-                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{act.department} 管理</h3>
-                <div className="h-px flex-1 bg-slate-100"></div>
-              </div>
-
-              {act.department !== '公演' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
-                    <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
-                      {act.department === '冊子' ? (
-                        ['distributing', 'limited', 'ended'].map(s => (
-                          <button
-                            key={s}
-                            onClick={() => setActivities(prev => prev.map(a => a.id === act.id ? { ...a, status: s } : a))}
-                            className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${act.status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
-                          >
-                            {{ distributing: '配布中', limited: '残り僅か', ended: '終了' }[s]}
-                          </button>
-                        ))
-                      ) : (
-                        ['before_open', 'open', 'closed'].map(s => (
-                          <button
-                            key={s}
-                            onClick={() => setActivities(prev => prev.map(a => a.id === act.id ? { ...a, status: s } : a))}
-                            className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${act.status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
-                          >
-                            {{ before_open: '受付前', open: '受付中', closed: '終了' }[s]}
-                          </button>
-                        ))
-                      )}
-                    </div>
+            <div className="space-y-6">
+              {(group.has_reception || group.has_waiting_time || group.has_ticket_status) ? (
+                <>
+                  <div className="flex items-center gap-4">
+                    <div className="h-px flex-1 bg-slate-100"></div>
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">運営状況 管理</h3>
+                    <div className="h-px flex-1 bg-slate-100"></div>
                   </div>
 
-                  {['体験', '食品', '物販'].includes(act.department) && (
-                    <div className="space-y-4">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">待ち時間</label>
-                      <select
-                        value={act.waiting_time}
-                        onChange={(e) => setActivities(prev => prev.map(a => a.id === act.id ? { ...a, waiting_time: parseInt(e.target.value) } : a))}
-                        className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black text-slate-700 outline-none transition-all"
-                      >
-                        {Array.from({ length: 25 }, (_, i) => i * 5).map(t => (
-                          <option key={t} value={t}>{t === 0 ? '待ちなし' : `${t}分待ち`}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {group.has_reception && (
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
+                        <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
+                          {['before_open', 'open', 'closed'].map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setEditData(prev => ({ ...prev, reception_status: s }))}
+                              className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${editData.reception_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                            >
+                              {{ before_open: '受付前', open: '受付中', closed: '終了' }[s]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {group.has_waiting_time && (
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">待ち時間</label>
+                        <select
+                          value={editData.waiting_time}
+                          onChange={(e) => setEditData(prev => ({ ...prev, waiting_time: parseInt(e.target.value) }))}
+                          className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black text-slate-700 outline-none transition-all"
+                        >
+                          {Array.from({ length: 25 }, (_, i) => i * 5).map(t => (
+                            <option key={t} value={t}>{t === 0 ? '待ちなし' : `${t}分待ち`}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {group.has_ticket_status && (
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
+                        <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
+                          {['none', 'distributing', 'limited', 'ended'].map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setEditData(prev => ({ ...prev, ticket_status: s }))}
+                              className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${editData.ticket_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                            >
+                              {{ none: 'なし', distributing: '配布中', limited: '僅か', ended: '終了' }[s]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : !group.has_performances && (
+                <div className="flex flex-col items-center justify-center py-10 px-6 text-center space-y-4">
+                  <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
+                    <Info size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">編集項目はありません</h3>
+                    <p className="text-xs font-bold text-slate-400 mt-2 leading-relaxed">
+                      この団体に本部で設定された編集項目はありません。
+                    </p>
+                  </div>
                 </div>
               )}
 
-              {act.department === '公演' && (
+              {group.has_performances && (
                 <div className="space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-px flex-1 bg-slate-100"></div>
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">公演スケジュール 管理</h3>
+                    <div className="h-px flex-1 bg-slate-100"></div>
+                  </div>
                   {performances.sort((a, b) => {
                     if (a.part_id !== b.part_id) return a.part_id - b.part_id;
                     return a.start_time.localeCompare(b.start_time);
@@ -926,7 +1019,6 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                 </div>
               )}
             </div>
-          ))}
         </div>
 
         {/* Modal Footer */}

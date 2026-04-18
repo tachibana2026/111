@@ -1,7 +1,21 @@
-import { motion } from 'framer-motion';
-import { Calendar, AlertTriangle, Info, MessageSquare, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, AlertTriangle, Info, MessageSquare, ArrowRight, X, Vote } from 'lucide-react';
+import Portal from '../components/Portal';
 
 const Home = () => {
+  const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (isVoteModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isVoteModalOpen]);
 
 
   return (
@@ -179,6 +193,112 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Voting Section */}
+      <section className="px-2 max-w-7xl mx-auto">
+        <motion.button
+          onClick={() => setIsVoteModalOpen(true)}
+          whileHover={{ y: -5, scale: 1.01 }}
+          whileActive={{ scale: 0.98 }}
+          className="w-full bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm relative overflow-hidden group text-left transition-all"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-50 rounded-full blur-3xl -z-10 group-hover:bg-brand-100 transition-colors" />
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="flex flex-col items-start gap-6">
+              <div className="flex items-center gap-6">
+                <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 shadow-sm shrink-0">
+                  <Vote size={28} />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900">たちばな大賞 投票フォーム</h2>
+              </div>
+              <p className="text-slate-500 font-bold max-w-xl">
+                展示・発表を体験された方は、ぜひ投票をお願いします！
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-4 bg-brand-600 px-10 py-5 rounded-2xl text-white font-black group-hover:bg-brand-700 transition-all w-full md:w-auto">
+              <span>投票する</span>
+              <ArrowRight size={20} className="transition-transform group-hover:translate-x-2" />
+            </div>
+          </div>
+        </motion.button>
+      </section>
+
+      {/* Voting Modal */}
+      <Portal>
+        <AnimatePresence>
+          {isVoteModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsVoteModalOpen(false)}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 max-w-2xl w-full shadow-2xl border border-slate-100 relative"
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setIsVoteModalOpen(false)}
+                  className="absolute top-6 right-6 md:top-8 md:right-8 p-3 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all"
+                >
+                  <X size={24} />
+                </button>
+
+                <div className="space-y-10">
+                  <div className="space-y-2">
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">どちらですか？</h2>
+                    <p className="text-slate-400 font-bold">対象のボタンを選択してください。</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
+                    {/* Visitors */}
+                    <motion.a
+                      href="https://forms.gle/ZCapvAkzZsywhDMU8"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      whileHover={{ y: -5 }}
+                      whileActive={{ scale: 0.98 }}
+                      className="group p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-brand-200 hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all flex flex-col justify-between gap-6"
+                    >
+                      <div className="space-y-3">
+                        <h3 className="text-xl font-black text-slate-900">一般来場者</h3>
+                        <p className="text-xs text-slate-400 font-bold leading-relaxed">
+                          校外からお越しいただいた方はこちらから投票をお願いします。
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-900 font-black text-sm pt-4 border-t border-slate-100 group-hover:text-brand-600 transition-colors">
+                        <span>フォームを開く</span>
+                        <ArrowRight size={18} className="translate-x-0 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </motion.a>
+
+                    {/* Students & Teachers */}
+                    <motion.a
+                      href="https://forms.gle/9pecbGrrvZjvEgg18"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      whileHover={{ y: -5 }}
+                      whileActive={{ scale: 0.98 }}
+                      className="group p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-brand-200 hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all flex flex-col justify-between gap-6"
+                    >
+                      <div className="space-y-3">
+                        <h3 className="text-xl font-black text-slate-900">生徒・教職員</h3>
+                        <p className="text-xs text-slate-400 font-bold leading-relaxed">
+                          回答には船橋高校Googleアカウントでログインが必要です。
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between text-slate-900 font-black text-sm pt-4 border-t border-slate-100 group-hover:text-brand-600 transition-colors">
+                        <span>フォームを開く</span>
+                        <ArrowRight size={18} className="translate-x-0 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </motion.a>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </Portal>
+
       {/* Feedback Section */}
       <section className="px-2 max-w-7xl mx-auto pb-12">
         <motion.a
@@ -198,8 +318,8 @@ const Home = () => {
               </div>
               <h2 className="text-2xl font-black text-white">フィードバック</h2>
             </div>
-            
-            <p className="text-slate-400 font-bold max-w-xl">不具合の報告・ご意見はこちらからお願いします。</p>
+
+            <p className="text-slate-400 font-bold max-w-xl">不具合の報告･ご意見等はこちらからお願いします。</p>
 
             <div className="flex items-center justify-center gap-4 bg-white/10 px-10 py-5 rounded-2xl text-white font-black group-hover:bg-white/20 transition-all w-full">
               <span>フォームを開く</span>

@@ -6,9 +6,9 @@ import Portal from '../components/Portal';
 
 
 const PARTS = [
-  { id: 1, name: 'Part 1', day: 1, range: ['09:00', '12:00'] },
-  { id: 2, name: 'Part 2', day: 1, range: ['13:00', '16:00'] },
-  { id: 3, name: 'Part 3', day: 2, range: ['09:00', '12:00'] }
+  { id: 1, name: 'Part 1', day: 1, range: ['08:45', '12:15'] },
+  { id: 2, name: 'Part 2', day: 1, range: ['12:45', '16:15'] },
+  { id: 3, name: 'Part 3', day: 2, range: ['08:45', '12:15'] }
 ];
 
 const TIME_SLOTS_MAP = {
@@ -37,6 +37,7 @@ const Timetable = ({ initialPerformances }) => {
     };
   }, [selectedPerf]);
   const scrollContainerRef = useRef(null);
+  const sidebarRef = useRef(null);
 
   useEffect(() => {
     // Current time ticking is fine as it's purely client-side logic
@@ -53,41 +54,60 @@ const Timetable = ({ initialPerformances }) => {
     }
   }, [activePart, performances]);
 
+
+
+
+  const currentPartInfo = useMemo(() => {
+    const info = PARTS.find(p => p.id === activePart);
+    const [sH, sM] = info.range[0].split(':').map(Number);
+    const [eH, eM] = info.range[1].split(':').map(Number);
+    return {
+      startTotal: sH * 60 + sM,
+      endTotal: eH * 60 + eM,
+      duration: (eH * 60 + eM) - (sH * 60 + sM)
+    };
+  }, [activePart]);
+
+  const getTimeLeft = (timeStr) => {
+    const [h, m] = timeStr.split(':').map(Number);
+    const diffMinutes = (h * 60 + m) - currentPartInfo.startTotal;
+    return (diffMinutes / currentPartInfo.duration) * 100;
+  };
+
+  const getPerfWidth = (perf) => {
+    const [h1, m1] = perf.start_time.split(':').map(Number);
+    const diffMinutes = perf.end_time 
+      ? (() => {
+          const [h2, m2] = perf.end_time.split(':').map(Number);
+          return (h2 * 60 + m2) - (h1 * 60 + m1);
+        })()
+      : 25; // デフォルト25分
+    return (diffMinutes / currentPartInfo.duration) * 100;
+  };
+
   const scrollToCurrentTime = (smooth = false) => {
-    const festDate = activePart === 3 ? '2026-06-14' : '2026-06-13';
+    if (!scrollContainerRef.current || !sidebarRef.current) return;
+    
     // Simplified date check for development: if it's not June 2026, don't auto-scroll
     if (!currentTime.toISOString().startsWith('2026-06')) return;
-
-    const range = PARTS.find(p => p.id === activePart).range;
-    const [startH, startM] = range[0].split(':').map(Number);
-    const [endH, endM] = range[1].split(':').map(Number);
 
     const h = currentTime.getHours();
     const m = currentTime.getMinutes();
     const totalNow = h * 60 + m;
-    const totalStart = startH * 60 + startM;
-    const totalEnd = endH * 60 + endM;
 
-    if (totalNow >= totalStart && totalNow <= totalEnd) {
-      const diffMinutes = totalNow - totalStart;
-      const left = (diffMinutes / 30) * COLUMN_WIDTH;
+    if (totalNow >= currentPartInfo.startTotal && totalNow <= currentPartInfo.endTotal) {
+      const diffMinutes = totalNow - currentPartInfo.startTotal;
+      const sidebarWidth = sidebarRef.current.offsetWidth;
+      const timelineWidth = scrollContainerRef.current.scrollWidth - sidebarWidth;
+      const left = (diffMinutes / currentPartInfo.duration) * timelineWidth;
 
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({
-          left: Math.max(0, left - 40),
-          behavior: smooth ? 'smooth' : 'auto'
-        });
-      }
+      scrollContainerRef.current.scrollTo({
+        left: Math.max(0, left - 40),
+        behavior: smooth ? 'smooth' : 'auto'
+      });
     }
   };
 
-
-  const getTimeLeft = (timeStr, partId) => {
-    const [h, m] = timeStr.split(':').map(Number);
-    const startHour = partId === 2 ? 13 : 9;
-    const diffMinutes = (h * 60 + m) - (startHour * 60);
-    return (diffMinutes / 30) * COLUMN_WIDTH;
-  };
 
   const isPast = (perf) => {
     const festDate = perf.part_id === 3 ? '2026-06-14' : '2026-06-13';
@@ -104,23 +124,17 @@ const Timetable = ({ initialPerformances }) => {
 
     const h = currentTime.getHours();
     const m = currentTime.getMinutes();
-    const range = PARTS.find(p => p.id === activePart).range;
-    const [startH, startM] = range[0].split(':').map(Number);
-    const [endH, endM] = range[1].split(':').map(Number);
-
     const totalNow = h * 60 + m;
-    const totalStart = startH * 60 + startM;
-    const totalEnd = endH * 60 + endM;
 
-    if (totalNow < totalStart || totalNow > totalEnd) return null;
+    if (totalNow < currentPartInfo.startTotal || totalNow > currentPartInfo.endTotal) return null;
 
-    const diffMinutes = totalNow - totalStart;
-    const left = (diffMinutes / 30) * COLUMN_WIDTH;
+    const diffMinutes = totalNow - currentPartInfo.startTotal;
+    const leftPercentage = (diffMinutes / currentPartInfo.duration) * 100;
 
     return (
       <div
         className="absolute top-0 bottom-0 z-[15] pointer-events-none"
-        style={{ left: left + 128 }} // 128 is w-32
+        style={{ left: `${leftPercentage}%` }}
       >
         <div className="w-0.5 h-full bg-rose-500/60 shadow-[0_0_8px_rgba(244,63,94,0.3)]"></div>
       </div>
@@ -142,14 +156,6 @@ const Timetable = ({ initialPerformances }) => {
     });
   }, [performances]);
 
-  const getPerfWidth = (perf) => {
-    if (!perf.end_time) return COLUMN_WIDTH * 0.9;
-    const [h1, m1] = perf.start_time.split(':').map(Number);
-    const [h2, m2] = perf.end_time.split(':').map(Number);
-    const diffMinutes = (h2 * 60 + m2) - (h1 * 60 + m1);
-    return Math.max((diffMinutes / 30) * COLUMN_WIDTH - 8, 40);
-  };
-
   const getStatusLabel = (status) => {
     if (status === 'distributing') return '整理券配布中';
     if (status === 'ended') return '整理券配布終了';
@@ -163,7 +169,6 @@ const Timetable = ({ initialPerformances }) => {
   };
 
 
-  const currentPart = PARTS.find(p => p.id === activePart);
   const timeSlots = TIME_SLOTS_MAP[activePart];
 
   return (
@@ -194,42 +199,56 @@ const Timetable = ({ initialPerformances }) => {
         <div className="overflow-x-auto no-scrollbar scroll-smooth" ref={scrollContainerRef}>
           <div className="inline-block min-w-full">
             <div className="flex border-b border-slate-200 bg-white sticky top-0 z-20">
-              <div className="w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-30 flex items-center justify-center py-4">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">団体 / 会場</span>
+              <div ref={sidebarRef} className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-30 flex items-center justify-center py-4">
+                <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-tighter md:tracking-[0.2em]">団体 / 会場</span>
               </div>
-              {timeSlots.map((time, i) => (
-                <div key={time} className="flex-shrink-0 relative py-4" style={{ width: COLUMN_WIDTH }}>
-                  {i > 0 && (
-                    <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-white px-1 z-10">
+              <div className="flex-1 flex min-w-[700px] md:min-w-0 relative h-12 pr-6">
+                {timeSlots.map((time) => (
+                  <div 
+                    key={time} 
+                    className="absolute top-0 bottom-0" 
+                    style={{ left: `${getTimeLeft(time)}%` }}
+                  >
+                    <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-white px-1 z-10 whitespace-nowrap">
                       {time}
                     </span>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="relative">
-              {renderCurrentTimeLine()}
+              <div className="absolute inset-0 pointer-events-none flex z-[15]">
+                <div className="w-24 md:w-32 flex-shrink-0" />
+                <div className="flex-1 relative min-w-[700px] md:min-w-0 pr-6">
+                  {renderCurrentTimeLine()}
+                </div>
+              </div>
               {groupedGroups.map((group) => (
                 <div key={group.id} className="flex border-b border-slate-200 group hover:bg-slate-50/50 transition-colors">
-                  <div className="w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-10 p-4 flex flex-col justify-center gap-1 group-hover:bg-slate-50 transition-colors">
-                    <span className="text-[10px] font-black text-brand-600 uppercase tracking-tight break-words">
+                  <div className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-10 p-2 md:p-4 flex flex-col justify-center gap-1 group-hover:bg-slate-50 transition-colors">
+                    <span className="text-[9px] md:text-[10px] font-black text-brand-600 uppercase tracking-tight break-words">
                       {group.building} {group.room}
                     </span>
-                    <h3 className="text-xs font-black text-slate-900 leading-tight break-words py-0.5">
+                    <h3 className="text-[11px] md:text-xs font-black text-slate-900 leading-tight break-words py-0.5">
                       {group.title || group.name}
                     </h3>
                   </div>
 
-                  <div className="flex relative min-h-[110px]" style={{ width: timeSlots.length * COLUMN_WIDTH }}>
-                    {timeSlots.map((_, i) => (
-                      <div key={i} className="absolute top-0 bottom-0 border-r border-slate-200" style={{ width: COLUMN_WIDTH, left: i * COLUMN_WIDTH }}></div>
+                  <div className="flex-1 relative min-h-[110px] min-w-[700px] md:min-w-0 pr-6">
+                    {timeSlots.map((time) => (
+                      <div 
+                        key={time} 
+                        className="absolute top-0 bottom-0 border-r border-slate-200" 
+                        style={{ left: `${getTimeLeft(time)}%` }}
+                      ></div>
                     ))}
 
                     {group.group_performances
                       .filter(perf => perf.part_id === activePart)
                       .map((perf) => {
-                        const left = getTimeLeft(perf.start_time, activePart);
+                        const left = getTimeLeft(perf.start_time);
+                        const width = getPerfWidth(perf);
                         const isOver = isPast(perf);
                         return (
                           <motion.div
@@ -247,8 +266,8 @@ const Timetable = ({ initialPerformances }) => {
                               : 'bg-white border-slate-200 text-slate-700'
                               }`}
                             style={{
-                              left: left + 6,
-                              width: getPerfWidth(perf),
+                              left: `calc( ${left}% + 6px )`,
+                              width: `calc( ${width}% - 12px )`,
                               zIndex: 5
                             }}
                           >
@@ -283,6 +302,7 @@ const Timetable = ({ initialPerformances }) => {
           </div>
         </div>
       </div>
+
 
       <Portal>
         <AnimatePresence>

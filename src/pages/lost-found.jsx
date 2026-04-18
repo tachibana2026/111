@@ -35,7 +35,7 @@ const LostFound = ({ initialItems }) => {
           <h2 className="text-2xl font-black text-slate-900">受け取り方法</h2>
         </div>
         <p className="text-slate-600 leading-relaxed font-bold text-base">
-          心当たりのある方は<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (仮校舎2F)</span> までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
+          心当たりのある方は<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (仮校舎 東201)</span> までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
         </p>
       </div>
 

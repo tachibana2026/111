@@ -1,13 +1,25 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Filter, SortDesc, Instagram, Twitter, ExternalLink, MapPin, ChevronDown, RefreshCw } from 'lucide-react';
+import { Filter, SortDesc, Instagram, ExternalLink, MapPin, ChevronDown, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Portal from '../components/Portal';
 
 
 const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
 const GRADES = ['すべて', '1年', '2年', '3年', '有志'];
-const BUILDINGS = ['すべて', '仮校舎', '体育館', '南館'];
+const BUILDINGS = ['すべて', '仮校舎', '体育館', 'セミナー', '南館'];
+
+const XIcon = ({ size = 18, className = "" }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    className={className}
+  >
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.045 4.126H5.078z" />
+  </svg>
+);
 
 // サブコンポーネントをメインコンポーネントの外に移動して再描画ごとの再生成を回避
 const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, setSelectedGroup, setSelectedPerf }) => {
@@ -28,7 +40,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
     const currentReception = isOver ? 'closed' : (perf.reception_status || 'open');
     let receptionStatus = '受付中';
     if (currentReception === 'closed') receptionStatus = '受付終了';
-    else if (currentReception === 'ticket_only') receptionStatus = '整理券のみ';
+    else if (currentReception === 'ticket_only') receptionStatus = '整理券のみ受付中';
     else if (currentReception === 'before_open') receptionStatus = '受付前';
 
     return { ticketStatus, receptionStatus, currentReception };
@@ -103,7 +115,7 @@ const Groups = ({ initialGroups }) => {
   const [filterDept, setFilterDept] = useState('すべて');
   const [filterGrade, setFilterGrade] = useState('すべて');
   const [filterBuilding, setFilterBuilding] = useState('すべて');
-  const [sortBy, setSortBy] = useState('class');
+  const [sortBy, setSortBy] = useState('name');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedPerf, setSelectedPerf] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -122,43 +134,59 @@ const Groups = ({ initialGroups }) => {
   // Note: Client-side fetching and Realtime subscriptions are disabled 
   // to protect the free tier from heavy traffic.
   // Data is updated via On-demand ISR triggered by admin actions.
-  const getStatusColor = (activity) => {
-    const { department, waiting_time, status } = activity;
+  const getStatusColor = (group) => {
+    const { reception_status, waiting_time, has_waiting_time, has_performances, has_ticket_status, ticket_status, department } = group;
+    const departments = department?.split(',').map(d => d.trim()) || [];
 
-    if (department === '冊子') {
-      if (status === 'ended') return 'bg-slate-100 text-slate-400 border-slate-200';
-      if (status === 'limited') return 'bg-amber-50 text-amber-600 border-amber-200';
-      return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+    // 受付終了・受付前
+    if (reception_status === 'closed' || reception_status === 'ended' || reception_status === 'before_open') {
+      return 'bg-slate-50 border-slate-200 text-slate-400';
     }
 
-    if (status === 'closed') return 'bg-slate-50 border-slate-200 text-slate-400';
-    if (status === 'before_open') return 'bg-slate-50 border-slate-200 text-slate-400';
+    // 公演情報はスレート
+    if (has_performances) return 'bg-slate-50 border-slate-200 text-slate-400';
 
-    if (department === '展示' || department === '公演') {
+    // 残りわずかはアンバー
+    if (has_ticket_status && ticket_status === 'limited') {
+      return 'bg-amber-50 border-amber-200 text-amber-600';
+    }
+
+    if (has_ticket_status || departments.includes('展示')) {
       return 'bg-emerald-50 border-emerald-200 text-emerald-600';
     }
+
+    if (!has_waiting_time) return 'bg-emerald-50 border-emerald-200 text-emerald-600';
 
     if (waiting_time <= 10) return 'bg-emerald-50 border-emerald-200 text-emerald-600';
     if (waiting_time <= 30) return 'bg-amber-50 border-amber-200 text-amber-600';
     return 'bg-rose-50 border-rose-200 text-rose-600';
   };
 
-  const getStatusText = (activity) => {
-    const { department, waiting_time, status } = activity;
+  const getStatusText = (group) => {
+    const { reception_status, waiting_time, ticket_status, department, has_waiting_time, has_performances, has_ticket_status, has_reception } = group;
+    const departments = department?.split(',').map(d => d.trim()) || [];
 
-    if (department === '冊子') {
-      if (status === 'ended') return '配布終了';
-      if (status === 'limited') return '残りわずか';
-      return '配布中';
+    if (reception_status === 'closed' || reception_status === 'ended') return '受付終了';
+    if (reception_status === 'before_open') return '受付前';
+
+    if (has_performances) return '公演情報';
+
+    if (has_ticket_status) {
+      if (ticket_status === 'ended') return '配布終了';
+      if (ticket_status === 'limited') return '残りわずか';
+      return '整理券配布中';
     }
 
-    if (status === 'closed') return '受付終了';
-    if (status === 'before_open') return '受付前';
-    if (department === '展示') return '受付中';
-    if (department === '公演') return '公演情報';
+    if (has_waiting_time) {
+      if (waiting_time === 0) return '待ちなし';
+      return `${waiting_time}分待ち`;
+    }
 
-    if (waiting_time === 0) return '待ちなし';
-    return `${waiting_time}分待ち`;
+    if (has_reception) {
+      return '受付中';
+    }
+
+    return '公演情報';
   };
 
   const getStatusLabel = (status) => {
@@ -190,7 +218,7 @@ const Groups = ({ initialGroups }) => {
   const filteredGroups = useMemo(() => {
     return groups
       .filter(g =>
-        (filterDept === 'すべて' || g.group_activities.some(a => a.department === filterDept)) &&
+        (filterDept === 'すべて' || (g.department?.split(',').map(d => d.trim()).includes(filterDept))) &&
         (filterGrade === 'すべて' ||
           (filterGrade === '有志'
             ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year))
@@ -201,20 +229,23 @@ const Groups = ({ initialGroups }) => {
       )
       .sort((a, b) => {
         if (sortBy === 'time-asc') {
-          const minA = Math.min(...a.group_activities.map(act => act.waiting_time || 0), 0);
-          const minB = Math.min(...b.group_activities.map(act => act.waiting_time || 0), 0);
-          return minA - minB;
+          return (a.waiting_time || 0) - (b.waiting_time || 0);
         }
         if (sortBy === 'time-desc') {
-          const maxA = Math.max(...a.group_activities.map(act => act.waiting_time || 0), 0);
-          const maxB = Math.max(...b.group_activities.map(act => act.waiting_time || 0), 0);
-          return maxB - maxA;
+          return (b.waiting_time || 0) - (a.waiting_time || 0);
         }
         if (sortBy === 'area') {
-          if (a.building !== b.building) return a.building.localeCompare(b.building);
-          return a.room.localeCompare(b.room);
+          if (a.building !== b.building) return a.building.localeCompare(b.building, 'ja');
+          return a.room.localeCompare(b.room, 'ja');
         }
-        return a.name.localeCompare(b.name);
+
+        // 名前順（有志はタイトル、クラスはクラス名でソート）
+        const getSortKey = (g) => {
+          const isYearGroup = ['1年', '2年', '3年'].some(year => g.name.startsWith(year));
+          return isYearGroup ? g.name : (g.title || g.name);
+        };
+
+        return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
       });
   }, [groups, filterDept, filterGrade, filterBuilding, sortBy]);
 
@@ -322,7 +353,7 @@ const Groups = ({ initialGroups }) => {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <option value="class">クラス順</option>
+                <option value="name">名前順</option>
                 <option value="area">エリア順</option>
                 <option value="time-asc">待ち時間 (短い順)</option>
                 <option value="time-desc">待ち時間 (長い順)</option>
@@ -344,14 +375,14 @@ const Groups = ({ initialGroups }) => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.2 }}
-              className={`bg-white border border-slate-100 rounded-3xl p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.group_activities.every(a => a.status === 'closed' || a.status === 'ended') ? 'opacity-60 saturate-50' : ''}`}
+              className={`bg-white border border-slate-100 rounded-3xl p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'opacity-60 saturate-50' : ''}`}
             >
               <div className="flex justify-between items-start mb-5">
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex flex-wrap items-center gap-2 mb-2.5">
-                    {group.group_activities.map((act, idx) => (
-                      <span key={idx} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
-                        {act.department}
+                    {group.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
+                      <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider whitespace-nowrap">
+                        {dept}
                       </span>
                     ))}
                     <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-50 text-slate-500 font-black uppercase tracking-wider whitespace-nowrap">
@@ -367,20 +398,18 @@ const Groups = ({ initialGroups }) => {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 scale-90 origin-top-right">
-                  {group.group_activities.map((act, idx) => (
-                    <div key={idx} className={`status-badge border shadow-sm ${getStatusColor(act)}`}>
-                      {getStatusText(act)}
-                    </div>
-                  ))}
+                  <div className={`status-badge border shadow-sm ${getStatusColor(group)}`}>
+                    {getStatusText(group)}
+                  </div>
                 </div>
               </div>
 
               <div className="flex-grow space-y-6">
-                <p className="text-sm text-slate-500 font-bold leading-relaxed line-clamp-3">
+                <p className="text-sm text-slate-500 font-bold leading-relaxed whitespace-pre-wrap">
                   {group.description}
                 </p>
 
-                {group.group_activities.some(a => a.department === '公演') && (() => {
+                {group.has_performances && (group.performances || []).length > 0 && (() => {
                   const nextPerf = getNextPerformance(group);
                   return (
                     <div className="pt-6 border-t border-slate-50 space-y-6">
@@ -423,13 +452,13 @@ const Groups = ({ initialGroups }) => {
                       <Instagram size={18} />
                     </a>
                   )}
-                  {group.social_links?.twitter && (
-                    <a href={group.social_links.twitter} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-sky-500 transition-colors">
-                      <Twitter size={18} />
+                  {(group.social_links?.X || group.social_links?.x) && (
+                    <a href={group.social_links.X || group.social_links.x} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-slate-900 transition-colors">
+                      <XIcon size={16} />
                     </a>
                   )}
-                  {group.social_links?.website && (
-                    <a href={group.social_links.website} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-brand-600 transition-colors">
+                  {group.social_links?.HP && (
+                    <a href={group.social_links.HP} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-brand-600 transition-colors">
                       <ExternalLink size={18} />
                     </a>
                   )}
@@ -511,7 +540,7 @@ const Groups = ({ initialGroups }) => {
 export async function getStaticProps() {
   const { data, error } = await supabase
     .from('groups')
-    .select('id, title, name, description, building, room, social_links, updated_at, group_activities(department, waiting_time, status), performances(id, group_id, part_id, start_time, end_time, status, reception_status)');
+    .select('id, title, name, description, building, room, social_links, updated_at, department, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, performances(id, group_id, part_id, start_time, end_time, status, reception_status)');
 
   if (error) {
     console.error('getStaticProps fetch error:', error);

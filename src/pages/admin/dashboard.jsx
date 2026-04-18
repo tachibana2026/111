@@ -32,10 +32,13 @@ const GroupDashboard = () => {
   const [updating, setUpdating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // ステート管理 (正規化対応)
-  const [activities, setActivities] = useState([]); // 編集用の状態
+  // ステート管理
+  const [editData, setEditData] = useState({
+    reception_status: 'before_open',
+    waiting_time: 0,
+    ticket_status: 'none'
+  });
   const [performances, setPerformances] = useState([]); // 編集用の状態
-  const [publishedActivities, setPublishedActivities] = useState([]); // 現在公開中の情報 (DBから取得)
   const [publishedPerformances, setPublishedPerformances] = useState([]); // 現在公開中の情報 (DBから取得)
   const [lastClientUpdate, setLastClientUpdate] = useState(null);
   const [now, setNow] = useState(new Date());
@@ -73,7 +76,6 @@ const GroupDashboard = () => {
     // リアルタイム購読の設定
     const channels = [
       supabase.channel(`group_${groupId}`).on('postgres_changes', { event: '*', table: 'groups', filter: `id=eq.${groupId}` }, () => fetchGroupData(groupId)).subscribe(),
-      supabase.channel(`activities_${groupId}`).on('postgres_changes', { event: '*', table: 'group_activities', filter: `group_id=eq.${groupId}` }, () => fetchGroupData(groupId)).subscribe(),
       supabase.channel(`perfs_${groupId}`).on('postgres_changes', { event: '*', table: 'performances', filter: `group_id=eq.${groupId}` }, () => fetchGroupData(groupId)).subscribe()
     ];
 
@@ -91,7 +93,7 @@ const GroupDashboard = () => {
 
     const { data, error } = await supabase
       .from('groups')
-      .select('*, group_activities(*), performances(*)')
+      .select('*, performances(*)')
       .eq('id', id)
       .single();
 
@@ -110,15 +112,16 @@ const GroupDashboard = () => {
         if (a.part_id !== b.part_id) return a.part_id - b.part_id;
         return a.start_time.localeCompare(b.start_time);
       }) || [];
-      const currentActivities = data.group_activities || [];
-
       // 公開中の情報を更新
-      setPublishedActivities(currentActivities);
       setPublishedPerformances(sortedPerfs);
 
       // 初期ロード時、かつ更新中でない場合のみ編集用の状態を初期化
       if (isInitial && !updating) {
-        setActivities(JSON.parse(JSON.stringify(currentActivities)));
+        setEditData({
+          reception_status: data.reception_status || 'before_open',
+          waiting_time: data.waiting_time || 0,
+          ticket_status: data.ticket_status || 'none'
+        });
         setPerformances(JSON.parse(JSON.stringify(sortedPerfs)));
       }
     }
@@ -131,15 +134,13 @@ const GroupDashboard = () => {
 
     const password = localStorage.getItem('ryoun_password');
 
-    // 全てのアクティビティを並列で更新
-    const activityUpdates = activities.map(act => {
-      return supabase.rpc('update_activity_secure', {
-        target_id: act.id,
-        provided_password: password,
-        new_status: act.status,
-        new_waiting_time: act.waiting_time
-      });
-    });
+    // 団体情報を更新
+    const groupUpdate = supabase.from('groups').update({
+      reception_status: editData.reception_status,
+      waiting_time: editData.waiting_time,
+      ticket_status: editData.ticket_status,
+      updated_at: new Date().toISOString()
+    }).eq('id', group.id);
 
     // 公演情報を更新
     const perfUpdates = performances.map(perf => {
@@ -151,7 +152,7 @@ const GroupDashboard = () => {
       });
     });
 
-    const results = await Promise.all([...activityUpdates, ...perfUpdates]);
+    const results = await Promise.all([groupUpdate, ...perfUpdates]);
     const errors = results.filter(r => r.error).map(r => r.error);
 
     if (errors.length > 0) {
@@ -169,8 +170,8 @@ const GroupDashboard = () => {
     setUpdating(false);
   };
 
-  const handleLocalActivityUpdate = (id, field, value) => {
-    setActivities(prev => prev.map(act => act.id === id ? { ...act, [field]: value } : act));
+  const handleLocalStateUpdate = (field, value) => {
+    setEditData(prev => ({ ...prev, [field]: value }));
   };
 
   const isPerformancePast = useCallback((perf) => {
@@ -217,7 +218,6 @@ const GroupDashboard = () => {
     const dates = [
       group.updated_at,
       lastClientUpdate,
-      ...publishedActivities.map(a => a.updated_at),
       ...publishedPerformances.map(p => p.updated_at)
     ]
       .filter(Boolean)
@@ -241,7 +241,7 @@ const GroupDashboard = () => {
     if (diffWeeks < 4) return `${diffWeeks}週間前`;
     if (diffMonths < 12) return `${diffMonths}か月前`;
     return `${diffYears}年前`;
-  }, [group, publishedActivities, publishedPerformances, now]);
+  }, [group, publishedPerformances, now]);
 
   if (loading) {
     return (
@@ -314,20 +314,23 @@ const GroupDashboard = () => {
             )}
           </div>
           <div className="grid grid-cols-1 gap-4">
-            {publishedActivities.filter(act => act.department !== '公演').map(act => (
-              <div key={act.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-                <span className="text-xs font-black text-slate-500">{act.department}</span>
-                <span className={`text-xl font-black ${act.status === 'closed' || act.status === 'ended' ? 'text-rose-500' : act.status === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
-                  {act.department === '冊子' ? (
-                    { distributing: '配布中', limited: '残りわずか', ended: '配布終了' }[act.status] || '配布中'
-                  ) : (['体験', '食品', '物販'].includes(act.department)) ? (
-                    act.status === 'closed' ? '受付終了' : act.status === 'before_open' ? '受付前' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`)
-                  ) : (
-                    act.status === 'open' ? '受付中' : act.status === 'before_open' ? '受付前' : '受付終了'
-                  )}
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+              <span className="text-xs font-black text-slate-500">{group.department || '運営状況'}</span>
+              <span className={`text-xl font-black ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'text-rose-500' : group.reception_status === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
+                {group.reception_status === 'closed' ? '受付終了' :
+                  group.reception_status === 'before_open' ? '受付前' :
+                    (group.has_waiting_time && group.waiting_time > 0 ? `${group.waiting_time}分待ち` :
+                      group.has_waiting_time && group.waiting_time === 0 ? '待ちなし' : '受付中')}
+              </span>
+            </div>
+            {group.has_ticket_status && group.ticket_status !== 'none' && (
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                <span className="text-xs font-black text-slate-500">整理券状況</span>
+                <span className={`text-xl font-black ${{ distributing: 'text-emerald-500', limited: 'text-amber-500', ended: 'text-rose-500' }[group.ticket_status]}`}>
+                  {{ distributing: '配布中', limited: '残りわずか', ended: '配布終了' }[group.ticket_status]}
                 </span>
               </div>
-            ))}
+            )}
             {publishedPerformances.length > 0 && (
               <div className="pt-4 border-t border-slate-50">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">整理券配布状況</span>
@@ -364,8 +367,7 @@ const GroupDashboard = () => {
         </section>
 
         <div className={`space-y-6 ${group.editing_locked ? 'opacity-40 pointer-events-none' : ''}`}>
-          {activities.map(act => (
-            <div key={act.id} className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm space-y-10">
+            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm space-y-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-brand-50 text-brand-600 rounded-xl flex items-center justify-center">
@@ -375,44 +377,44 @@ const GroupDashboard = () => {
                 </div>
               </div>
 
-              {/* Status Toggle (except for Booklet/Performance specific UI) */}
-              {(act.department !== '冊子' && act.department !== '公演') && (
+              {/* Status Toggle */}
+              {group.has_reception && (
                 <div className="space-y-4">
                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</label>
                   <div className="grid grid-cols-3 gap-2">
                     <button
-                      onClick={() => handleLocalActivityUpdate(act.id, 'status', 'before_open')}
-                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${act.status === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-lg shadow-slate-400/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                      onClick={() => handleLocalStateUpdate('reception_status', 'before_open')}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-lg shadow-slate-400/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付前</button>
                     <button
-                      onClick={() => handleLocalActivityUpdate(act.id, 'status', 'open')}
-                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${act.status === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                      onClick={() => handleLocalStateUpdate('reception_status', 'open')}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付中</button>
                     <button
-                      onClick={() => handleLocalActivityUpdate(act.id, 'status', 'closed')}
-                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${act.status === 'closed' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-lg shadow-rose-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                      onClick={() => handleLocalStateUpdate('reception_status', 'closed')}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'closed' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-lg shadow-rose-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付終了</button>
                   </div>
                 </div>
               )}
 
               {/* Waiting Time Management */}
-              {['体験', '食品', '物販'].includes(act.department) && (
+              {group.has_waiting_time && (
                 <div className="space-y-6 pt-6 border-t border-slate-50">
                   <div className="flex items-center justify-between ml-1">
                     <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">現在の待ち時間</label>
                   </div>
                   <div className="relative">
                     <select
-                      value={act.status === 'closed' ? 'closed' : act.waiting_time}
-                      disabled={act.status === 'closed'}
-                      onChange={(e) => handleLocalActivityUpdate(act.id, 'waiting_time', parseInt(e.target.value))}
-                      className={`w-full border-2 rounded-2xl py-5 px-6 font-black transition-all appearance-none focus:outline-none ${act.status === 'closed'
-                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-                          : 'bg-slate-50 border-slate-100 text-slate-700 focus:border-brand-500 cursor-pointer'
+                      value={editData.reception_status === 'closed' ? 'closed' : editData.waiting_time}
+                      disabled={editData.reception_status === 'closed'}
+                      onChange={(e) => handleLocalStateUpdate('waiting_time', parseInt(e.target.value))}
+                      className={`w-full border-2 rounded-2xl py-5 px-6 font-black transition-all appearance-none focus:outline-none ${editData.reception_status === 'closed'
+                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                        : 'bg-slate-50 border-slate-100 text-slate-700 focus:border-brand-500 cursor-pointer'
                         }`}
                     >
-                      {act.status === 'closed' ? (
+                      {editData.reception_status === 'closed' ? (
                         <option value="closed">選択不可</option>
                       ) : (
                         Array.from({ length: 25 }, (_, i) => i * 5).map((mins) => (
@@ -422,15 +424,37 @@ const GroupDashboard = () => {
                         ))
                       )}
                     </select>
-                    <div className={`absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none ${act.status === 'closed' ? 'text-slate-300' : 'text-slate-400'}`}>
+                    <div className={`absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none ${editData.reception_status === 'closed' ? 'text-slate-300' : 'text-slate-400'}`}>
                       <ChevronDown size={20} strokeWidth={2.5} />
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* Ticket Status Management */}
+              {group.has_ticket_status && (
+                <div className="space-y-4 pt-6 border-t border-slate-50">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">整理券配布状況</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'none', label: 'なし', color: 'bg-white border-slate-200' },
+                      { id: 'distributing', label: '配布中', color: 'bg-emerald-50 border-emerald-500 text-emerald-700' },
+                      { id: 'ended', label: '終了', color: 'bg-rose-50 border-rose-500 text-rose-700' }
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => handleLocalStateUpdate('ticket_status', s.id)}
+                        className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.ticket_status === s.id ? s.color : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Performance Management */}
-              {act.department === '公演' && (
+              {group.has_performances && (
                 <div className="space-y-8">
                   {[1, 2, 3].map(partId => {
                     const partPerfs = performances.filter(p => p.part_id === partId);
@@ -523,49 +547,41 @@ const GroupDashboard = () => {
                 </div>
               )}
 
-              {/* Booklet Management */}
-              {act.department === '冊子' && (
-                <div className="space-y-4 pt-4">
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">冊子配布状況</label>
-                  <div className="grid grid-cols-1 gap-3">
-                    {[
-                      { id: 'distributing', label: '配布中', color: 'text-emerald-700 bg-emerald-50 border-emerald-500 shadow-lg shadow-emerald-500/10' },
-                      { id: 'limited', label: '残りわずか', color: 'text-amber-700 bg-amber-50 border-amber-500 shadow-lg shadow-amber-500/10' },
-                      { id: 'ended', label: '配布終了', color: 'text-rose-700 bg-rose-50 border-rose-500 shadow-lg shadow-rose-500/10' }
-                    ].map(s => (
-                      <button
-                        key={s.id}
-                        onClick={() => handleLocalActivityUpdate(act.id, 'status', s.id)}
-                        className={`py-6 rounded-[1.5rem] border-2 transition-all font-black text-lg ${act.status === s.id ? s.color : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'
-                          }`}
-                      >
-                        {s.label}
-                      </button>
-                    ))}
+              {!group.has_reception && !group.has_waiting_time && !group.has_ticket_status && !group.has_performances && (
+                <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4">
+                  <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
+                    <Info size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">編集項目はありません</h3>
+                    <p className="text-sm font-bold text-slate-400 mt-2 leading-relaxed">
+                      この団体に設定された操作項目はありません。<br />
+                      設定の変更が必要な場合は本部へお問い合わせください。
+                    </p>
                   </div>
                 </div>
               )}
             </div>
-          ))}
 
-          {/* Global Update Button */}
-          <button
-            onClick={handleUpdate}
-            disabled={updating || group.editing_locked}
-            className={`w-full py-6 rounded-[2rem] font-black text-lg shadow-xl shadow-brand-500/20 flex items-center justify-center space-x-3 transition-all active:scale-95 ${updating ? 'bg-slate-100 text-slate-400' : 'bg-brand-600 text-white hover:bg-brand-700 hover:translate-y-[-2px]'}`}
-          >
-            {updating ? (
-              <div className="flex items-center space-x-4">
-                <RefreshCw size={24} className="animate-spin" />
-                <span>更新中...</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-4">
-                <Save size={24} />
-                <span>変更を保存する</span>
-              </div>
+            {(group.has_reception || group.has_waiting_time || group.has_ticket_status || group.has_performances) && (
+              <button
+                onClick={handleUpdate}
+                disabled={updating || group.editing_locked}
+                className={`w-full py-6 rounded-[2rem] font-black text-lg shadow-xl shadow-brand-500/20 flex items-center justify-center space-x-3 transition-all active:scale-95 ${updating ? 'bg-slate-100 text-slate-400' : 'bg-brand-600 text-white hover:bg-brand-700 hover:translate-y-[-2px]'}`}
+              >
+                {updating ? (
+                  <div className="flex items-center space-x-4">
+                    <RefreshCw size={24} className="animate-spin" />
+                    <span>更新中...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-4">
+                    <Save size={24} />
+                    <span>変更を保存する</span>
+                  </div>
+                )}
+              </button>
             )}
-          </button>
         </div>
       </div>
 
