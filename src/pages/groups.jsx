@@ -135,12 +135,17 @@ const Groups = ({ initialGroups }) => {
   // to protect the free tier from heavy traffic.
   // Data is updated via On-demand ISR triggered by admin actions.
   const getStatusColor = (group) => {
-    const { reception_status, waiting_time, has_waiting_time, has_performances, has_ticket_status, ticket_status, department } = group;
+    const { reception_status, waiting_time, has_waiting_time, has_performances, has_ticket_status, has_reception, ticket_status, department } = group;
     const departments = department?.split(',').map(d => d.trim()) || [];
 
     // 受付終了・受付前
     if (reception_status === 'closed' || reception_status === 'ended' || reception_status === 'before_open') {
       return 'bg-slate-50 border-slate-200 text-slate-400';
+    }
+
+    // 全てFALSEの場合はエラー表示（赤）
+    if (!has_performances && !has_ticket_status && !has_waiting_time && !has_reception) {
+      return 'bg-rose-50 border-rose-200 text-rose-600';
     }
 
     // 公演情報はスレート
@@ -186,7 +191,7 @@ const Groups = ({ initialGroups }) => {
       return '受付中';
     }
 
-    return '公演情報';
+    return 'エラー';
   };
 
   const getStatusLabel = (status) => {
