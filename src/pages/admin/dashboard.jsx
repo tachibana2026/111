@@ -314,15 +314,23 @@ const GroupDashboard = () => {
             )}
           </div>
           <div className="grid grid-cols-1 gap-4">
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-              <span className="text-xs font-black text-slate-500">{group.department || '運営状況'}</span>
-              <span className={`text-xl font-black ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'text-rose-500' : group.reception_status === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
-                {group.reception_status === 'closed' ? '受付終了' :
-                  group.reception_status === 'before_open' ? '受付前' :
-                    (group.has_waiting_time && group.waiting_time > 0 ? `${group.waiting_time}分待ち` :
-                      group.has_waiting_time && group.waiting_time === 0 ? '待ちなし' : '受付中')}
-              </span>
-            </div>
+            {group.has_reception && (
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
+                <span className="text-xs font-black text-slate-500">{group.department || '運営状況'}</span>
+                <span className={`text-xl font-black ${
+                  group.reception_status === 'closed' || group.reception_status === 'ended' ? 'text-rose-500' : 
+                  group.reception_status === 'before_open' ? 'text-slate-400' : 
+                  group.reception_status === 'ticket_only' ? 'text-brand-500' :
+                  'text-emerald-500'
+                }`}>
+                  {group.reception_status === 'closed' ? '受付終了' :
+                    group.reception_status === 'before_open' ? '受付前' :
+                    group.reception_status === 'ticket_only' ? '整理券のみ受付' :
+                      (group.has_waiting_time && group.waiting_time > 0 ? `${group.waiting_time}分待ち` :
+                        group.has_waiting_time && group.waiting_time === 0 ? '待ちなし' : '受付中')}
+                </span>
+              </div>
+            )}
             {group.has_ticket_status && group.ticket_status !== 'none' && (
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-xs font-black text-slate-500">整理券状況</span>
@@ -378,10 +386,10 @@ const GroupDashboard = () => {
               </div>
 
               {/* Status Toggle */}
-              {group.has_reception && (
+              {group.has_reception && !group.has_performances && (
                 <div className="space-y-4">
                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={`grid ${editData.ticket_status === 'distributing' || editData.ticket_status === 'ended' ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
                     <button
                       onClick={() => handleLocalStateUpdate('reception_status', 'before_open')}
                       className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-lg shadow-slate-400/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
@@ -390,6 +398,12 @@ const GroupDashboard = () => {
                       onClick={() => handleLocalStateUpdate('reception_status', 'open')}
                       className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付中</button>
+                    {(editData.ticket_status === 'distributing' || editData.ticket_status === 'ended') && (
+                      <button
+                        onClick={() => handleLocalStateUpdate('reception_status', 'ticket_only')}
+                        className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-lg shadow-brand-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                      >整理券のみ受付</button>
+                    )}
                     <button
                       onClick={() => handleLocalStateUpdate('reception_status', 'closed')}
                       className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'closed' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-lg shadow-rose-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
@@ -399,7 +413,7 @@ const GroupDashboard = () => {
               )}
 
               {/* Waiting Time Management */}
-              {group.has_waiting_time && (
+              {group.has_waiting_time && !group.has_performances && (
                 <div className="space-y-6 pt-6 border-t border-slate-50">
                   <div className="flex items-center justify-between ml-1">
                     <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">現在の待ち時間</label>
@@ -432,7 +446,7 @@ const GroupDashboard = () => {
               )}
 
               {/* Ticket Status Management */}
-              {group.has_ticket_status && (
+              {group.has_ticket_status && !group.has_performances && (
                 <div className="space-y-4 pt-6 border-t border-slate-50">
                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">整理券配布状況</label>
                   <div className="grid grid-cols-3 gap-2">

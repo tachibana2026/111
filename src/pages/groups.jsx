@@ -143,6 +143,11 @@ const Groups = ({ initialGroups }) => {
       return 'bg-slate-50 border-slate-200 text-slate-400';
     }
 
+    // 整理券のみ受付（青）
+    if (reception_status === 'ticket_only') {
+      return 'bg-brand-50 border-brand-200 text-brand-600';
+    }
+
     // 全てFALSEの場合はエラー表示（赤）
     if (!has_performances && !has_ticket_status && !has_waiting_time && !has_reception) {
       return 'bg-rose-50 border-rose-200 text-rose-600';
@@ -173,6 +178,7 @@ const Groups = ({ initialGroups }) => {
 
     if (reception_status === 'closed' || reception_status === 'ended') return '受付終了';
     if (reception_status === 'before_open') return '受付前';
+    if (reception_status === 'ticket_only') return '整理券のみ受付';
 
     if (has_performances) return '公演情報';
 

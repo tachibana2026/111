@@ -1,12 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
-  Users, PackageSearch, Settings, ShieldCheck,
-  Lock, Unlock, Plus, Trash2, RefreshCw, MapPin,
-  AlertCircle, LogOut, CheckCircle2, Clock, Edit2, XCircle,
-  AlertTriangle, Info, Ticket,
-  User, ChevronLeft, Save,
-  ChevronUp, ChevronDown, Filter, SortDesc, Calendar, Utensils
+  Users, PackageSearch, ShieldCheck,
+  Lock, Unlock, Plus, RefreshCw, MapPin,
+  LogOut, CheckCircle2, Clock, Edit2, XCircle,
+  AlertTriangle, Info, Ticket, Save, Filter
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -69,7 +67,6 @@ const HQDashboard = () => {
   const [groups, setGroups] = useState([]);
   const [lostFound, setLostFound] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isWorking, setIsWorking] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, confirmText: '実行', icon: null });
   const [editingGroup, setEditingGroup] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -118,7 +115,6 @@ const HQDashboard = () => {
     const channels = [
       supabase.channel('hq_realtime')
         .on('postgres_changes', { event: '*', table: 'groups' }, fetchData)
-        .on('postgres_changes', { event: '*', table: 'group_activities' }, fetchData)
         .on('postgres_changes', { event: '*', table: 'performances' }, fetchData)
         .on('postgres_changes', { event: '*', table: 'lost_found' }, fetchData).subscribe()
     ];
@@ -143,13 +139,6 @@ const HQDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-
-
-  const handleUpdateWaitingTime = async (groupId, time) => {
-    await supabase.from('groups').update({ waiting_time: time, updated_at: new Date().toISOString() }).eq('id', groupId);
-    triggerRevalidate();
   };
 
   const handleBulkStatusUpdate = async (status) => {
@@ -288,13 +277,14 @@ const HQDashboard = () => {
               <div>
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-5">
                   <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight">文化委員会本部 受付状況</h2>
-                  <div className={`w-fit px-4 py-1.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 transition-all cursor-default ${
+                    <div className={`w-fit px-4 py-1.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 transition-all cursor-default ${
                     hqGroup.reception_status === 'open' ? 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm shadow-emerald-500/10' :
                     hqGroup.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                    hqGroup.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600 shadow-sm shadow-brand-500/10' :
                     'bg-rose-50 border-rose-100 text-rose-600 shadow-sm shadow-rose-500/10'
                   }`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${hqGroup.reception_status === 'open' ? 'bg-emerald-500 animate-pulse' : hqGroup.reception_status === 'before_open' ? 'bg-slate-300' : 'bg-rose-500'}`}></div>
-                    {{ open: '受付中', before_open: '受付前', closed: '受付終了'}[hqGroup.reception_status]}
+                    <div className={`w-1.5 h-1.5 rounded-full ${hqGroup.reception_status === 'open' ? 'bg-emerald-500 animate-pulse' : hqGroup.reception_status === 'before_open' ? 'bg-slate-300' : hqGroup.reception_status === 'ticket_only' ? 'bg-brand-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                    {{ open: '受付中', before_open: '受付前', ticket_only: '整理券のみ受付', closed: '受付終了'}[hqGroup.reception_status]}
                   </div>
                 </div>
               </div>
@@ -418,12 +408,12 @@ const HQDashboard = () => {
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">セッション管理</span>
                         <button
-                          onClick={() => requireConfirm(`${selectedDept}部門 全団体のセッションを\n【強制ログアウト】させますか？`, () => handleBulkLogout(), '強制ログアウト')}
+                          onClick={() => requireConfirm(`${selectedDept}部門 全団体のセッションを\n【強制終了】させますか？`, () => handleBulkLogout(), '強制終了')}
                           disabled={isBulkUpdating}
                           className="py-5 rounded-xl bg-slate-900 text-white text-[10px] md:text-[11px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
                         >
                           <LogOut size={16} strokeWidth={2.5} />
-                          <span>強制ログアウト</span>
+                          <span>強制終了</span>
                         </button>
                       </div>
                     </div>
@@ -484,18 +474,28 @@ const HQDashboard = () => {
                         </td>
                         <td className="px-10 py-8 border-l border-slate-50">
                           <div className="flex items-center justify-center gap-4 flex-wrap max-w-[600px] mx-auto text-center">
-                            <div className="flex items-center gap-3">
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-500' : g.reception_status === 'before_open' ? 'bg-slate-300' : 'bg-emerald-500 animate-pulse'}`}></div>
-                                {g.reception_status === 'closed' || g.reception_status === 'ended' ? '受付終了' : g.reception_status === 'before_open' ? '受付前' : '受付中'}
+                            {g.has_reception && (
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${
+                                g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : 
+                                g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' : 
+                                g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
+                                'bg-emerald-50 border-emerald-100 text-emerald-600'
+                              }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${
+                                  g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-500' : 
+                                  g.reception_status === 'before_open' ? 'bg-slate-300' : 
+                                  g.reception_status === 'ticket_only' ? 'bg-brand-500 animate-pulse' :
+                                  'bg-emerald-500 animate-pulse'
+                                }`}></div>
+                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ受付', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
                               </div>
-                              <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 text-[10px] font-black transition-all ${g.editing_locked
-                                ? 'bg-rose-50 text-rose-600 border-rose-100'
-                                : 'bg-slate-50 text-slate-400 border-slate-100'
-                                }`}>
-                                {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
-                                <span>{g.editing_locked ? '編集ロック中' : '編集許可中'}</span>
-                              </div>
+                            )}
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 text-[10px] font-black transition-all ${g.editing_locked
+                              ? 'bg-rose-50 text-rose-600 border-rose-100'
+                              : 'bg-slate-50 text-slate-400 border-slate-100'
+                              }`}>
+                              {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
+                              <span>{g.editing_locked ? '編集ロック中' : '編集許可中'}</span>
                             </div>
                             {g.has_waiting_time && g.reception_status !== 'closed' && g.reception_status !== 'ended' && g.reception_status !== 'before_open' && (
                               <div className={`px-4 py-2 rounded-2xl text-[10px] font-black border-2 ${
@@ -517,7 +517,7 @@ const HQDashboard = () => {
                                 {{ distributing: '配布中', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
                               </div>
                             )}
-                            {selectedDept === '公演' && (
+                            {selectedDept === '公演' && g.performances?.length > 0 && (
                               <div className="flex flex-col gap-1.5 min-w-[280px]">
                                 {g.performances.sort((a, b) => {
                                   if (a.part_id !== b.part_id) return a.part_id - b.part_id;
@@ -533,7 +533,7 @@ const HQDashboard = () => {
                                         {{ before_open: '受付前', ticket_only: '整理券のみ', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
                                       </span>
                                       <span className={`text-[8px] font-black ${p.status === 'none' ? 'text-slate-300' : 'text-slate-500'}`}>
-                                        整理券: {{ none: '-(なし)', distributing: '配布中', ended: '終了' }[p.status] || p.status}
+                                        {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[p.status] || p.status}
                                       </span>
                                     </div>
                                   </div>
@@ -560,12 +560,12 @@ const HQDashboard = () => {
                               <span className="font-black text-sm">編集</span>
                             </button>
                             <button
-                              onClick={() => requireConfirm('強制ログアウトを実行しますか？', async () => {
+                              onClick={() => requireConfirm('セッションを\n【強制終了】させますか？', async () => {
                                 await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
                                 await fetchData();
-                              }, '強制ログアウト実行')}
+                              }, '強制終了')}
                               className="w-12 h-12 bg-white border border-slate-100 text-slate-300 rounded-2xl hover:bg-rose-50 hover:border-rose-100 hover:text-rose-500 transition-all shadow-sm flex items-center justify-center group"
-                              title="強制ログアウト"
+                              title="強制終了"
                             >
                               <LogOut size={20} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" />
                             </button>
@@ -613,10 +613,10 @@ const HQDashboard = () => {
                           <span className="font-black text-xs whitespace-nowrap">編集</span>
                         </button>
                         <button
-                          onClick={() => requireConfirm('強制ログアウトさせますか？', async () => {
+                          onClick={() => requireConfirm('セッションを\n【強制終了】させますか？', async () => {
                             await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
                             await fetchData();
-                          }, '強制ログアウト')}
+                          }, '強制終了')}
                           className="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-300 rounded-xl flex items-center justify-center active:scale-90 shadow-sm"
                         >
                           <LogOut size={16} strokeWidth={2.5} />
@@ -625,17 +625,24 @@ const HQDashboard = () => {
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">現在のステータス</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">現在の状況</span>
                         <div className="flex items-center gap-2">
-                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : g.reception_status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
-                            {g.reception_status === 'closed' || g.reception_status === 'ended' ? '受付終了' : g.reception_status === 'before_open' ? '受付前' : '受付中'}
-                          </div>
+                          {g.has_reception && (
+                            <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${
+                              g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : 
+                              g.reception_status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' : 
+                              g.reception_status === 'ticket_only' ? 'bg-brand-100 border-brand-200 text-brand-600' :
+                              'bg-emerald-100 border-emerald-200 text-emerald-600'
+                            }`}>
+                              {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
+                            </div>
+                          )}
                           <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 transition-all ${g.editing_locked
                             ? 'bg-rose-50 text-rose-600 border-rose-100'
                             : 'bg-slate-50 text-slate-400 border-slate-100'
                             }`}>
                             {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
-                            {g.editing_locked ? 'ロック済' : '許可中'}
+                            {g.editing_locked ? 'ロック中' : '許可中'}
                           </div>
                         </div>
                       </div>
@@ -656,7 +663,7 @@ const HQDashboard = () => {
                             'bg-slate-50 border-slate-100 text-slate-400'
                           }`}>
                             <Ticket size={12} strokeWidth={3} />
-                            {{ distributing: '配布中', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
+                            {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
                           </div>
                         </div>
                       )}
@@ -676,7 +683,7 @@ const HQDashboard = () => {
                                   {{ before_open: '前', ticket_only: '券', closed: '終', open: '中' }[p.reception_status]}
                                 </span>
                                 <span className="text-[8px] font-black text-slate-500">
-                                  {{ none: '無し', distributing: '配布中', ended: '終了' }[p.status]}
+                                  {{ none: '配布無し', distributing: '配布中', ended: '配布終了' }[p.status]}
                                 </span>
                               </div>
                             </div>
@@ -840,14 +847,14 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
   };
 
   const handleForceLogout = async () => {
-    if (!window.confirm('この団体を強制ログアウトさせますか？\n（次回のアクセス時にパスワードが再要求されます）')) return;
+    if (!window.confirm('この団体のセッションを\n【強制終了】させますか？')) return;
     setIsSaving(true);
     try {
       await supabase.from('groups').update({
         last_reset_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }).eq('id', group.id);
-      alert('強制ログアウトを実行しました');
+      alert('セッションを強制終了しました');
       await onSave();
     } catch (error) {
       console.error('Logout error:', error);
@@ -903,7 +910,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
           </div>
 
             <div className="space-y-6">
-              {(group.has_reception || group.has_waiting_time || group.has_ticket_status) ? (
+              {(!group.has_performances && (group.has_reception || group.has_waiting_time || group.has_ticket_status)) ? (
                 <>
                   <div className="flex items-center gap-4">
                     <div className="h-px flex-1 bg-slate-100"></div>
@@ -915,16 +922,22 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                     {group.has_reception && (
                       <div className="space-y-4">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
-                        <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
-                          {['before_open', 'open', 'closed'].map(s => (
-                            <button
-                              key={s}
-                              onClick={() => setEditData(prev => ({ ...prev, reception_status: s }))}
-                              className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${editData.reception_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
-                            >
-                              {{ before_open: '受付前', open: '受付中', closed: '終了' }[s]}
-                            </button>
-                          ))}
+                        <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1 overflow-x-auto scrollbar-hide">
+                          {(() => {
+                            const options = ['before_open', 'open', 'closed'];
+                            if (editData.ticket_status === 'distributing' || editData.ticket_status === 'ended') {
+                              options.splice(2, 0, 'ticket_only');
+                            }
+                            return options.map(s => (
+                              <button
+                                key={s}
+                                onClick={() => setEditData(prev => ({ ...prev, reception_status: s }))}
+                                className={`flex-1 min-w-fit px-3 py-3 rounded-xl text-[10px] font-black transition-all ${editData.reception_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                              >
+                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                              </button>
+                            ));
+                          })()}
                         </div>
                       </div>
                     )}
@@ -998,16 +1011,22 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-3">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
-                          <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1 overflow-x-auto scrollbar-hide">
-                            {['before_open', 'open', 'ticket_only', 'closed'].map(s => (
-                              <button
-                                key={s}
-                                onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
-                                className={`px-2 py-2 rounded-lg text-[8px] font-black whitespace-nowrap transition-all ${perf.reception_status === s ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                              >
-                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ受付', closed: '受付終了' }[s]}
-                              </button>
-                            ))}
+                          <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
+                            {(() => {
+                              const options = ['before_open', 'open', 'closed'];
+                              if (perf.status === 'distributing' || perf.status === 'ended') {
+                                options.splice(2, 0, 'ticket_only');
+                              }
+                              return options.map(s => (
+                                <button
+                                  key={s}
+                                  onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
+                                  className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all ${perf.reception_status === s ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                  {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                                </button>
+                              ));
+                            })()}
                           </div>
                         </div>
                         <div className="space-y-3">
@@ -1017,7 +1036,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                               <button
                                 key={s}
                                 onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
-                                className={`flex-1 py-2 rounded-lg text-[8px] font-black transition-all ${perf.status === s ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all ${perf.status === s ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                               >
                                 {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
                               </button>
