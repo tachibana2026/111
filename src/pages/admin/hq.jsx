@@ -24,6 +24,28 @@ const formatDateTime = (isoString) => {
   return `${m}/${d} ${h}:${min}`;
 };
 
+const formatRelativeTime = (isoString) => {
+  if (!isoString) return 'データなし';
+  const now = new Date();
+  const date = new Date(isoString);
+  const diffMs = now - date;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
+
+  if (diffMins < 3) return 'たった今';
+  if (diffMins < 60) return `${diffMins}分前`;
+  if (diffHours < 24) return `${diffHours}時間前`;
+  if (diffDays < 7) return `${diffDays}日前`;
+  if (diffWeeks < 4) return `${diffWeeks}週間前`;
+  if (diffMonths < 12) return `${diffMonths}か月前`;
+  return `${diffYears}年前`;
+};
+
 const renderFormattedMessage = (message) => {
   if (!message) return null;
   const parts = message.split(/(【[^】]+】)/g);
@@ -52,6 +74,17 @@ const HQDashboard = () => {
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [editingLostFound, setEditingLostFound] = useState(null);
   const [isLostFoundModalOpen, setIsLostFoundModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (confirmDialog.isOpen || isEditModalOpen || isLostFoundModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [confirmDialog.isOpen, isEditModalOpen, isLostFoundModalOpen]);
 
   const router = useRouter();
 
@@ -138,6 +171,14 @@ const HQDashboard = () => {
           .in('group_id', groupIds);
       }
 
+      // Update parent group's updated_at to reflect bulk changes on public page
+      const affectedGroupIds = filteredGroups.map(g => g.id);
+      if (affectedGroupIds.length > 0) {
+        await supabase.from('groups')
+          .update({ updated_at: new Date().toISOString() })
+          .in('id', affectedGroupIds);
+      }
+
       await fetchData();
       triggerRevalidate();
     } catch (error) {
@@ -153,7 +194,10 @@ const HQDashboard = () => {
       const filteredGroups = groups.filter(g => g.group_activities.some(a => a.department === selectedDept));
       const groupIds = filteredGroups.map(g => g.id);
       if (groupIds.length > 0) {
-        await supabase.from('groups').update({ editing_locked: locked }).in('id', groupIds);
+        await supabase.from('groups').update({ 
+          editing_locked: locked,
+          updated_at: new Date().toISOString() 
+        }).in('id', groupIds);
       }
       await fetchData();
       triggerRevalidate();
@@ -170,9 +214,14 @@ const HQDashboard = () => {
       const filteredGroups = groups.filter(g => g.group_activities.some(a => a.department === selectedDept));
       const groupIds = filteredGroups.map(g => g.id);
       if (groupIds.length > 0) {
-        await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).in('id', groupIds);
+        await supabase.from('groups').update({ 
+          last_reset_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }).in('id', groupIds);
       }
       await fetchData();
+      triggerRevalidate();
+
     } catch (error) {
       console.error('Bulk logout error:', error);
     } finally {
@@ -246,8 +295,8 @@ const HQDashboard = () => {
                           <RefreshCw className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className="text-base md:text-lg font-black text-slate-900 tracking-tight">一括管理コントロール</h3>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedDept}カテゴリ対象</p>
+                          <h3 className="text-base md:text-lg font-black text-slate-900 tracking-tight">一括編集ボタン</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">対象：{selectedDept}部門</p>
                         </div>
                       </div>
                     </div>
@@ -255,21 +304,31 @@ const HQDashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                       {/* Group 1: Reception */}
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付ステータス</span>
-                        <div className="grid grid-cols-2 gap-2">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</span>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の受付状況を\n【受付前】にしますか？`, () => handleBulkStatusUpdate('before_open'), '一括受付前')}
+                            disabled={isBulkUpdating}
+                            className="py-5 rounded-xl bg-slate-50 text-slate-500 text-[10px] md:text-[11px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
+                          >
+                            <Clock size={16} strokeWidth={2.5} />
+                            <span>受付前</span>
+                          </button>
                           <button
                             onClick={() => requireConfirm(`${selectedDept}部門 全団体の受付状況を\n【受付中】にしますか？`, () => handleBulkStatusUpdate('open'), '受付開始')}
                             disabled={isBulkUpdating}
-                            className="py-3.5 rounded-xl bg-emerald-50 text-emerald-600 text-[11px] font-black border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                            className="py-5 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] md:text-[11px] font-black border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
                           >
-                            <CheckCircle2 size={14} /> 受付開始
+                            <CheckCircle2 size={16} strokeWidth={2.5} />
+                            <span>受付開始</span>
                           </button>
                           <button
                             onClick={() => requireConfirm(`${selectedDept}部門 全団体の受付状況を\n【受付終了】にしますか？`, () => handleBulkStatusUpdate('closed'), '受付終了')}
                             disabled={isBulkUpdating}
-                            className="py-3.5 rounded-xl bg-rose-50 text-rose-600 text-[11px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                            className="py-5 rounded-xl bg-rose-50 text-rose-600 text-[10px] md:text-[11px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
                           >
-                            <XCircle size={14} /> 受付終了
+                            <XCircle size={16} strokeWidth={2.5} />
+                            <span>受付終了</span>
                           </button>
                         </div>
                       </div>
@@ -281,16 +340,18 @@ const HQDashboard = () => {
                           <button
                             onClick={() => requireConfirm(`${selectedDept}部門 全団体の編集権限を\n【剥奪】しますか？`, () => handleBulkLockUpdate(true), '権限剥奪')}
                             disabled={isBulkUpdating}
-                            className="py-3.5 rounded-xl bg-amber-50 text-amber-600 text-[11px] font-black border border-amber-100 hover:bg-amber-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                            className="py-5 rounded-xl bg-rose-50 text-rose-600 text-[10px] md:text-[11px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
                           >
-                            <Lock size={14} /> 一括ロック
+                            <Lock size={16} strokeWidth={2.5} />
+                            <span>一括ロック</span>
                           </button>
                           <button
                             onClick={() => requireConfirm(`${selectedDept}部門 全団体の編集権限を\n【付与】しますか？`, () => handleBulkLockUpdate(false), '権限付与')}
                             disabled={isBulkUpdating}
-                            className="py-3.5 rounded-xl bg-slate-50 text-slate-500 text-[11px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                            className="py-5 rounded-xl bg-slate-50 text-slate-500 text-[10px] md:text-[11px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
                           >
-                            <Unlock size={14} /> 一括解除
+                            <Unlock size={16} strokeWidth={2.5} />
+                            <span>一括解除</span>
                           </button>
                         </div>
                       </div>
@@ -301,9 +362,10 @@ const HQDashboard = () => {
                         <button
                           onClick={() => requireConfirm(`${selectedDept}部門 全団体のセッションを\n【強制ログアウト】させますか？`, () => handleBulkLogout(), '強制ログアウト')}
                           disabled={isBulkUpdating}
-                          className="py-3.5 rounded-xl bg-slate-900 text-white text-[11px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                          className="py-5 rounded-xl bg-slate-900 text-white text-[10px] md:text-[11px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
                         >
-                          <LogOut size={14} /> 強制ログアウト
+                          <LogOut size={16} strokeWidth={2.5} />
+                          <span>強制ログアウト</span>
                         </button>
                       </div>
                     </div>
@@ -337,6 +399,7 @@ const HQDashboard = () => {
                   <tr>
                     <th className="px-10 py-8">団体情報</th>
                     <th className="px-10 py-8 text-center border-l border-slate-50">現在公開中の情報</th>
+                    <th className="px-10 py-8 text-center border-l border-slate-50">最終更新日時</th>
                     <th className="px-10 py-8 text-center border-l border-slate-50">操作</th>
                   </tr>
                 </thead>
@@ -358,12 +421,12 @@ const HQDashboard = () => {
                         <td className="px-10 py-8 border-l border-slate-50">
                           <div className="flex flex-col items-center gap-4">
                             <div className="flex items-center gap-3">
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-500' : 'bg-emerald-500 animate-pulse'}`}></div>
-                                {act.status === 'closed' || act.status === 'ended' ? 'CLOSED' : 'OPEN'}
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : act.status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-500' : act.status === 'before_open' ? 'bg-slate-300' : 'bg-emerald-500 animate-pulse'}`}></div>
+                                {act.status === 'closed' || act.status === 'ended' ? '受付終了' : act.status === 'before_open' ? '受付前' : '受付中'}
                               </div>
                               <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[10px] font-black ${g.editing_locked
-                                ? 'bg-amber-50 text-amber-600 border-amber-100'
+                                ? 'bg-rose-50 text-rose-600 border-rose-100'
                                 : 'bg-slate-50 text-slate-400 border-slate-100'
                                 }`}>
                                 {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
@@ -372,7 +435,7 @@ const HQDashboard = () => {
                             </div>
                             {['体験', '食品', '物販'].includes(selectedDept) && (
                               <div className="text-sm font-black text-slate-700">
-                                {act.status === 'closed' ? '-' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`)}
+                                {act.status === 'closed' ? '-' : (act.status === 'before_open' ? '' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`))}
                               </div>
                             )}
                             {selectedDept === '冊子' && (
@@ -408,6 +471,11 @@ const HQDashboard = () => {
                               </div>
                             )}
                           </div>
+                        </td>
+                        <td className="px-10 py-8 border-l border-slate-50 text-center">
+                          <span className="text-[11px] font-black text-slate-400">
+                            {formatRelativeTime(g.updated_at)}
+                          </span>
                         </td>
                         <td className="px-10 py-8 border-l border-slate-50">
                           <div className="flex items-center justify-center gap-3">
@@ -451,6 +519,9 @@ const HQDashboard = () => {
                         <div className="flex items-center gap-2">
                           <span className="font-black text-slate-900 text-base leading-tight truncate">{g.name}</span>
                           <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold shrink-0">{g.room}</span>
+                          <span className="text-[10px] font-black text-slate-300 shrink-0">
+                            {formatRelativeTime(g.updated_at).replace('更新: ', '')}
+                          </span>
                         </div>
                         <p className="text-[11px] text-brand-600 font-bold line-clamp-1">{g.title || 'Official Program'}</p>
                       </div>
@@ -480,11 +551,11 @@ const HQDashboard = () => {
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">現在のステータス</span>
                         <div className="flex items-center gap-2">
-                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
-                            {act.status === 'closed' || act.status === 'ended' ? 'CLOSED' : 'OPEN'}
+                          <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${act.status === 'closed' || act.status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : act.status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' : 'bg-emerald-100 border-emerald-200 text-emerald-600'}`}>
+                            {act.status === 'closed' || act.status === 'ended' ? '受付終了' : act.status === 'before_open' ? '受付前' : '受付中'}
                           </div>
                           <div className={`px-3 py-1.5 rounded-full text-[10px] font-black flex items-center gap-1.5 border ${g.editing_locked
-                            ? 'bg-amber-100 text-amber-700 border-amber-200'
+                            ? 'bg-rose-100 text-rose-700 border-rose-200'
                             : 'bg-slate-100 text-slate-500 border-slate-200'
                             }`}>
                             {g.editing_locked ? <Lock size={10} strokeWidth={3} /> : <Unlock size={10} strokeWidth={3} />}
@@ -496,7 +567,7 @@ const HQDashboard = () => {
                         <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
                           <span className="text-[10px] font-black text-slate-400">待ち時間</span>
                           <span className="text-sm font-black text-slate-700">
-                            {act.status === 'closed' ? '-' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`)}
+                            {act.status === 'closed' ? '-' : (act.status === 'before_open' ? '' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`))}
                           </span>
                         </div>
                       )}
@@ -522,7 +593,7 @@ const HQDashboard = () => {
                                   {{ before_open: '前', ticket_only: '券', closed: '終', open: '中' }[p.reception_status]}
                                 </span>
                                 <span className="text-[8px] font-black text-slate-500">
-                                  {{ none: '-(無)', distributing: '配中', ended: '終了' }[p.status]}
+                                  {{ none: '無し', distributing: '配布中', ended: '終了' }[p.status]}
                                 </span>
                               </div>
                             </div>
@@ -715,9 +786,6 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
             </div>
             <p className="text-sm font-bold text-slate-400">{group.title || 'Official Program'}</p>
           </div>
-          <button onClick={onClose} className="w-12 h-12 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all">
-            <XCircle size={24} />
-          </button>
         </div>
 
         {/* Modal Body */}
@@ -771,13 +839,13 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                           </button>
                         ))
                       ) : (
-                        ['open', 'closed'].map(s => (
+                        ['before_open', 'open', 'closed'].map(s => (
                           <button
                             key={s}
                             onClick={() => setActivities(prev => prev.map(a => a.id === act.id ? { ...a, status: s } : a))}
                             className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${act.status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
                           >
-                            {s === 'open' ? '受付中' : '受付終了'}
+                            {{ before_open: '受付前', open: '受付中', closed: '終了' }[s]}
                           </button>
                         ))
                       )}
@@ -915,9 +983,6 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between">
           <h2 className="text-xl md:text-2xl font-black text-slate-900">落とし物登録・編集</h2>
-          <button onClick={onClose} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all">
-            <XCircle size={20} />
-          </button>
         </div>
         <div className="p-6 md:p-10 space-y-6 overflow-y-auto">
           <div className="space-y-2">

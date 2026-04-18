@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Filter, SortDesc, Instagram, Twitter, ExternalLink, MapPin, ChevronDown } from 'lucide-react';
+import { Filter, SortDesc, Instagram, Twitter, ExternalLink, MapPin, ChevronDown, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
@@ -62,7 +62,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                 {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] uppercase tracking-tighter animate-pulse">次</span>}
               </div>
               <div className="flex flex-col gap-0.5">
-                <div className={`text-[9px] font-black ${currentReception === 'closed' ? 'text-rose-500' : currentReception === 'ticket_only' ? 'text-brand-600' : currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>{receptionStatus}</div>
+                <div className={`text-[9px] font-black ${currentReception === 'closed' ? 'text-rose-500' : currentReception === 'ticket_only' ? 'text-amber-600' : currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>{receptionStatus}</div>
                 <div className="text-[9px] font-bold opacity-70">{ticketStatus}</div>
               </div>
             </div>
@@ -71,6 +71,28 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
       </div>
     </div>
   );
+};
+
+const formatRelativeTime = (isoString) => {
+  if (!isoString) return 'データなし';
+  const now = new Date();
+  const date = new Date(isoString);
+  const diffMs = now - date;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
+
+  if (diffMins < 3) return 'たった今';
+  if (diffMins < 60) return `${diffMins}分前`;
+  if (diffHours < 24) return `${diffHours}時間前`;
+  if (diffDays < 7) return `${diffDays}日前`;
+  if (diffWeeks < 4) return `${diffWeeks}週間前`;
+  if (diffMonths < 12) return `${diffMonths}か月前`;
+  return `${diffYears}年前`;
 };
 
 const Groups = ({ initialGroups }) => {
@@ -83,6 +105,17 @@ const Groups = ({ initialGroups }) => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedPerf, setSelectedPerf] = useState(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  useEffect(() => {
+    if (selectedPerf) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedPerf]);
 
   // Note: Client-side fetching and Realtime subscriptions are disabled 
   // to protect the free tier from heavy traffic.
@@ -97,6 +130,7 @@ const Groups = ({ initialGroups }) => {
     }
 
     if (status === 'closed') return 'bg-slate-50 border-slate-200 text-slate-500';
+    if (status === 'before_open') return 'bg-slate-50 border-slate-200 text-slate-400';
 
     if (department === '展示' || department === '公演') {
       return 'bg-emerald-50 border-emerald-200 text-emerald-600';
@@ -117,6 +151,7 @@ const Groups = ({ initialGroups }) => {
     }
 
     if (status === 'closed') return '受付終了';
+    if (status === 'before_open') return '受付前';
     if (department === '展示') return '受付中';
     if (department === '公演') return '公演情報';
 
@@ -190,7 +225,7 @@ const Groups = ({ initialGroups }) => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-8 shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm overflow-hidden">
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
             className="w-full flex items-center justify-between group"
@@ -200,7 +235,7 @@ const Groups = ({ initialGroups }) => {
                 <Filter size={20} strokeWidth={2.5} />
               </div>
               <div className="text-left">
-                <h2 className="text-xl font-black tracking-tight">フィルター表示</h2>
+                <h2 className="text-xl font-black tracking-tight">フィルター</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">学年・部門・場所で絞り込む</p>
               </div>
             </div>
@@ -279,16 +314,21 @@ const Groups = ({ initialGroups }) => {
             <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
               <SortDesc size={14} className="text-brand-600/50" /> 並び替え
             </span>
-            <select
-              className="custom-select min-w-[180px]"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="class">クラス順</option>
-              <option value="area">エリア順</option>
-              <option value="time-asc">待ち時間 (短い順)</option>
-              <option value="time-desc">待ち時間 (長い順)</option>
-            </select>
+            <div className="relative group">
+              <select
+                className="w-full min-w-[180px] bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 pl-5 pr-12 text-xs font-black text-slate-700 outline-none transition-all focus:border-brand-500 focus:bg-white appearance-none cursor-pointer"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="class">クラス順</option>
+                <option value="area">エリア順</option>
+                <option value="time-asc">待ち時間 (短い順)</option>
+                <option value="time-desc">待ち時間 (長い順)</option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-brand-600 transition-colors">
+                <ChevronDown size={14} strokeWidth={3} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -302,7 +342,7 @@ const Groups = ({ initialGroups }) => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.2 }}
-              className={`bg-white border border-slate-100 rounded-[2rem] p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.group_activities.every(a => a.status === 'closed' || a.status === 'ended') ? 'opacity-60 saturate-50' : ''}`}
+              className={`bg-white border border-slate-100 rounded-3xl p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.group_activities.every(a => a.status === 'closed' || a.status === 'ended') ? 'opacity-60 saturate-50' : ''}`}
             >
               <div className="flex justify-between items-start mb-5">
                 <div className="flex-1 min-w-0 pr-2">
@@ -392,12 +432,9 @@ const Groups = ({ initialGroups }) => {
                     </a>
                   )}
                 </div>
-                <div className="text-[10px] font-bold text-slate-300 tracking-tighter">
-                  {group.updated_at ? (
-                    `更新: ${Math.floor((new Date() - new Date(group.updated_at)) / 60000)}分前`
-                  ) : (
-                    'データなし'
-                  )}
+                <div className={`flex items-center gap-1 text-[9px] font-black text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100 ${!group.updated_at ? 'opacity-50' : ''}`}>
+                  {group.updated_at && <RefreshCw size={8} />}
+                  <span>更新: {formatRelativeTime(group.updated_at)}</span>
                 </div>
               </div>
             </motion.div>
@@ -416,7 +453,7 @@ const Groups = ({ initialGroups }) => {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedPerf(null)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl border border-slate-100 space-y-8"
+              className="bg-white rounded-[2rem] p-10 max-w-sm w-full shadow-2xl border border-slate-100 space-y-8"
               onClick={e => e.stopPropagation()}
             >
               <div className="space-y-4">
@@ -436,7 +473,7 @@ const Groups = ({ initialGroups }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">公演受付</span>
-                    <span className={`text-[10px] sm:text-sm font-black text-center ${selectedPerf.currentReception === 'closed' ? 'text-rose-500' : selectedPerf.currentReception === 'ticket_only' ? 'text-brand-600' : selectedPerf.currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
+                    <span className={`text-sm font-black text-center ${selectedPerf.currentReception === 'closed' ? 'text-rose-500' : selectedPerf.currentReception === 'ticket_only' ? 'text-amber-600' : selectedPerf.currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
                       {getReceptionLabel(selectedPerf.currentReception || 'open')}
                     </span>
                   </div>

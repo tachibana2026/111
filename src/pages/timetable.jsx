@@ -23,6 +23,17 @@ const Timetable = ({ initialPerformances }) => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedPerf, setSelectedPerf] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    if (selectedPerf) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedPerf]);
   const scrollContainerRef = useRef(null);
 
   useEffect(() => {
@@ -162,13 +173,14 @@ const Timetable = ({ initialPerformances }) => {
             <h1 className="text-4xl font-black tracking-tight">タイムテーブル</h1>
           </div>
 
-          <div className="flex w-full p-1.5 bg-slate-100 rounded-[1.5rem] border border-slate-200/50 shadow-inner">
+          <div className="flex w-full p-1.5 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2rem] border border-slate-200/50 shadow-inner">
             {PARTS.map(part => (
               <button
                 key={part.id}
                 onClick={() => setActivePart(part.id)}
-                className={`flex-1 px-4 py-3 rounded-[1.2rem] text-xs font-black transition-all flex items-center justify-center ${activePart === part.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-[1.5rem] text-[13px] md:text-sm font-black transition-all flex items-center justify-center gap-2 ${activePart === part.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
               >
+                 <Clock size={14} className={activePart === part.id ? 'text-brand-600' : 'text-slate-400'} />
                 {part.name}
               </button>
             ))}
@@ -247,7 +259,7 @@ const Timetable = ({ initialPerformances }) => {
                                 const computedTicket = (isOver && perf.status !== 'none') ? 'ended' : perf.status;
                                 return (
                                   <>
-                                    <span className={`text-[8px] font-black uppercase tracking-tight px-1.5 py-0.5 rounded-md inline-block w-fit ${currentReception === 'closed' ? 'bg-rose-500 text-white' : currentReception === 'ticket_only' ? 'bg-brand-600 text-white' : currentReception === 'before_open' ? 'bg-slate-400 text-white' : 'bg-emerald-500 text-white'
+                                    <span className={`text-[8px] font-black uppercase tracking-tight px-1.5 py-0.5 rounded-md inline-block w-fit ${currentReception === 'closed' ? 'bg-rose-500 text-white' : currentReception === 'ticket_only' ? 'bg-amber-500 text-white' : currentReception === 'before_open' ? 'bg-slate-400 text-white' : 'bg-emerald-500 text-white'
                                       }`}>
                                       {currentReception === 'ticket_only' ? '整理券のみ' : getReceptionLabel(currentReception)}
                                     </span>
@@ -275,7 +287,7 @@ const Timetable = ({ initialPerformances }) => {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedPerf(null)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="bg-white rounded-[2.5rem] p-10 max-w-sm w-full shadow-2xl border border-slate-100 space-y-8"
+              className="bg-white rounded-[2rem] p-10 max-w-sm w-full shadow-2xl border border-slate-100 space-y-8"
               onClick={e => e.stopPropagation()}
             >
               <div className="space-y-4">
@@ -295,7 +307,7 @@ const Timetable = ({ initialPerformances }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">公演受付</span>
-                    <span className={`text-[10px] sm:text-sm font-black text-center ${selectedPerf.currentReception === 'closed' ? 'text-rose-500' : selectedPerf.currentReception === 'ticket_only' ? 'text-brand-600' : selectedPerf.currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
+                    <span className={`text-sm font-black text-center ${selectedPerf.currentReception === 'closed' ? 'text-rose-500' : selectedPerf.currentReception === 'ticket_only' ? 'text-amber-600' : selectedPerf.currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
                       {getReceptionLabel(selectedPerf.currentReception || 'open')}
                     </span>
                   </div>

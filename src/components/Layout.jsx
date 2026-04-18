@@ -39,7 +39,7 @@ const Layout = ({ children }) => {
         <title>{getPageTitle()}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="google-site-verification" content="vPtf7XF5A3UF7EC6PKbwyGE3bvmheVPGOQvMzfO1PqM" />
-        {pathname !== '/' && <meta name="robots" content="noindex, nofollow" />}
+        {!(pathname === '/' || pathname === '/groups' || pathname === '/timetable' || pathname === '/lost-found') && <meta name="robots" content="noindex, nofollow" />}
         <meta name="description" content="千葉県立船橋高等学校 文化祭公式サイト" />
         
         {/* Open Graph / Facebook */}

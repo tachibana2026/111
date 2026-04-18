@@ -17,24 +17,25 @@ const LostFound = ({ initialItems }) => {
 
   return (
     <div className="space-y-10 pb-12">
-      <div className="flex flex-col space-y-4">
-        <div className="flex items-center space-x-3 text-slate-900">
-          <div className="w-1.5 h-8 bg-brand-600 rounded-full"></div>
-          <h1 className="text-3xl font-black tracking-tight">落とし物情報</h1>
+      <div className="flex flex-col space-y-6">
+        <div className="flex items-center space-x-4 text-slate-900">
+          <div className="w-2 h-10 bg-brand-600 rounded-full shadow-lg shadow-brand-500/20"></div>
+          <h1 className="text-4xl font-black tracking-tight">落とし物情報</h1>
         </div>
-        <p className="text-slate-500 text-sm font-medium">本部で預かっている落とし物の一覧です。</p>
+        <p className="text-slate-500 text-base font-bold ml-1">本部で預かっている落とし物の一覧です。</p>
       </div>
 
       {/* Guide Section */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 space-y-4 shadow-sm">
+      <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-10 space-y-6 shadow-sm overflow-hidden relative">
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-50 rounded-full blur-3xl -z-10" />
         <div className="flex items-center gap-4">
-          <div className="bg-brand-50 p-3 rounded-xl text-brand-600 shadow-sm shrink-0">
+          <div className="bg-brand-50 p-3 rounded-2xl text-brand-600 shadow-sm transition-transform group-hover:scale-110">
             <Info size={24} strokeWidth={2.5} />
           </div>
-          <h2 className="text-xl font-black text-slate-900">受け取り方法</h2>
+          <h2 className="text-2xl font-black text-slate-900">受け取り方法</h2>
         </div>
-        <p className="text-slate-600 leading-relaxed font-bold">
-          心当たりのある方は、<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (仮校舎2F)</span>までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
+        <p className="text-slate-600 leading-relaxed font-bold text-base">
+          心当たりのある方は、<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (仮校舎2F)</span> までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
         </p>
       </div>
 
@@ -43,10 +44,10 @@ const LostFound = ({ initialItems }) => {
           {items.map((item, idx) => (
             <motion.div
               key={item.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: idx * 0.03 }}
-              className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 group flex flex-col items-start gap-6 shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white border border-slate-100 rounded-3xl p-8 md:p-10 group flex flex-col items-start gap-8 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300"
             >
               <div className="flex justify-between items-start w-full gap-4">
                 <div className="flex items-start gap-4">

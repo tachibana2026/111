@@ -47,6 +47,17 @@ const GroupDashboard = () => {
   });
 
   useEffect(() => {
+    if (confirmDialog.isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [confirmDialog.isOpen]);
+
+  useEffect(() => {
     const groupId = localStorage.getItem('ryoun_group_id');
     const authType = localStorage.getItem('ryoun_auth_type');
 
@@ -212,13 +223,22 @@ const GroupDashboard = () => {
 
     if (dates.length === 0) return null;
     const latest = new Date(Math.max(...dates));
-    const diffMins = Math.floor((now - latest) / 60000);
-
-    if (diffMins < 1) return 'たった今';
-    if (diffMins < 60) return `${diffMins}分前`;
+    const diffMs = now - latest;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
     const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    if (diffMins < 3) return 'たった今';
+    if (diffMins < 60) return `${diffMins}分前`;
     if (diffHours < 24) return `${diffHours}時間前`;
-    return `${Math.floor(diffHours / 24)}日前`;
+    if (diffDays < 7) return `${diffDays}日前`;
+    if (diffWeeks < 4) return `${diffWeeks}週間前`;
+    if (diffMonths < 12) return `${diffMonths}か月前`;
+    return `${diffYears}年前`;
   }, [group, publishedActivities, publishedPerformances, now]);
 
   if (loading) {
@@ -287,7 +307,7 @@ const GroupDashboard = () => {
             {lastUpdatedText && (
               <div className="text-[9px] font-black text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full flex items-center gap-1.5 border border-slate-100">
                 <RefreshCw size={8} />
-                <span>{lastUpdatedText} 更新</span>
+                <span>更新: {lastUpdatedText}</span>
               </div>
             )}
           </div>
@@ -299,9 +319,9 @@ const GroupDashboard = () => {
                   {act.department === '冊子' ? (
                     { distributing: '配布中', limited: '残りわずか', ended: '配布終了' }[act.status] || '配布中'
                   ) : (['体験', '食品', '物販'].includes(act.department)) ? (
-                    act.status === 'closed' ? '受付終了' : `${act.waiting_time}分待ち`
+                    act.status === 'closed' ? '受付終了' : act.status === 'before_open' ? '受付前' : (act.waiting_time === 0 ? '待ちなし' : `${act.waiting_time}分待ち`)
                   ) : (
-                    act.status === 'open' ? '受付中' : '受付終了'
+                    act.status === 'open' ? '受付中' : act.status === 'before_open' ? '受付前' : '受付終了'
                   )}
                 </span>
               </div>
@@ -319,9 +339,9 @@ const GroupDashboard = () => {
                         <span className="text-[10px] font-bold text-slate-400">Part {perf.part_id} ({perf.start_time})</span>
                         <div className="flex flex-col items-end gap-1">
                           <span className={`text-xs font-black ${displayReception === 'closed' ? 'text-rose-500' :
-                              displayReception === 'before_open' ? 'text-slate-500' :
-                                displayReception === 'ticket_only' ? 'text-brand-500' :
-                                  'text-emerald-500'
+                            displayReception === 'before_open' ? 'text-slate-500' :
+                              displayReception === 'ticket_only' ? 'text-brand-500' :
+                                'text-emerald-500'
                             }`}>
                             {displayReception === 'closed' ? '受付終了' :
                               displayReception === 'before_open' ? '受付前' :
@@ -357,14 +377,18 @@ const GroupDashboard = () => {
               {(act.department !== '冊子' && act.department !== '公演') && (
                 <div className="space-y-4">
                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => handleLocalActivityUpdate(act.id, 'status', 'before_open')}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${act.status === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-lg shadow-slate-400/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                    >受付前</button>
                     <button
                       onClick={() => handleLocalActivityUpdate(act.id, 'status', 'open')}
-                      className={`py-5 rounded-2xl text-sm font-black transition-all border-2 ${act.status === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'}`}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${act.status === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付中</button>
                     <button
                       onClick={() => handleLocalActivityUpdate(act.id, 'status', 'closed')}
-                      className={`py-5 rounded-2xl text-sm font-black transition-all border-2 ${act.status === 'closed' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-lg shadow-rose-500/10' : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'}`}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${act.status === 'closed' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-lg shadow-rose-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付終了</button>
                   </div>
                 </div>
@@ -381,11 +405,10 @@ const GroupDashboard = () => {
                       value={act.status === 'closed' ? 'closed' : act.waiting_time}
                       disabled={act.status === 'closed'}
                       onChange={(e) => handleLocalActivityUpdate(act.id, 'waiting_time', parseInt(e.target.value))}
-                      className={`w-full border-2 rounded-2xl py-5 px-6 font-black transition-all appearance-none focus:outline-none ${
-                        act.status === 'closed' 
-                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' 
+                      className={`w-full border-2 rounded-2xl py-5 px-6 font-black transition-all appearance-none focus:outline-none ${act.status === 'closed'
+                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                           : 'bg-slate-50 border-slate-100 text-slate-700 focus:border-brand-500 cursor-pointer'
-                      }`}
+                        }`}
                     >
                       {act.status === 'closed' ? (
                         <option value="closed">選択不可</option>
