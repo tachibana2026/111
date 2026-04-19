@@ -4,22 +4,20 @@ import {
   Users, PackageSearch, ShieldCheck,
   Lock, Unlock, Plus, RefreshCw, MapPin,
   LogOut, CheckCircle2, Clock, Edit2, XCircle,
-  AlertTriangle, Info, Ticket, Save, Filter
+  AlertTriangle, Info, Ticket, Save, Filter, Loader2,
+  ChevronDown, Search
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerRevalidate } from '../../lib/revalidate';
 import Portal from '../../components/Portal';
 
-const DEPARTMENTS = ['体験', '食品', '公演', '展示', '冊子', '物販'];
+const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
 const formatDateTime = (isoString) => {
   if (!isoString) return '';
-  const date = new Date(isoString);
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  const h = String(date.getHours()).padStart(2, '0');
-  const min = String(date.getMinutes()).padStart(2, '0');
-  return `${m}/${d} ${h}:${min}`;
+  const d = new Date(isoString);
+  const days = ['日', '月', '火', '水', '木', '金', '土'];
+  return `${d.getDate()}日(${days[d.getDay()]}) ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
 const formatRelativeTime = (isoString) => {
   if (!isoString) return 'データなし';
@@ -41,6 +39,20 @@ const formatRelativeTime = (isoString) => {
   if (diffMonths < 12) return `${diffMonths}か月前`;
   return `${diffYears}年前`;
 };
+
+const normalizeString = (str) => {
+  if (!str) return '';
+  let result = str.normalize('NFKC').toLowerCase();
+  result = result.replace(/[年組\-_\s　.,:;!"'()\[\]{}（）]/g, '');
+  result = result.replace(/[\u30a1-\u30f6]/g, (match) => {
+    return String.fromCharCode(match.charCodeAt(0) - 0x60);
+  });
+  return result;
+};
+
+const GRADES = ['すべて', '1年', '2年', '3年', '有志'];
+const BUILDINGS = ['すべて', '仮校舎', '体育館', 'セミナー', '南館'];
+
 const renderFormattedMessage = (message) => {
   if (!message) return null;
   const parts = message.split(/(【[^】]+】)/g);
@@ -57,7 +69,8 @@ const renderFormattedMessage = (message) => {
 };
 const HQDashboard = () => {
   const [activeTab, setActiveTab] = useState('groups');
-  const [selectedDept, setSelectedDept] = useState('体験');
+  const [selectedDept, setSelectedDept] = useState('すべて');
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [groups, setGroups] = useState([]);
   const [lostFound, setLostFound] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,8 +80,14 @@ const HQDashboard = () => {
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [editingLostFound, setEditingLostFound] = useState(null);
   const [isLostFoundModalOpen, setIsLostFoundModalOpen] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterGrade, setFilterGrade] = useState('すべて');
+  const [filterBuilding, setFilterBuilding] = useState('すべて');
   useEffect(() => {
-    if (confirmDialog.isOpen || isEditModalOpen || isLostFoundModalOpen) {
+    if (confirmDialog.isOpen || isEditModalOpen || isLostFoundModalOpen || loading || isBulkUpdating) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -76,7 +95,7 @@ const HQDashboard = () => {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [confirmDialog.isOpen, isEditModalOpen, isLostFoundModalOpen]);
+  }, [confirmDialog.isOpen, isEditModalOpen, isLostFoundModalOpen, loading, isBulkUpdating]);
   const router = useRouter();
   const requireConfirm = (message, onConfirm, confirmText = '実行する', icon = null) => {
     setConfirmDialog({ isOpen: true, message, onConfirm, confirmText, icon });
@@ -113,7 +132,7 @@ const HQDashboard = () => {
     try {
       const { data: gData, error: gError } = await supabase
         .from('groups')
-        .select('id, name, title, building, room, department, updated_at, last_reset_at, editing_locked, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, performances(id, group_id, part_id, start_time, end_time, status, reception_status)')
+        .select('id, name, title, building, room, department, updated_at, last_reset_at, editing_locked, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, name_kana, title_kana, performances(id, group_id, part_id, start_time, end_time, status, reception_status)')
         .order('name');
       if (gError) throw gError;
       if (gData) setGroups(gData);
@@ -129,26 +148,19 @@ const HQDashboard = () => {
   const handleBulkStatusUpdate = async (status) => {
     setIsBulkUpdating(true);
     try {
-      const filteredGroups = groups.filter(g => g.department?.split(',').map(d => d.trim()).includes(selectedDept));
-      const groupIds = filteredGroups.map(g => g.id);
+      const EXCLUDED_ID = '8d112d95-14cb-4eee-8a5f-2580f502668a';
+      const targetGroups = groups.filter(g => 
+        g.id !== EXCLUDED_ID && 
+        !(g.department?.split(',').map(d => d.trim()).includes('公演'))
+      );
+      const groupIds = targetGroups.map(g => g.id);
+      
       if (groupIds.length > 0) {
         await supabase.from('groups')
           .update({ reception_status: status, updated_at: new Date().toISOString() })
           .in('id', groupIds);
       }
-      if (selectedDept === '公演') {
-        const groupIds = filteredGroups.map(g => g.id);
-        await supabase.from('performances')
-          .update({ reception_status: status === 'open' ? 'open' : 'closed', updated_at: new Date().toISOString() })
-          .in('group_id', groupIds);
-      }
-      // Update parent group's updated_at to reflect bulk changes on public page
-      const affectedGroupIds = filteredGroups.map(g => g.id);
-      if (affectedGroupIds.length > 0) {
-        await supabase.from('groups')
-          .update({ updated_at: new Date().toISOString() })
-          .in('id', affectedGroupIds);
-      }
+      
       await fetchData();
       triggerRevalidate();
     } catch (error) {
@@ -160,8 +172,13 @@ const HQDashboard = () => {
   const handleBulkLockUpdate = async (locked) => {
     setIsBulkUpdating(true);
     try {
-      const filteredGroups = groups.filter(g => g.department === selectedDept);
-      const groupIds = filteredGroups.map(g => g.id);
+      const EXCLUDED_ID = '8d112d95-14cb-4eee-8a5f-2580f502668a';
+      const targetGroups = groups.filter(g => 
+        g.id !== EXCLUDED_ID && 
+        !(g.department?.split(',').map(d => d.trim()).includes('公演'))
+      );
+      const groupIds = targetGroups.map(g => g.id);
+
       if (groupIds.length > 0) {
         await supabase.from('groups').update({
           editing_locked: locked,
@@ -179,8 +196,13 @@ const HQDashboard = () => {
   const handleBulkLogout = async () => {
     setIsBulkUpdating(true);
     try {
-      const filteredGroups = groups.filter(g => g.department === selectedDept);
-      const groupIds = filteredGroups.map(g => g.id);
+      const EXCLUDED_ID = '8d112d95-14cb-4eee-8a5f-2580f502668a';
+      const targetGroups = groups.filter(g => 
+        g.id !== EXCLUDED_ID && 
+        !(g.department?.split(',').map(d => d.trim()).includes('公演'))
+      );
+      const groupIds = targetGroups.map(g => g.id);
+      
       if (groupIds.length > 0) {
         await supabase.from('groups').update({
           last_reset_at: new Date().toISOString(),
@@ -204,9 +226,9 @@ const HQDashboard = () => {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-12 pb-12 pt-4 px-4 md:px-0">
+    <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-10 pb-12 pt-4 px-4 md:px-0">
       {/* HQ Header */}
-      <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-10">
+      <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-10">
         <div className="flex items-center space-x-4 md:space-x-8">
           <div className="w-16 h-16 md:w-24 md:h-24 bg-brand-600 text-white rounded-[1.5rem] md:rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-brand-500/30 shrink-0">
             <ShieldCheck className="w-8 h-8 md:w-12 md:h-12" strokeWidth={2.5} />
@@ -280,9 +302,12 @@ const HQDashboard = () => {
           </div>
         );
       })()}
+
+      {/* Header sections moved to activeTab === 'groups' */}
+
       {/* Tabs / Navigation */}
       <div className="flex w-full overflow-hidden pb-2 md:pb-0">
-        <div className="flex w-full p-1.5 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2.5rem] border border-slate-200/50 shadow-inner">
+        <div className="flex w-full p-1 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2.5rem] border border-slate-200/50 shadow-inner">
           {[
             { id: 'groups', label: '団体管理', icon: <Users className="w-4 h-4 md:w-[18px] md:h-[18px]" /> },
             { id: 'lost_found', label: '落とし物', icon: <PackageSearch className="w-4 h-4 md:w-[18px] md:h-[18px]" /> }
@@ -302,109 +327,237 @@ const HQDashboard = () => {
         <div className="space-y-6 md:space-y-10">
           <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3.5rem] shadow-sm overflow-hidden">
             <div className="p-6 md:p-10 border-b border-slate-50 bg-white/50 backdrop-blur-xl">
-              <div className="flex flex-col space-y-4 md:space-y-8 flex-1">
-                <div className="flex flex-col space-y-8">
-                  {/* Bulk Management - Top Visual Refresh */}
-                  <div className="bg-slate-50/50 rounded-[2rem] p-6 md:p-8 border border-white shadow-inner space-y-6 md:space-y-8">
-                    <div className="flex items-center justify-between px-2">
+              <div className="flex flex-col space-y-4 md:space-y-6 flex-1">
+                  {/* Bulk Management Accordion */}
+                  <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100/50 overflow-hidden">
+                    <button
+                      onClick={() => setIsBulkOpen(!isBulkOpen)}
+                      className="w-full px-8 py-5 flex items-center justify-between group hover:bg-slate-100/50 transition-colors"
+                    >
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-brand-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
-                          <RefreshCw className="w-5 h-5" />
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${isBulkOpen ? 'bg-slate-900 text-white rotate-[360deg]' : 'bg-slate-100 text-slate-900 transition-transform group-hover:scale-110'}`}>
+                          <RefreshCw className={`w-5 h-5 ${isBulkUpdating ? 'animate-spin' : ''}`} />
                         </div>
-                        <div>
-                          <h3 className="text-base md:text-lg font-black text-slate-900 tracking-tight">一括編集ボタン</h3>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">対象：{selectedDept}部門</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                      {/* Group 1: Reception */}
-                      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</span>
-                        <div className="grid grid-cols-3 gap-2">
-                          <button
-                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の受付状況を\n【受付前】にしますか？`, () => handleBulkStatusUpdate('before_open'), '一括受付前')}
-                            disabled={isBulkUpdating}
-                            className="py-5 rounded-xl bg-slate-50 text-slate-500 text-[10px] md:text-[11px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
-                          >
-                            <Clock size={16} strokeWidth={2.5} />
-                            <span>受付前</span>
-                          </button>
-                          <button
-                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の受付状況を\n【受付中】にしますか？`, () => handleBulkStatusUpdate('open'), '受付開始')}
-                            disabled={isBulkUpdating}
-                            className="py-5 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] md:text-[11px] font-black border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
-                          >
-                            <CheckCircle2 size={16} strokeWidth={2.5} />
-                            <span>受付開始</span>
-                          </button>
-                          <button
-                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の受付状況を\n【受付終了】にしますか？`, () => handleBulkStatusUpdate('closed'), '受付終了')}
-                            disabled={isBulkUpdating}
-                            className="py-5 rounded-xl bg-rose-50 text-rose-600 text-[10px] md:text-[11px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
-                          >
-                            <XCircle size={16} strokeWidth={2.5} />
-                            <span>受付終了</span>
-                          </button>
+                        <div className="text-left">
+                          <h3 className="text-base font-black text-slate-800 tracking-tight text-lg">全団体一括操作</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">※本部･公演団体を除く</p>
                         </div>
                       </div>
-                      {/* Group 2: Lock Control */}
-                      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">編集権限</span>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の編集権限を\n【剥奪】しますか？`, () => handleBulkLockUpdate(true), '権限剥奪')}
-                            disabled={isBulkUpdating}
-                            className="py-5 rounded-xl bg-rose-50 text-rose-600 text-[10px] md:text-[11px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
-                          >
-                            <Lock size={16} strokeWidth={2.5} />
-                            <span>一括ロック</span>
-                          </button>
-                          <button
-                            onClick={() => requireConfirm(`${selectedDept}部門 全団体の編集権限を\n【付与】しますか？`, () => handleBulkLockUpdate(false), '権限付与')}
-                            disabled={isBulkUpdating}
-                            className="py-5 rounded-xl bg-slate-50 text-slate-500 text-[10px] md:text-[11px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
-                          >
-                            <Unlock size={16} strokeWidth={2.5} />
-                            <span>一括解除</span>
-                          </button>
-                        </div>
+                      <div className={`p-2 rounded-full transition-all duration-300 ${isBulkOpen ? 'bg-slate-900 text-white rotate-180' : 'bg-slate-100 text-slate-400'}`}>
+                        <ChevronDown size={18} />
                       </div>
-                      {/* Group 3: Session Management */}
-                      <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">セッション管理</span>
-                        <button
-                          onClick={() => requireConfirm(`${selectedDept}部門 全団体のセッションを\n【強制終了】させますか？`, () => handleBulkLogout(), '強制終了')}
-                          disabled={isBulkUpdating}
-                          className="py-5 rounded-xl bg-slate-900 text-white text-[10px] md:text-[11px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all disabled:opacity-50 active:scale-95 flex flex-col items-center justify-center gap-2"
+                    </button>
+
+                    <AnimatePresence>
+                      {isBulkOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="px-8 pb-8 pt-2"
                         >
-                          <LogOut size={16} strokeWidth={2.5} />
-                          <span>強制終了</span>
-                        </button>
-                      </div>
-                    </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+                            {/* Group 1: Reception */}
+                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</span>
+                              <div className="grid grid-cols-3 gap-2">
+                                <button
+                                  onClick={() => requireConfirm(`全団体の受付状況を\n【受付前】にしますか？`, () => handleBulkStatusUpdate('before_open'), '受付前')}
+                                  disabled={isBulkUpdating}
+                                  className="py-4 rounded-xl bg-slate-50 text-slate-500 text-[10px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                                >
+                                  <Clock size={14} />
+                                  <span>受付前</span>
+                                </button>
+                                <button
+                                  onClick={() => requireConfirm(`全団体の受付状況を\n【受付中】にしますか？`, () => handleBulkStatusUpdate('open'), '受付開始')}
+                                  disabled={isBulkUpdating}
+                                  className="py-4 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                                >
+                                  <CheckCircle2 size={14} />
+                                  <span>受付開始</span>
+                                </button>
+                                <button
+                                  onClick={() => requireConfirm(`全団体の受付状況を\n【受付終了】にしますか？`, () => handleBulkStatusUpdate('closed'), '受付終了')}
+                                  disabled={isBulkUpdating}
+                                  className="py-4 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                                >
+                                  <XCircle size={14} />
+                                  <span>受付終了</span>
+                                </button>
+                              </div>
+                            </div>
+                            {/* Group 2: Lock Control */}
+                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">編集権限</span>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  onClick={() => requireConfirm(`全団体の編集権限を\n【剥奪】しますか？`, () => handleBulkLockUpdate(true), '権限剥奪')}
+                                  disabled={isBulkUpdating}
+                                  className="py-4 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                                >
+                                  <Lock size={14} />
+                                  <span>権限剥奪</span>
+                                </button>
+                                <button
+                                  onClick={() => requireConfirm(`全団体の編集権限を\n【付与】しますか？`, () => handleBulkLockUpdate(false), '権限付与')}
+                                  disabled={isBulkUpdating}
+                                  className="py-4 rounded-xl bg-slate-50 text-slate-500 text-[10px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                                >
+                                  <Unlock size={14} />
+                                  <span>権限付与</span>
+                                </button>
+                              </div>
+                            </div>
+                            {/* Group 3: Session Management */}
+                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">セッション管理</span>
+                              <button
+                                onClick={() => requireConfirm(`全団体のセッションを\n【強制終了】させますか？`, () => handleBulkLogout(), '強制終了')}
+                                disabled={isBulkUpdating}
+                                className="py-4 h-full rounded-xl bg-slate-900 text-white text-[10px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all active:scale-95 flex items-center justify-center gap-3"
+                              >
+                                <LogOut size={14} />
+                                <span>強制終了</span>
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  {/* Category Filter - Bottom */}
-                  <div className="space-y-3 pt-6 border-t border-slate-100">
-                    <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                      <Filter className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-600/50" /> 部門選択
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                      {DEPARTMENTS.map(d => (
-                        <button
-                          key={d}
-                          onClick={() => setSelectedDept(d)}
-                          className={`px-4 md:px-8 py-2 md:py-3.5 rounded-xl md:rounded-2xl text-[10px] md:text-[11px] font-black transition-all border-2 ${selectedDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100'}`}
+
+                  {/* Search Bar (Moved here) */}
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
+                      <PackageSearch size={22} className="text-slate-300 group-focus-within:text-brand-500 transition-colors" strokeWidth={3} />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="団体を検索"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-white border-2 border-slate-100 rounded-[2rem] md:rounded-3xl py-4 md:py-6 pl-14 md:pl-16 pr-14 md:pr-16 text-base md:text-lg font-bold text-slate-700 placeholder:text-slate-300 outline-none transition-all focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 shadow-sm hover:shadow-md"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute inset-y-0 right-6 flex items-center text-slate-300 hover:text-slate-500 transition-colors"
+                      >
+                        <XCircle size={22} strokeWidth={3} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="bg-white border-2 border-slate-100 rounded-[2rem] p-5 md:p-6 shadow-sm overflow-hidden">
+                    <button
+                      onClick={() => setIsFilterOpen(!isFilterOpen)}
+                      className="w-full flex items-center justify-between group px-2"
+                    >
+                      <div className="flex items-center gap-4 text-slate-900">
+                        <div className={`p-2.5 rounded-xl transition-all duration-500 ${isFilterOpen ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 shadow-sm transition-transform group-hover:scale-110'}`}>
+                          <Filter size={18} strokeWidth={2.5} />
+                        </div>
+                        <div className="text-left">
+                          <h2 className="text-lg font-black tracking-tight">絞り込み</h2>
+                        </div>
+                      </div>
+                      <div className={`p-1.5 rounded-full transition-all duration-300 ${isFilterOpen ? 'bg-brand-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
+                        <ChevronDown size={18} />
+                      </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {isFilterOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                          className="overflow-hidden"
                         >
-                          {d}
-                        </button>
-                      ))}
+                          <div className="flex flex-col space-y-8 pt-8 pb-4">
+                            <div className="flex flex-col space-y-4">
+                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                                <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 部門
+                              </span>
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                {DEPARTMENTS.map(d => (
+                                  <button
+                                    key={d}
+                                    onClick={() => setSelectedDept(d)}
+                                    className={`px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${selectedDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                                  >
+                                    {d}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex flex-col space-y-4">
+                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                                <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 学年・有志
+                              </span>
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                {GRADES.map(g => (
+                                  <button
+                                    key={g}
+                                    onClick={() => setFilterGrade(g)}
+                                    className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterGrade === g ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                                  >
+                                    {g}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex flex-col space-y-4">
+                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                                <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 場所
+                              </span>
+                              <div className="flex flex-wrap items-center gap-2.5">
+                                {BUILDINGS.map(b => (
+                                  <button
+                                    key={b}
+                                    onClick={() => setFilterBuilding(b)}
+                                    className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterBuilding === b ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                                  >
+                                    {b}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sort Controls */}
+              <div className="flex justify-end p-6 md:p-10 bg-slate-50/30 border-t border-slate-50">
+                <div className="flex items-center gap-4">
+                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <RefreshCw size={14} className="text-brand-600/50" /> 並び替え
+                  </span>
+                  <div className="relative group">
+                    <select
+                      className="w-full min-w-[200px] bg-white border-2 border-slate-100 rounded-2xl py-3 pl-5 pr-12 text-xs font-black text-slate-700 outline-none transition-all focus:border-brand-500 appearance-none cursor-pointer shadow-sm hover:shadow-md"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                    >
+                      <option value="name">名前順</option>
+                      <option value="area">エリア順</option>
+                      <option value="time-asc">待ち時間 (短い順)</option>
+                      <option value="time-desc">待ち時間 (長い順)</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-brand-600 transition-colors">
+                      <ChevronDown size={14} strokeWidth={3} />
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            {/* Desktop Table View */}
+
+              {/* Desktop Table View */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-slate-50/50 border-b border-slate-100 text-slate-400 font-black text-[11px] uppercase tracking-[0.2em]">
@@ -416,7 +569,67 @@ const HQDashboard = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {groups.filter(g => g.department?.split(',').map(d => d.trim()).includes(selectedDept)).map(g => {
+                  {groups
+                    .filter(g => {
+                      const matchesDept = selectedDept === 'すべて' || g.department?.split(',').map(d => d.trim()).includes(selectedDept);
+                      const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
+                      const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
+
+                      if (!matchesDept || !matchesGrade || !matchesBuilding) return false;
+                      if (!searchQuery) return true;
+
+                      const query = searchQuery.toLowerCase();
+                      const normalizedQuery = normalizeString(searchQuery);
+
+                      return (
+                        g.name?.toLowerCase().includes(query) ||
+                        normalizeString(g.name).includes(normalizedQuery) ||
+                        (g.name_kana && normalizeString(g.name_kana).includes(normalizedQuery)) ||
+                        g.title?.toLowerCase().includes(query) ||
+                        normalizeString(g.title).includes(normalizedQuery) ||
+                        (g.title_kana && normalizeString(g.title_kana).includes(normalizedQuery)) ||
+                        g.building?.toLowerCase().includes(query) ||
+                        normalizeString(g.building).includes(normalizedQuery) ||
+                        g.room?.toLowerCase().includes(query) ||
+                        normalizeString(g.room).includes(normalizedQuery)
+                      );
+                    })
+                    .sort((a, b) => {
+                      if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
+                      if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
+                      if (sortBy === 'area') {
+                        if (a.building !== b.building) return a.building.localeCompare(b.building, 'ja');
+                        return a.room.localeCompare(b.room, 'ja');
+                      }
+                      
+                      // 優先度判定: クラス（1年->2年->3年） > 有志
+                      const getPriority = (name) => {
+                        if (name.startsWith('1年')) return 1;
+                        if (name.startsWith('2年')) return 2;
+                        if (name.startsWith('3年')) return 3;
+                        return 4; // 有志
+                      };
+
+                      const priorityA = getPriority(a.name);
+                      const priorityB = getPriority(b.name);
+
+                      if (priorityA !== priorityB) {
+                        return priorityA - priorityB;
+                      }
+
+                      // クラス同士、または有志同士の場合のソートキー
+                      const getSortKey = (g) => {
+                        // クラス（1年, 2年, 3年）は名称（1年A組, 1年B組...）でA-Z順にソート
+                        if (priorityA < 4) return g.name;
+
+                        // 有志団体などは読み仮名（name_kana / title_kana）を優先して五十音順
+                        if (g.name_kana) return g.name_kana;
+                        if (g.title_kana) return g.title_kana;
+                        return g.name;
+                      };
+                      return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
+                    })
+                    .map(g => {
                     return (
                       <tr key={g.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-10 py-8">
@@ -439,22 +652,20 @@ const HQDashboard = () => {
                         <td className="px-10 py-8 border-l border-slate-50">
                           <div className="flex items-center justify-center gap-4 flex-wrap max-w-[600px] mx-auto text-center">
                             {g.has_reception && (
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                              <div className={`w-[124px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                                   g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
                                     g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
                                       'bg-emerald-50 border-emerald-100 text-emerald-600'
                                 }`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-500' :
-                                    g.reception_status === 'before_open' ? 'bg-slate-300' :
-                                      g.reception_status === 'ticket_only' ? 'bg-brand-500 animate-pulse' :
-                                        'bg-emerald-500 animate-pulse'
-                                  }`}></div>
+                                {g.reception_status === 'closed' || g.reception_status === 'ended' ? <XCircle size={12} strokeWidth={3} /> :
+                                 g.reception_status === 'before_open' ? <Clock size={12} strokeWidth={3} /> :
+                                 <CheckCircle2 size={12} strokeWidth={3} />}
                                 {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ受付', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
                               </div>
                             )}
-                            <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 text-[10px] font-black transition-all ${g.editing_locked
+                            <div className={`flex items-center justify-center gap-2 w-[124px] py-2 rounded-full border text-[10px] font-black transition-all shadow-sm ${g.editing_locked
                               ? 'bg-rose-50 text-rose-600 border-rose-100'
-                              : 'bg-slate-50 text-slate-400 border-slate-100'
+                              : 'bg-emerald-50 text-emerald-600 border-emerald-100'
                               }`}>
                               {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
                               <span>{g.editing_locked ? '編集ロック中' : '編集許可中'}</span>
@@ -468,7 +679,7 @@ const HQDashboard = () => {
                               </div>
                             )}
                             {g.has_ticket_status && (
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                              <div className={`w-[124px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                                   g.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
                                     g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                                       'bg-slate-50 border-slate-100 text-slate-400'
@@ -478,26 +689,49 @@ const HQDashboard = () => {
                               </div>
                             )}
                             {selectedDept === '公演' && g.performances?.length > 0 && (
-                              <div className="flex flex-col gap-1.5 min-w-[280px]">
-                                {g.performances.sort((a, b) => {
-                                  if (a.part_id !== b.part_id) return a.part_id - b.part_id;
-                                  return a.start_time.localeCompare(b.start_time);
-                                }).map(p => (
-                                  <div key={p.id} className="flex items-center justify-between gap-4 p-2 bg-white rounded-lg border border-slate-100 shadow-sm">
-                                    <span className="text-[9px] font-black text-slate-400 w-12 tracking-tight shrink-0">Part{p.part_id} {p.start_time}</span>
-                                    <div className="flex items-center gap-3">
-                                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${p.reception_status === 'closed' ? 'bg-rose-100 text-rose-600' :
-                                        p.reception_status === 'ticket_only' ? 'bg-brand-100 text-brand-600' :
-                                          p.reception_status === 'before_open' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-600'
-                                        }`}>
-                                        {{ before_open: '受付前', ticket_only: '整理券のみ', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
-                                      </span>
-                                      <span className={`text-[8px] font-black ${p.status === 'none' ? 'text-slate-300' : 'text-slate-500'}`}>
-                                        {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[p.status] || p.status}
-                                      </span>
+                              <div className="flex flex-col gap-4 min-w-[280px]">
+                                {[1, 2, 3].map(partId => {
+                                  const partPerfs = g.performances?.filter(p => p.part_id === partId).sort((a, b) => a.start_time.localeCompare(b.start_time));
+                                  if (!partPerfs || partPerfs.length === 0) return null;
+                                  return (
+                                    <div key={partId} className="space-y-2 text-left">
+                                      <div className="flex items-center gap-2 px-1">
+                                        <div className="w-1 h-3 bg-brand-500 rounded-full" />
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Part {partId}</span>
+                                      </div>
+                                      <div className="space-y-2">
+                                        {partPerfs.map(p => (
+                                          <div key={p.id} className="flex items-center justify-between px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100/50 group/perf">
+                                            <div className="flex flex-col gap-0.5">
+                                              <span className="text-[10px] font-black text-slate-900">{p.start_time}{p.end_time ? ` ～ ${p.end_time}` : ''}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <div className={`w-[84px] py-1 rounded-full border text-[9px] font-black flex items-center justify-center gap-1.5 shadow-sm ${
+                                                p.reception_status === 'closed' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                                p.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                                                p.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
+                                                'bg-emerald-50 border-emerald-100 text-emerald-600'
+                                              }`}>
+                                                {p.reception_status === 'closed' ? <XCircle size={10} strokeWidth={3} /> :
+                                                 p.reception_status === 'before_open' ? <Clock size={10} strokeWidth={3} /> :
+                                                 <CheckCircle2 size={10} strokeWidth={3} />}
+                                                {{ before_open: '受付前', ticket_only: '整理券のみ', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
+                                              </div>
+                                              <div className={`w-[84px] py-1 rounded-full border text-[9px] font-black flex items-center justify-center gap-1.5 shadow-sm ${
+                                                p.status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                                p.status === 'none' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                                                'bg-emerald-50 border-emerald-100 text-emerald-600'
+                                              }`}>
+                                                <Ticket size={10} strokeWidth={3} />
+                                                {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[p.status] || p.status}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>
@@ -539,9 +773,69 @@ const HQDashboard = () => {
             </div>
             {/* Mobile Card View */}
             <div className="lg:hidden divide-y divide-slate-100">
-              {groups.filter(g => g.department?.split(',').map(d => d.trim()).includes(selectedDept)).map(g => {
+              {groups
+                .filter(g => {
+                  const matchesDept = selectedDept === 'すべて' || g.department?.split(',').map(d => d.trim()).includes(selectedDept);
+                  const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
+                  const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
+
+                  if (!matchesDept || !matchesGrade || !matchesBuilding) return false;
+                  if (!searchQuery) return true;
+
+                  const query = searchQuery.toLowerCase();
+                  const normalizedQuery = normalizeString(searchQuery);
+
+                  return (
+                    g.name?.toLowerCase().includes(query) ||
+                    normalizeString(g.name).includes(normalizedQuery) ||
+                    (g.name_kana && normalizeString(g.name_kana).includes(normalizedQuery)) ||
+                    g.title?.toLowerCase().includes(query) ||
+                    normalizeString(g.title).includes(normalizedQuery) ||
+                    (g.title_kana && normalizeString(g.title_kana).includes(normalizedQuery)) ||
+                    g.building?.toLowerCase().includes(query) ||
+                    normalizeString(g.building).includes(normalizedQuery) ||
+                    g.room?.toLowerCase().includes(query) ||
+                    normalizeString(g.room).includes(normalizedQuery)
+                  );
+                })
+                .sort((a, b) => {
+                  if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
+                  if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
+                  if (sortBy === 'area') {
+                    if (a.building !== b.building) return a.building.localeCompare(b.building, 'ja');
+                    return a.room.localeCompare(b.room, 'ja');
+                  }
+                  
+                  // 優先度判定: クラス（1年->2年->3年） > 有志
+                  const getPriority = (name) => {
+                    if (name.startsWith('1年')) return 1;
+                    if (name.startsWith('2年')) return 2;
+                    if (name.startsWith('3年')) return 3;
+                    return 4; // 有志
+                  };
+
+                  const priorityA = getPriority(a.name);
+                  const priorityB = getPriority(b.name);
+
+                  if (priorityA !== priorityB) {
+                    return priorityA - priorityB;
+                  }
+
+                  // クラス同士、または有志同士の場合のソートキー
+                  const getSortKey = (g) => {
+                    // クラス（1年, 2年, 3年）は名称（1年A組, 1年B組...）でA-Z順にソート
+                    if (priorityA < 4) return g.name;
+
+                    // 有志団体などは読み仮名（name_kana / title_kana）を優先して五十音順
+                    if (g.name_kana) return g.name_kana;
+                    if (g.title_kana) return g.title_kana;
+                    return g.name;
+                  };
+                  return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
+                })
+                .map(g => {
                 return (
-                  <div key={g.id} className="p-5 space-y-5 bg-white">
+                  <div key={g.id} className="p-4 md:p-6 space-y-5 bg-white">
                     <div className="flex justify-between items-start gap-4">
                       <div className="space-y-2 min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -625,38 +919,50 @@ const HQDashboard = () => {
                         </div>
                       )}
                       {selectedDept === '公演' && g.performances?.length > 0 && (
-                        <div className="space-y-3 pt-2 border-t border-slate-200/50">
-                          {g.performances.sort((a, b) => {
-                            if (a.part_id !== b.part_id) return a.part_id - b.part_id;
-                            return a.start_time.localeCompare(b.start_time);
-                          }).map(p => (
-                            <div key={p.id} className="flex items-center justify-between gap-3">
-                              <span className="text-[10px] font-black text-slate-400 shrink-0">Part{p.part_id} {p.start_time}</span>
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black ${p.reception_status === 'closed' ? 'bg-rose-50 text-rose-500' :
-                                  p.reception_status === 'ticket_only' ? 'bg-brand-50 text-brand-500' :
-                                    p.reception_status === 'before_open' ? 'bg-slate-50 text-slate-500' : 'bg-emerald-50 text-emerald-500'
-                                  }`}>
-                                  {{ before_open: '前', ticket_only: '券', closed: '終', open: '中' }[p.reception_status]}
-                                </span>
-                                <span className="text-[8px] font-black text-slate-500">
-                                  {{ none: '配布無し', distributing: '配布中', ended: '配布終了' }[p.status]}
-                                </span>
+                        <div className="space-y-4 pt-2 border-t border-slate-200/50">
+                          {[1, 2, 3].map(partId => {
+                            const partPerfs = g.performances?.filter(p => p.part_id === partId).sort((a, b) => a.start_time.localeCompare(b.start_time));
+                            if (!partPerfs || partPerfs.length === 0) return null;
+                            return (
+                              <div key={partId} className="space-y-2">
+                                <div className="flex items-center gap-2 px-1">
+                                  <div className="w-1 h-3 bg-brand-500 rounded-full" />
+                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Part {partId}</span>
+                                </div>
+                                <div className="space-y-1.5">
+                                  {partPerfs.map(p => (
+                                    <div key={p.id} className="flex items-center justify-between px-4 py-2 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                                      <span className="text-[10px] font-bold text-slate-400">{p.start_time}{p.end_time ? ` ～ ${p.end_time}` : ''}</span>
+                                      <div className="flex flex-col items-end gap-0.5">
+                                        <span className={`text-[10px] font-black ${p.reception_status === 'closed' ? 'text-rose-500' :
+                                          p.reception_status === 'before_open' ? 'text-slate-500' :
+                                            p.reception_status === 'ticket_only' ? 'text-brand-500' :
+                                              'text-emerald-500'
+                                          }`}>
+                                          {{ before_open: '受付前', ticket_only: '整理券のみ受付', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
+                                        </span>
+                                        <span className="text-[9px] font-black text-slate-400">
+                                          整理券{{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[p.status] || p.status}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
                   </div>
-                )
-              })}
+                  )
+                })}
             </div>
           </div>
         </div>
       )}
       {activeTab === 'lost_found' && (
-        <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-12 shadow-sm space-y-6 md:space-y-10">
+        <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-10 shadow-sm space-y-6 md:space-y-8">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">落とし物管理</h3>
             <button
@@ -669,29 +975,41 @@ const HQDashboard = () => {
               新規追加
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10">
             {lostFound.map(item => (
-              <div key={item.id} className="bg-slate-50/50 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 space-y-4 md:space-y-6 group hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all">
-                <div className="h-4"></div>
-                <div>
-                  <h4 className="font-black text-slate-900 text-lg md:text-xl tracking-tight">{item.name}</h4>
-                  <p className="text-[11px] md:text-sm text-slate-400 font-bold flex items-center gap-2 mt-1.5 md:mt-2">
-                    <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-600/50" /> {item.location}
-                  </p>
-                </div>
-                <div className="pt-4 md:pt-6 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[9px] md:text-[11px] text-slate-300 font-black tracking-widest uppercase">{formatDateTime(item.found_at)}</span>
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => {
-                        setEditingLostFound(item);
-                        setIsLostFoundModalOpen(true);
-                      }}
-                      className="text-[9px] md:text-[11px] font-black text-brand-600 hover:text-brand-700 tracking-[0.2em] uppercase">編集</button>
-                    <button
-                      onClick={() => handleDeleteLostFound(item.id)}
-                      className="text-[9px] md:text-[11px] font-black text-rose-400 hover:text-rose-600 tracking-[0.2em] uppercase">削除</button>
+              <div key={item.id} className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 group flex flex-col items-start gap-6 md:gap-8 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 transition-all duration-300">
+                <div className="flex justify-between items-start w-full gap-4">
+                  <div>
+                    <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
+                    <div className="mt-2 flex items-center text-[10px] font-bold text-slate-400">
+                      <Clock size={12} className="mr-1" />
+                      拾得日時: {formatDateTime(item.found_at)}
+                    </div>
                   </div>
+                </div>
+
+                <div className="w-full space-y-4">
+                  <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
+                    <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">拾得場所</span>
+                    <p className="text-slate-700 text-sm font-bold leading-relaxed">{item.location}</p>
+                  </div>
+
+                  <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
+                    <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">特徴・詳細</span>
+                    <p className="text-slate-700 text-sm font-bold leading-relaxed whitespace-pre-wrap">{item.features || 'なし'}</p>
+                  </div>
+                </div>
+
+                <div className="w-full pt-6 border-t border-slate-100 flex items-center justify-end gap-6">
+                  <button
+                    onClick={() => {
+                      setEditingLostFound(item);
+                      setIsLostFoundModalOpen(true);
+                    }}
+                    className="text-[11px] font-black text-brand-600 hover:text-brand-700 tracking-[0.2em] uppercase transition-colors">編集</button>
+                  <button
+                    onClick={() => handleDeleteLostFound(item.id)}
+                    className="text-[11px] font-black text-rose-400 hover:text-rose-600 tracking-[0.2em] uppercase transition-colors">削除</button>
                 </div>
               </div>
             ))}
@@ -752,7 +1070,30 @@ const HQDashboard = () => {
           </Portal>
         )}
       </AnimatePresence>
-
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {(loading || isBulkUpdating) && (
+          <Portal>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm pointer-events-auto"
+            >
+              <div className="relative">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-16 h-16 border-4 border-slate-100 border-t-brand-600 rounded-full"
+                />
+              </div>
+              <p className="mt-6 text-sm font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
+                {isBulkUpdating ? '更新中...' : '読み込み中...'}
+              </p>
+            </motion.div>
+          </Portal>
+        )}
+      </AnimatePresence>
     </div >
   );
 };
@@ -840,13 +1181,13 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
               <button
                 onClick={() => setEditingLocked(!editingLocked)}
                 className={`flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${editingLocked
-                  ? 'bg-white border-rose-500 text-rose-600 shadow-lg shadow-rose-500/10'
-                  : 'bg-white border-slate-100 text-slate-400 opacity-60 hover:opacity-100'
+                  ? 'bg-rose-50 border-rose-500 text-rose-600 shadow-md ring-2 ring-rose-500/10'
+                  : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'
                   }`}
               >
                 <div className="flex items-center gap-3">
                   {editingLocked ? <Lock size={20} strokeWidth={2.5} /> : <Unlock size={20} strokeWidth={2.5} />}
-                  <span className="text-[12px] font-black uppercase tracking-widest">{editingLocked ? '編集ロック中' : '編集許可中'}</span>
+                  <span className="text-[12px] font-black uppercase tracking-widest">{editingLocked ? '編集ロック' : '編集許可'}</span>
                 </div>
                 <div className={`w-12 h-7 rounded-full p-1 transition-colors ${editingLocked ? 'bg-rose-500' : 'bg-slate-200'}`}>
                   <div className={`w-5 h-5 bg-white rounded-full transition-transform ${editingLocked ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -876,7 +1217,12 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                             <button
                               key={s}
                               onClick={() => setEditData(prev => ({ ...prev, reception_status: s }))}
-                              className={`flex-1 min-w-fit px-3 py-3 rounded-xl text-[10px] font-black transition-all ${editData.reception_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                               className={`flex-1 min-w-fit px-3 py-3 rounded-xl text-[10px] font-black transition-all border-2 ${editData.reception_status === s ?
+                                 (s === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                  s === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10' :
+                                  s === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10' :
+                                  'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10')
+                                 : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                             >
                               {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
                             </button>
@@ -907,7 +1253,11 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                           <button
                             key={s}
                             onClick={() => setEditData(prev => ({ ...prev, ticket_status: s }))}
-                            className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${editData.ticket_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                            className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all border-2 ${editData.ticket_status === s ?
+                               (s === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                s === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
+                                'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10')
+                               : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                           >
                             {{ none: 'なし', distributing: '配布中', ended: '終了' }[s]}
                           </button>
@@ -961,7 +1311,12 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                               <button
                                 key={s}
                                 onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
-                                className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all ${perf.reception_status === s ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all border-2 ${perf.reception_status === s ?
+                                  (s === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                   s === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10' :
+                                   s === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10' :
+                                   'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10')
+                                  : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                               >
                                 {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
                               </button>
@@ -976,7 +1331,11 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                             <button
                               key={s}
                               onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
-                              className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all ${perf.status === s ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                              className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all border-2 ${perf.status === s ?
+                                (s === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                 s === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
+                                 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10')
+                                : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                             >
                               {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
                             </button>
@@ -1009,6 +1368,29 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
           </button>
         </div>
       </motion.div>
+      <AnimatePresence>
+        {isSaving && (
+          <Portal>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm pointer-events-auto"
+            >
+              <div className="relative">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="w-16 h-16 border-4 border-slate-100 border-t-brand-600 rounded-full"
+                />
+              </div>
+              <p className="mt-6 text-sm font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
+                更新中...
+              </p>
+            </motion.div>
+          </Portal>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1097,6 +1479,29 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
             </button>
           </div>
         </motion.div>
+        <AnimatePresence>
+          {isSaving && (
+            <Portal>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm pointer-events-auto"
+              >
+                <div className="relative">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-16 h-16 border-4 border-slate-100 border-t-brand-600 rounded-full"
+                  />
+                </div>
+                <p className="mt-6 text-sm font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
+                  更新中...
+                </p>
+              </motion.div>
+            </Portal>
+          )}
+        </AnimatePresence>
       </div>
     </Portal>
   );

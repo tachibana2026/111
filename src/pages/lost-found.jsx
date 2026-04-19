@@ -16,7 +16,7 @@ const LostFound = ({ initialItems }) => {
   };
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-8 md:space-y-12 pb-12">
       <div className="flex flex-col space-y-6">
         <div className="flex items-center space-x-4 text-slate-900">
           <div className="w-2 h-10 bg-brand-600 rounded-full shadow-lg shadow-brand-500/20"></div>
@@ -26,7 +26,7 @@ const LostFound = ({ initialItems }) => {
       </div>
 
       {/* Guide Section */}
-      <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-10 space-y-6 shadow-sm overflow-hidden relative">
+      <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 space-y-6 shadow-sm overflow-hidden relative">
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-50 rounded-full blur-3xl -z-10" />
         <div className="flex items-center gap-4">
           <div className="bg-brand-50 p-3 rounded-2xl text-brand-600 shadow-sm transition-transform group-hover:scale-110">
@@ -47,7 +47,7 @@ const LostFound = ({ initialItems }) => {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: idx * 0.03 }}
-              className="bg-white border border-slate-100 rounded-3xl p-8 md:p-10 group flex flex-col items-start gap-8 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300"
+              className="bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-6 md:p-10 group flex flex-col items-start gap-6 md:gap-8 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300"
             >
               <div className="flex justify-between items-start w-full gap-4">
                 <div className="flex items-start gap-4">
@@ -62,12 +62,12 @@ const LostFound = ({ initialItems }) => {
               </div>
 
               <div className="w-full space-y-4">
-                <div className="p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
+                <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
                   <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">拾得場所</span>
                   <p className="text-slate-700 text-sm font-bold leading-relaxed">{item.location}</p>
                 </div>
 
-                <div className="p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
+                <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
                   <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">特徴・詳細</span>
                   <p className="text-slate-700 text-sm font-bold leading-relaxed">{item.features}</p>
                 </div>

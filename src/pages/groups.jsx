@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Filter, SortDesc, Instagram, ExternalLink, MapPin, ChevronDown, RefreshCw } from 'lucide-react';
+import { Filter, SortDesc, Instagram, ExternalLink, MapPin, ChevronDown, RefreshCw, Calendar, Search, X, Ticket, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Portal from '../components/Portal';
 
@@ -20,9 +20,30 @@ const XIcon = ({ size = 18, className = "" }) => (
   </svg>
 );
 
+const normalizeString = (str) => {
+  if (!str) return '';
+  // Unicode NFKC正規化で全角英数字を半角に、半角カタカナを全角に統一
+  let result = str.normalize('NFKC').toLowerCase();
+  
+  // 年、組、ハイフン、スペース、記号などを除去して比較しやすくする
+  result = result.replace(/[年組\-_\s　.,:;!"'()\[\]{}（）]/g, '');
+  
+  // カタカナをひらがなに統一 (0x30A1-0x30F6 -> 0x3041-0x3096)
+  result = result.replace(/[\u30a1-\u30f6]/g, (match) => {
+    return String.fromCharCode(match.charCodeAt(0) - 0x60);
+  });
+  
+  return result;
+};
+
 // サブコンポーネントをメインコンポーネントの外に移動して再描画ごとの再生成を回避
 const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, setSelectedGroup, setSelectedPerf }) => {
-  const partSchedule = useMemo(() => schedule.filter(p => p.part_id === partId), [schedule, partId]);
+  const partSchedule = useMemo(() => 
+    [...schedule]
+      .filter(p => p.part_id === partId)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time)),
+    [schedule, partId]
+  );
   if (partSchedule.length === 0) return null;
 
   const now = new Date();
@@ -42,7 +63,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
     else if (currentReception === 'ticket_only') receptionStatus = '整理券のみ受付中';
     else if (currentReception === 'before_open') receptionStatus = '受付前';
 
-    return { ticketStatus, receptionStatus, currentReception };
+    return { ticketStatus, receptionStatus, currentReception, actualTicket };
   };
 
   return (
@@ -54,7 +75,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
         {partSchedule.map((p, i) => {
           const isPast = p.end_time ? new Date(`${festDate}T${p.end_time}:00`) < now : new Date(`${festDate}T${p.start_time}:00`) < now;
           const isNext = currentNextPerf && p.id === currentNextPerf.id;
-          const { ticketStatus, receptionStatus, currentReception } = getPerfStatusText(p);
+          const { ticketStatus, receptionStatus, currentReception, actualTicket } = getPerfStatusText(p);
           return (
             <div
               key={i}
@@ -63,26 +84,207 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                 const targetGroup = groups.find(g => g.id === p.group_id);
                 if (targetGroup) {
                   setSelectedGroup(targetGroup);
-                  setSelectedPerf({ ...p, currentReception, computedTicket: (isPast && p.status !== 'none') ? 'ended' : p.status });
+                  setSelectedPerf({ ...p, currentReception, computedTicket: actualTicket });
                 }
               }}
               className={`px-4 py-3 rounded-xl border flex flex-col justify-center gap-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100' : isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 'bg-white text-slate-600 border-slate-100'}`}
             >
               <div className="flex justify-between items-center">
                 <span className="text-xs font-black">
-                  {p.start_time}{p.end_time && ` - ${p.end_time}`}
+                  {p.start_time}{p.end_time && ` ～ ${p.end_time}`}
                 </span>
                 {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] uppercase tracking-tighter animate-pulse">次</span>}
               </div>
-              <div className="flex flex-col gap-0.5">
-                <div className={`text-[9px] font-black ${currentReception === 'closed' ? 'text-rose-500' : currentReception === 'ticket_only' ? 'text-amber-600' : currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>{receptionStatus}</div>
-                <div className="text-[9px] font-black text-slate-400">{ticketStatus}</div>
+              <div className="flex items-center gap-2 mt-1 px-1">
+                <div className={`flex-1 flex items-center justify-center gap-1.5 text-[9px] font-black ${
+                  currentReception === 'ticket_only' ? 'text-brand-600' : 
+                  ['closed', 'ended', 'before_open'].includes(currentReception) ? 'text-slate-400' : 
+                  'text-emerald-500'
+                }`}>
+                  <CheckCircle2 size={10} strokeWidth={3} />
+                  {receptionStatus.replace('受付中', '受付中').replace('受付前', '受付前').replace('整理券をお持ちの方のみ受付中', '整理券のみ')}
+                </div>
+                <div className={`flex-1 flex items-center justify-center gap-1.5 text-[9px] font-black border-l border-slate-100 ${
+                  ['ended', 'none'].includes(actualTicket) ? 'text-slate-400' :
+                  'text-emerald-500'
+                }`}>
+                  <Ticket size={10} strokeWidth={3} />
+                  {ticketStatus.replace('整理券', '')}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
     </div>
+  );
+};
+
+const GroupCard = ({ 
+  group, 
+  groups, 
+  setSelectedGroup, 
+  setSelectedPerf, 
+  getStatusColor, 
+  getStatusText, 
+  getNextPerformance, 
+  formatRelativeTime 
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{ duration: 0.2 }}
+      className={`bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-5 md:p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'opacity-60 saturate-50' : ''}`}
+    >
+      <div className="flex justify-between items-start mb-5">
+        <div className="flex-1 min-w-0 pr-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2.5">
+            {group.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
+              <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider whitespace-nowrap">
+                {dept}
+              </span>
+            ))}
+            <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-50 text-slate-500 font-black uppercase tracking-wider whitespace-nowrap">
+              {group.name}
+            </span>
+          </div>
+          <h3 className="text-xl font-black text-slate-900 leading-tight mb-1.5">
+            {group.title || group.name}
+          </h3>
+          <p className="text-[11px] text-slate-400 font-bold flex items-center shrink-0">
+            <MapPin size={12} className="mr-1.5 text-slate-300" />
+            {group.building} {group.room}
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 scale-90 origin-top-right">
+          <div className={`w-[110px] py-2 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-2 ${getStatusColor(group)}`}>
+            {getStatusText(group).includes('待ち') ? <Clock size={12} strokeWidth={3} /> : 
+             getStatusText(group).includes('整理券') ? <Ticket size={12} strokeWidth={3} /> : 
+             getStatusText(group) === '受付中' ? <CheckCircle2 size={12} strokeWidth={3} /> : null}
+            {getStatusText(group)}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-grow space-y-6">
+        <p className="text-sm text-slate-500 font-bold leading-relaxed whitespace-pre-wrap">
+          {group.description}
+        </p>
+
+        {group.has_performances && (group.performances || []).length > 0 && (
+          <div className="pt-6 border-t border-slate-50 space-y-4">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 group/btn ${
+                isExpanded 
+                ? 'bg-slate-50 border-slate-200' 
+                : 'bg-white border-slate-100 hover:border-brand-300 hover:bg-brand-50/10 shadow-sm hover:shadow-md'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl transition-all duration-500 ${isExpanded ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 group-hover/btn:scale-110'}`}>
+                  <Calendar size={14} strokeWidth={3} />
+                </div>
+                <div className="flex flex-col items-start translate-y-[-1px]">
+                  <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">公演スケジュール</span>
+                  <span className="text-[9px] font-bold text-slate-400 mt-0.5">
+                    {isExpanded ? 'タップで閉じる' : 'タップしてすべての回を表示'}
+                  </span>
+                </div>
+              </div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${isExpanded ? 'bg-brand-100 text-brand-600 shadow-inner' : 'bg-slate-50 text-slate-400 group-hover/btn:bg-brand-50 group-hover/btn:text-brand-600'}`}>
+                <ChevronDown 
+                  size={18} 
+                  strokeWidth={3}
+                  className={`transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`}
+                />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-6 pt-6">
+                  <div className="flex items-center gap-2 px-1 pb-1">
+                    <p className="text-[10px] font-bold text-slate-400">各公演回をタップすると詳細が表示されます</p>
+                  </div>
+                  {(() => {
+                    const nextPerf = getNextPerformance(group);
+                    return (
+                      <>
+                        <PerformanceList
+                          schedule={group.performances || []}
+                          dayLabel="Part 1 (6/13)"
+                          partId={1}
+                          currentNextPerf={nextPerf}
+                          groups={groups}
+                          setSelectedGroup={setSelectedGroup}
+                          setSelectedPerf={setSelectedPerf}
+                        />
+                        <PerformanceList
+                          schedule={group.performances || []}
+                          dayLabel="Part 2 (6/13)"
+                          partId={2}
+                          currentNextPerf={nextPerf}
+                          groups={groups}
+                          setSelectedGroup={setSelectedGroup}
+                          setSelectedPerf={setSelectedPerf}
+                        />
+                        <PerformanceList
+                          schedule={group.performances || []}
+                          dayLabel="Part 3 (6/14)"
+                          partId={3}
+                          currentNextPerf={nextPerf}
+                          groups={groups}
+                          setSelectedGroup={setSelectedGroup}
+                          setSelectedPerf={setSelectedPerf}
+                        />
+                      </>
+                    );
+                  })()}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-between items-center pt-5 mt-auto border-t border-slate-50">
+        <div className="flex space-x-4">
+          {group.social_links?.instagram && (
+            <a href={group.social_links.instagram} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-pink-500 transition-colors">
+              <Instagram size={18} />
+            </a>
+          )}
+          {(group.social_links?.X || group.social_links?.x) && (
+            <a href={group.social_links.X || group.social_links.x} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-slate-900 transition-colors">
+              <XIcon size={16} />
+            </a>
+          )}
+          {group.social_links?.HP && (
+            <a href={group.social_links.HP} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-brand-600 transition-colors">
+              <ExternalLink size={18} />
+            </a>
+          )}
+        </div>
+        <div className={`flex items-center gap-1 text-[9px] font-black text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100 ${!group.updated_at ? 'opacity-50' : ''}`}>
+          {group.updated_at && <RefreshCw size={8} />}
+          <span>更新: {formatRelativeTime(group.updated_at)}</span>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
@@ -117,6 +319,7 @@ const Groups = ({ initialGroups }) => {
   const [sortBy, setSortBy] = useState('name');
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedPerf, setSelectedPerf] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
@@ -139,36 +342,36 @@ const Groups = ({ initialGroups }) => {
 
     // 受付終了・受付前
     if (reception_status === 'closed' || reception_status === 'ended' || reception_status === 'before_open') {
-      return 'bg-slate-50 border-slate-200 text-slate-400';
+      return 'bg-slate-50 border-slate-100 text-slate-400';
     }
 
     // 整理券のみ受付（青）
     if (reception_status === 'ticket_only') {
-      return 'bg-brand-50 border-brand-200 text-brand-600';
+      return 'bg-brand-50 border-brand-100 text-brand-600';
     }
 
     // 全てFALSEの場合はエラー表示（赤）
     if (!has_performances && !has_ticket_status && !has_waiting_time && !has_reception) {
-      return 'bg-rose-50 border-rose-200 text-rose-600';
+      return 'bg-rose-50 border-rose-100 text-rose-600';
     }
 
     // 公演情報はスレート
-    if (has_performances) return 'bg-slate-50 border-slate-200 text-slate-400';
+    if (has_performances) return 'bg-slate-50 border-slate-100 text-slate-400';
 
     // 残りわずかはアンバー
     if (has_ticket_status && ticket_status === 'limited') {
-      return 'bg-amber-50 border-amber-200 text-amber-600';
+      return 'bg-amber-50 border-amber-100 text-amber-600';
     }
 
     if (has_ticket_status || departments.includes('展示')) {
-      return 'bg-emerald-50 border-emerald-200 text-emerald-600';
+      return 'bg-emerald-50 border-emerald-100 text-emerald-600';
     }
 
-    if (!has_waiting_time) return 'bg-emerald-50 border-emerald-200 text-emerald-600';
+    if (!has_waiting_time) return 'bg-emerald-50 border-emerald-100 text-emerald-600';
 
-    if (waiting_time <= 10) return 'bg-emerald-50 border-emerald-200 text-emerald-600';
-    if (waiting_time <= 30) return 'bg-amber-50 border-amber-200 text-amber-600';
-    return 'bg-rose-50 border-rose-200 text-rose-600';
+    if (waiting_time <= 10) return 'bg-emerald-50 border-emerald-100 text-emerald-600';
+    if (waiting_time <= 30) return 'bg-amber-50 border-amber-100 text-amber-600';
+    return 'bg-rose-50 border-rose-100 text-rose-600';
   };
 
   const getStatusText = (group) => {
@@ -183,7 +386,6 @@ const Groups = ({ initialGroups }) => {
 
     if (has_ticket_status) {
       if (ticket_status === 'ended') return '配布終了';
-      if (ticket_status === 'limited') return '残りわずか';
       return '整理券配布中';
     }
 
@@ -208,7 +410,7 @@ const Groups = ({ initialGroups }) => {
   const getReceptionLabel = (status) => {
     if (status === 'before_open') return '受付前';
     if (status === 'ticket_only') return '整理券をお持ちの方のみ受付中';
-    return status === 'closed' ? '受付終了' : '受付中';
+    return status === 'closed' || status === 'ended' ? '受付終了' : '受付中';
   };
 
   const getNextPerformance = (group) => {
@@ -227,16 +429,42 @@ const Groups = ({ initialGroups }) => {
   // フィルタリングとソートを useMemo でラップして負荷を抑制
   const filteredGroups = useMemo(() => {
     return groups
-      .filter(g =>
-        (filterDept === 'すべて' || (g.department?.split(',').map(d => d.trim()).includes(filterDept))) &&
-        (filterGrade === 'すべて' ||
-          (filterGrade === '有志'
-            ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year))
-            : g.name.startsWith(filterGrade)
+      .filter(g => {
+        const matchesFilter = (filterDept === 'すべて' || (g.department?.split(',').map(d => d.trim()).includes(filterDept))) &&
+          (filterGrade === 'すべて' ||
+            (filterGrade === '有志'
+              ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year))
+              : g.name.startsWith(filterGrade)
+            )
+          ) &&
+          (filterBuilding === 'すべて' || g.building === filterBuilding);
+
+        if (!matchesFilter) return false;
+
+        if (!searchQuery) return true;
+
+        const query = searchQuery.toLowerCase();
+        const normalizedQuery = normalizeString(searchQuery);
+
+        return (
+          g.name?.toLowerCase().includes(query) ||
+          normalizeString(g.name).includes(normalizedQuery) ||
+          (g.name_kana && normalizeString(g.name_kana).includes(normalizedQuery)) || // 団体名の読み（ひらがな）
+          g.title?.toLowerCase().includes(query) ||
+          normalizeString(g.title).includes(normalizedQuery) ||
+          (g.title_kana && normalizeString(g.title_kana).includes(normalizedQuery)) || // 企画名の読み
+          g.description?.toLowerCase().includes(query) ||
+          normalizeString(g.description).includes(normalizedQuery) ||
+          g.building?.toLowerCase().includes(query) ||
+          normalizeString(g.building).includes(normalizedQuery) ||
+          g.room?.toLowerCase().includes(query) ||
+          normalizeString(g.room).includes(normalizedQuery) ||
+          (g.performances || []).some(p => 
+            p.start_time?.includes(query) || 
+            p.end_time?.includes(query)
           )
-        ) &&
-        (filterBuilding === 'すべて' || g.building === filterBuilding)
-      )
+        );
+      })
       .sort((a, b) => {
         if (sortBy === 'time-asc') {
           return (a.waiting_time || 0) - (b.waiting_time || 0);
@@ -249,42 +477,81 @@ const Groups = ({ initialGroups }) => {
           return a.room.localeCompare(b.room, 'ja');
         }
 
-        // 名前順（よみがな先頭文字があれば優先、次いでクラス名・タイトルでソート）
+        // 優先度判定: クラス（1年->2年->3年） > 有志
+        const getPriority = (name) => {
+          if (name.startsWith('1年')) return 1;
+          if (name.startsWith('2年')) return 2;
+          if (name.startsWith('3年')) return 3;
+          return 4; // 有志
+        };
+
+        const priorityA = getPriority(a.name);
+        const priorityB = getPriority(b.name);
+
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+
+        // クラス同士、または有志同士の場合のソートキー
         const getSortKey = (g) => {
-          // よみがな先頭文字（1文字）があれば、それを基準にする
-          if (g.name_initial) return g.name_initial + (g.name || '');
+          // クラス（1年, 2年, 3年）は名称（1年A組, 1年B組...）でA-Z順にソート
+          if (priorityA < 4) return g.name;
           
-          const isYearGroup = ['1年', '2年', '3年'].some(year => g.name.startsWith(year));
-          return isYearGroup ? g.name : (g.title || g.name);
+          // 有志団体などは読み仮名（name_kana / title_kana）を優先して五十音順
+          if (g.name_kana) return g.name_kana;
+          if (g.title_kana) return g.title_kana;
+          return g.name;
         };
 
         return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
       });
-  }, [groups, filterDept, filterGrade, filterBuilding, sortBy]);
+  }, [groups, filterDept, filterGrade, filterBuilding, sortBy, searchQuery]);
 
   const filteredGroupsCount = useMemo(() => filteredGroups.length, [filteredGroups]);
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 md:space-y-10 pb-12">
       <div className="flex flex-col space-y-8">
         <div className="flex items-center space-x-4 text-slate-900">
           <div className="w-2 h-10 bg-brand-600 rounded-full shadow-lg shadow-brand-500/20"></div>
-          <h1 className="text-4xl font-black tracking-tight">発表団体</h1>
+          <h1 className="text-4xl font-black tracking-tight">団体一覧</h1>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
+            <Search size={22} className="text-slate-300 group-focus-within:text-brand-500 transition-colors" strokeWidth={3} />
+          </div>
+          <input
+            type="text"
+            placeholder="団体を検索"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white border-2 border-slate-100 rounded-[2rem] md:rounded-3xl py-4 md:py-6 pl-14 md:pl-16 pr-14 md:pr-16 text-base md:text-lg font-bold text-slate-700 placeholder:text-slate-300 outline-none transition-all focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 shadow-sm hover:shadow-md"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-6 flex items-center text-slate-300 hover:text-slate-500 transition-colors"
+            >
+              <X size={22} strokeWidth={3} />
+            </button>
+          )}
         </div>
 
         {/* Filters */}
-        <div className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-100 rounded-[2rem] p-5 md:p-8 shadow-sm overflow-hidden">
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
             className="w-full flex items-center justify-between group"
           >
             <div className="flex items-center gap-4 text-slate-900">
-              <div className="bg-brand-50 p-3 rounded-2xl text-brand-600 shadow-sm transition-transform group-hover:scale-110">
+              <div className={`p-3 rounded-2xl transition-all duration-500 ${isFilterOpen ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 shadow-sm transition-transform group-hover:scale-110'}`}>
                 <Filter size={20} strokeWidth={2.5} />
               </div>
               <div className="text-left">
                 <h2 className="text-xl font-black tracking-tight">絞り込み</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">学年・部門・場所で絞り込む</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">タップして 学年・部門・場所 で団体を絞り込む</p>
               </div>
             </div>
             <div className={`p-2 rounded-full transition-all duration-300 ${isFilterOpen ? 'bg-brand-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
@@ -295,13 +562,13 @@ const Groups = ({ initialGroups }) => {
           <AnimatePresence>
             {isFilterOpen && (
               <motion.div
-                initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                animate={{ height: 'auto', opacity: 1, marginTop: 32 }}
-                exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-col space-y-8 pb-4">
+                <div className="flex flex-col space-y-8 pt-8 pb-4">
                   <div className="flex flex-col space-y-4">
                     <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
                       <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 学年・有志
@@ -384,109 +651,17 @@ const Groups = ({ initialGroups }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence mode="popLayout">
           {filteredGroups.map((group) => (
-            <motion.div
-              key={group.id}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.2 }}
-              className={`bg-white border border-slate-100 rounded-3xl p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'opacity-60 saturate-50' : ''}`}
-            >
-              <div className="flex justify-between items-start mb-5">
-                <div className="flex-1 min-w-0 pr-2">
-                  <div className="flex flex-wrap items-center gap-2 mb-2.5">
-                    {group.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
-                      <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider whitespace-nowrap">
-                        {dept}
-                      </span>
-                    ))}
-                    <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-50 text-slate-500 font-black uppercase tracking-wider whitespace-nowrap">
-                      {group.name}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900 leading-tight mb-1.5">
-                    {group.title || group.name}
-                  </h3>
-                  <p className="text-[11px] text-slate-400 font-bold flex items-center shrink-0">
-                    <MapPin size={12} className="mr-1.5 text-slate-300" />
-                    {group.building} {group.room}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 scale-90 origin-top-right">
-                  <div className={`status-badge border shadow-sm ${getStatusColor(group)}`}>
-                    {getStatusText(group)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-grow space-y-6">
-                <p className="text-sm text-slate-500 font-bold leading-relaxed whitespace-pre-wrap">
-                  {group.description}
-                </p>
-
-                {group.has_performances && (group.performances || []).length > 0 && (() => {
-                  const nextPerf = getNextPerformance(group);
-                  return (
-                    <div className="pt-6 border-t border-slate-50 space-y-6">
-                      <div className="flex items-center gap-2 px-1 pb-1">
-                        <p className="text-[10px] font-bold text-slate-400">各公演回をタップすると詳細が表示されます</p>
-                      </div>
-                      <PerformanceList
-                        schedule={group.performances || []}
-                        dayLabel="Part 1 (6/13)"
-                        partId={1}
-                        currentNextPerf={nextPerf}
-                        groups={groups}
-                        setSelectedGroup={setSelectedGroup}
-                        setSelectedPerf={setSelectedPerf}
-                      />
-                      <PerformanceList
-                        schedule={group.performances || []}
-                        dayLabel="Part 2 (6/13)"
-                        partId={2}
-                        currentNextPerf={nextPerf}
-                        groups={groups}
-                        setSelectedGroup={setSelectedGroup}
-                        setSelectedPerf={setSelectedPerf}
-                      />
-                      <PerformanceList
-                        schedule={group.performances || []}
-                        dayLabel="Part 3 (6/14)"
-                        partId={3}
-                        currentNextPerf={nextPerf}
-                        groups={groups}
-                        setSelectedGroup={setSelectedGroup}
-                        setSelectedPerf={setSelectedPerf}
-                      />
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <div className="flex justify-between items-center pt-5 mt-auto border-t border-slate-50">
-                <div className="flex space-x-4">
-                  {group.social_links?.instagram && (
-                    <a href={group.social_links.instagram} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-pink-500 transition-colors">
-                      <Instagram size={18} />
-                    </a>
-                  )}
-                  {(group.social_links?.X || group.social_links?.x) && (
-                    <a href={group.social_links.X || group.social_links.x} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-slate-900 transition-colors">
-                      <XIcon size={16} />
-                    </a>
-                  )}
-                  {group.social_links?.HP && (
-                    <a href={group.social_links.HP} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-brand-600 transition-colors">
-                      <ExternalLink size={18} />
-                    </a>
-                  )}
-                </div>
-                <div className={`flex items-center gap-1 text-[9px] font-black text-slate-300 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100 ${!group.updated_at ? 'opacity-50' : ''}`}>
-                  {group.updated_at && <RefreshCw size={8} />}
-                  <span>更新: {formatRelativeTime(group.updated_at)}</span>
-                </div>
-              </div>
-            </motion.div>
+            <GroupCard 
+              key={group.id} 
+              group={group} 
+              groups={groups} 
+              setSelectedGroup={setSelectedGroup} 
+              setSelectedPerf={setSelectedPerf}
+              getStatusColor={getStatusColor}
+              getStatusText={getStatusText}
+              getNextPerformance={getNextPerformance}
+              formatRelativeTime={formatRelativeTime}
+            />
           ))}
         </AnimatePresence>
       </div>
@@ -500,16 +675,16 @@ const Groups = ({ initialGroups }) => {
       <Portal>
         <AnimatePresence>
           {selectedPerf && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedPerf(null)}>
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedPerf(null)}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white rounded-[2rem] p-10 max-w-sm w-full shadow-2xl border border-slate-100 space-y-8"
+                className="bg-white rounded-[2rem] p-6 md:p-10 max-w-sm w-full shadow-2xl border border-slate-100 space-y-6 md:space-y-8"
                 onClick={e => e.stopPropagation()}
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest">
-                      {selectedPerf.start_time} 公演
+                    <span className="text-base px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest">
+                      {selectedPerf.start_time}{selectedPerf.end_time && ` ～ ${selectedPerf.end_time}`}
                     </span>
                   </div>
                   <h2 className="text-2xl font-black text-slate-900 leading-tight">{selectedGroup.title || selectedGroup.name}</h2>
@@ -521,20 +696,37 @@ const Groups = ({ initialGroups }) => {
 
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">公演受付</span>
-                      <span className={`text-sm font-black text-center ${selectedPerf.currentReception === 'closed' ? 'text-rose-500' : selectedPerf.currentReception === 'ticket_only' ? 'text-amber-600' : selectedPerf.currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-500'}`}>
-                        {getReceptionLabel(selectedPerf.currentReception || 'open')}
-                      </span>
+                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center h-[110px]">
+                      <div className="flex items-center gap-1.5 text-slate-400 min-h-[16px]">
+                        <CheckCircle2 size={10} strokeWidth={3} />
+                        <span className="text-[8px] font-black uppercase tracking-widest">公演受付</span>
+                      </div>
+                      <div className="flex-1 flex items-center justify-center w-full">
+                        <div className={`text-base font-black text-center leading-tight ${
+                          selectedPerf.currentReception === 'ticket_only' ? 'text-brand-700' :
+                          ['closed', 'ended', 'before_open'].includes(selectedPerf.currentReception) ? 'text-slate-500' :
+                          'text-emerald-600'
+                        }`}>
+                          {getReceptionLabel(selectedPerf.currentReception || 'open')}
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center gap-1">
-                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">整理券</span>
-                      <span className="text-sm font-black text-slate-400">
-                        {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status)}
-                      </span>
+                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center h-[110px]">
+                      <div className="flex items-center gap-1.5 text-slate-400 min-h-[16px]">
+                        <Ticket size={10} strokeWidth={3} />
+                        <span className="text-[8px] font-black uppercase tracking-widest">整理券</span>
+                      </div>
+                      <div className="flex-1 flex items-center justify-center w-full">
+                        <div className={`text-base font-black text-center leading-tight ${
+                          ['ended', 'none'].includes(selectedPerf.computedTicket || selectedPerf.status) ? 'text-slate-500' :
+                          'text-emerald-600'
+                        }`}>
+                          {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status).replace('整理券', '')}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed text-center">
+                  <p className="text-[11px] text-slate-400 font-bold leading-relaxed text-center">
                     整理券は紙での配布となります。<br />
                     詳細は各団体にご確認ください。
                   </p>
@@ -558,7 +750,7 @@ const Groups = ({ initialGroups }) => {
 export async function getStaticProps() {
   const { data, error } = await supabase
     .from('groups')
-    .select('id, title, name, description, building, room, social_links, updated_at, department, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, name_initial, performances(id, group_id, part_id, start_time, end_time, status, reception_status)');
+    .select('id, title, name, name_kana, description, building, room, social_links, updated_at, department, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, title_kana, performances(id, group_id, part_id, start_time, end_time, status, reception_status)');
 
   if (error) {
     console.error('getStaticProps fetch error:', error);

@@ -18,9 +18,9 @@ const Home = () => {
 
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-8 md:space-y-12 pb-12">
       {/* Hero Section */}
-      <section className="relative min-h-[65vh] md:min-h-[75vh] flex flex-col items-center justify-center text-center overflow-hidden px-4 mesh-gradient rounded-[3rem] md:mt-4 mx-2">
+      <section className="relative min-h-[65vh] md:min-h-[75vh] flex flex-col items-center justify-center text-center overflow-hidden px-4 md:px-6 mesh-gradient rounded-[2rem] md:rounded-[3rem] md:mt-4 mx-2 md:mx-4">
         {/* Floating Background Blobs */}
         <motion.div
           animate={{
@@ -58,11 +58,11 @@ const Home = () => {
             </p>
           </motion.div>
 
-          <h1 className="text-8xl md:text-[12rem] font-black text-slate-900 tracking-tighter leading-[0.8] mb-12 text-glow">
+          <h1 className="text-7xl md:text-[12rem] font-black text-slate-900 tracking-tighter leading-[0.8] mb-12 text-glow">
             凌雲<span className="text-gradient block md:inline md:ml-6">2026</span>
           </h1>
 
-          <div className="glass-effect rounded-[2.5rem] p-8 md:p-12 max-w-2xl mx-auto space-y-6">
+          <div className="glass-effect rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 max-w-2xl mx-auto space-y-6">
             <p className="text-sm md:text-lg text-slate-600 font-bold leading-relaxed tracking-tight">
               凌雲とは雲よりも高いところへ突き抜けるという意味。<br className="hidden md:block" />
               仮校舎での開催で、様々な制限がある中、仲間と共に試行錯誤して可能性を広げることで、<br className="hidden md:block" />
@@ -74,11 +74,11 @@ const Home = () => {
       </section>
 
       {/* Info Cards */}
-      <section className="space-y-8 px-2 max-w-7xl mx-auto">
+      <section className="space-y-6 md:space-y-10 px-4 md:px-0 max-w-7xl mx-auto">
         {/* お知らせ（限定公開案内） - 横長配置 */}
         <motion.div
           whileHover={{ y: -5 }}
-          className="bg-amber-50 border border-amber-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm relative overflow-hidden flex flex-col items-start gap-6"
+          className="bg-amber-50 border border-amber-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-sm relative overflow-hidden flex flex-col items-start gap-4 md:gap-6"
         >
           <div className="absolute -top-10 -right-10 w-60 h-60 bg-amber-200/20 rounded-full blur-3xl -z-10" />
 
@@ -111,9 +111,9 @@ const Home = () => {
           {/* 開催日時 */}
           <motion.div
             whileHover={{ y: -8 }}
-            className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col items-start text-left"
+            className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-sm flex flex-col items-start text-left"
           >
-            <div className="flex items-center gap-6 mb-8 w-full">
+            <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8 w-full">
               <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 shadow-sm shrink-0">
                 <Calendar size={28} />
               </div>
@@ -146,9 +146,9 @@ const Home = () => {
           {/* 注意事項 */}
           <motion.div
             whileHover={{ y: -8 }}
-            className="bg-white border border-slate-100 rounded-[2.5rem] p-10 shadow-sm flex flex-col items-start text-left"
+            className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-sm flex flex-col items-start text-left"
           >
-            <div className="flex items-center gap-6 mb-8 w-full">
+            <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8 w-full">
               <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 shadow-sm shrink-0">
                 <AlertTriangle size={28} />
               </div>
@@ -197,12 +197,12 @@ const Home = () => {
       </section>
 
       {/* Voting Section */}
-      <section className="px-2 max-w-7xl mx-auto">
+      <section className="px-4 md:px-0 max-w-7xl mx-auto">
         <motion.button
           onClick={() => setIsVoteModalOpen(true)}
           whileHover={{ y: -5, scale: 1.01 }}
           whileActive={{ scale: 0.98 }}
-          className="w-full bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm relative overflow-hidden group text-left transition-all"
+          className="w-full bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-sm relative overflow-hidden group text-left transition-all"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-50 rounded-full blur-3xl -z-10 group-hover:bg-brand-100 transition-colors" />
 
@@ -212,7 +212,7 @@ const Home = () => {
                 <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 shadow-sm shrink-0">
                   <Vote size={28} />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900">たちばな大賞\n投票フォーム</h2>
+                <h2 className="text-2xl font-black text-slate-900 leading-tight">たちばな大賞<br />投票フォーム</h2>
               </div>
               <p className="text-slate-500 font-bold max-w-xl">
                 展示・発表を体験された方は、ぜひ投票をお願いします！
@@ -236,7 +236,7 @@ const Home = () => {
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="bg-white rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 max-w-2xl w-full shadow-2xl border border-slate-100 relative"
+                className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 max-w-2xl w-full shadow-2xl border border-slate-100 relative"
                 onClick={e => e.stopPropagation()}
               >
                 <button
@@ -303,14 +303,14 @@ const Home = () => {
       </Portal>
 
       {/* Feedback Section */}
-      <section className="px-2 max-w-7xl mx-auto pb-12">
+      <section className="px-4 md:px-0 max-w-7xl mx-auto pb-12">
         <motion.a
           href="https://forms.gle/KQ7icJ7HWBaHyUdFA"
           target="_blank"
           rel="noopener noreferrer"
           whileHover={{ y: -5, scale: 1.01 }}
           whileActive={{ scale: 0.98 }}
-          className="block w-full bg-slate-900 rounded-[2.5rem] p-8 md:p-12 shadow-xl relative overflow-hidden group transition-all"
+          className="block w-full bg-slate-900 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-xl relative overflow-hidden group transition-all"
         >
           <div className="absolute top-0 right-0 w-96 h-96 bg-brand-600/20 rounded-full blur-[100px] -z-10 group-hover:bg-brand-500/30 transition-colors" />
 

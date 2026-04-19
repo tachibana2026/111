@@ -17,7 +17,6 @@ export async function triggerRevalidate(paths = ['/', '/groups', '/lost-found', 
     }
 
     const data = await response.json();
-    console.log('Revalidation successful:', data);
     return true;
   } catch (err) {
     console.error('Error triggering revalidation:', err);
