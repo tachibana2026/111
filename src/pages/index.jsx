@@ -212,7 +212,7 @@ const Home = () => {
                 <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 shadow-sm shrink-0">
                   <Vote size={28} />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900">たちばな大賞 投票フォーム</h2>
+                <h2 className="text-2xl font-black text-slate-900">たちばな大賞\n投票フォーム</h2>
               </div>
               <p className="text-slate-500 font-bold max-w-xl">
                 展示・発表を体験された方は、ぜひ投票をお願いします！
