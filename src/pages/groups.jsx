@@ -283,7 +283,7 @@ const Groups = ({ initialGroups }) => {
                 <Filter size={20} strokeWidth={2.5} />
               </div>
               <div className="text-left">
-                <h2 className="text-xl font-black tracking-tight">フィルター</h2>
+                <h2 className="text-xl font-black tracking-tight">絞り込み</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">学年・部門・場所で絞り込む</p>
               </div>
             </div>
