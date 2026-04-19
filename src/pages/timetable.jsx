@@ -4,7 +4,6 @@ import { Clock, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Portal from '../components/Portal';
 
-
 const PARTS = [
   { id: 1, name: 'Part 1', day: 1, range: ['08:45', '12:15'] },
   { id: 2, name: 'Part 2', day: 1, range: ['12:45', '16:15'] },
@@ -53,10 +52,6 @@ const Timetable = ({ initialPerformances }) => {
       return () => clearTimeout(timer);
     }
   }, [activePart, performances]);
-
-
-
-
   const currentPartInfo = useMemo(() => {
     const info = PARTS.find(p => p.id === activePart);
     const [sH, sM] = info.range[0].split(':').map(Number);
@@ -193,6 +188,10 @@ const Timetable = ({ initialPerformances }) => {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 px-1">
+        <p className="text-xs font-black text-slate-400">各公演回をタップすると詳細が表示されます</p>
       </div>
 
       <div className="relative bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col">

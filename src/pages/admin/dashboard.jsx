@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { triggerRevalidate } from '../../lib/revalidate';
 import Portal from '../../components/Portal';
 
-
 const renderFormattedMessage = (message) => {
   if (!message) return null;
   const parts = message.split(/(【[^】]+】)/g);
@@ -373,7 +372,6 @@ const GroupDashboard = () => {
             )}
           </div>
         </section>
-
         <div className={`space-y-6 ${group.editing_locked ? 'opacity-40 pointer-events-none' : ''}`}>
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm space-y-10">
               <div className="flex items-center justify-between">

@@ -4,7 +4,6 @@ import { Filter, SortDesc, Instagram, ExternalLink, MapPin, ChevronDown, Refresh
 import { motion, AnimatePresence } from 'framer-motion';
 import Portal from '../components/Portal';
 
-
 const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
 const GRADES = ['すべて', '1年', '2年', '3年', '有志'];
 const BUILDINGS = ['すべて', '仮校舎', '体育館', 'セミナー', '南館'];
@@ -429,6 +428,9 @@ const Groups = ({ initialGroups }) => {
                   const nextPerf = getNextPerformance(group);
                   return (
                     <div className="pt-6 border-t border-slate-50 space-y-6">
+                      <div className="flex items-center gap-2 px-1 pb-1">
+                        <p className="text-[10px] font-bold text-slate-400">各公演回をタップすると詳細が表示されます</p>
+                      </div>
                       <PerformanceList
                         schedule={group.performances || []}
                         dayLabel="Part 1 (6/13)"

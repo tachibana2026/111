@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, AlertTriangle, Info, MessageSquare, ArrowRight, X, Vote } from 'lucide-react';
 import Portal from '../components/Portal';
-
+const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
 const Home = () => {
   const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
-
   useEffect(() => {
     if (isVoteModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -180,6 +179,10 @@ const Home = () => {
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
                   <p className="text-sm font-bold">開催時間終了の<span className="text-brand-600 font-black mx-1">30分前</span>に入場を締め切らせていただきます。</p>
+                </div>
+                <div className="flex items-start space-x-3 text-slate-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
+                  <p className="text-sm font-bold">食品･物販団体の販売は<span className="text-brand-600 font-black mx-1">有料</span>です。お支払いは各団体にてお願いいたします。</p>
                 </div>
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>

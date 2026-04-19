@@ -11,9 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { triggerRevalidate } from '../../lib/revalidate';
 import Portal from '../../components/Portal';
 
-
 const DEPARTMENTS = ['体験', '食品', '公演', '展示', '冊子', '物販'];
-
 const formatDateTime = (isoString) => {
   if (!isoString) return '';
   const date = new Date(isoString);
@@ -23,7 +21,6 @@ const formatDateTime = (isoString) => {
   const min = String(date.getMinutes()).padStart(2, '0');
   return `${m}/${d} ${h}:${min}`;
 };
-
 const formatRelativeTime = (isoString) => {
   if (!isoString) return 'データなし';
   const now = new Date();
@@ -36,7 +33,6 @@ const formatRelativeTime = (isoString) => {
   const diffWeeks = Math.floor(diffDays / 7);
   const diffMonths = Math.floor(diffDays / 30);
   const diffYears = Math.floor(diffDays / 365);
-
   if (diffMins < 3) return 'たった今';
   if (diffMins < 60) return `${diffMins}分前`;
   if (diffHours < 24) return `${diffHours}時間前`;
@@ -45,7 +41,6 @@ const formatRelativeTime = (isoString) => {
   if (diffMonths < 12) return `${diffMonths}か月前`;
   return `${diffYears}年前`;
 };
-
 const renderFormattedMessage = (message) => {
   if (!message) return null;
   const parts = message.split(/(【[^】]+】)/g);
@@ -60,7 +55,6 @@ const renderFormattedMessage = (message) => {
     return part;
   });
 };
-
 const HQDashboard = () => {
   const [activeTab, setActiveTab] = useState('groups');
   const [selectedDept, setSelectedDept] = useState('体験');
@@ -73,7 +67,6 @@ const HQDashboard = () => {
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [editingLostFound, setEditingLostFound] = useState(null);
   const [isLostFoundModalOpen, setIsLostFoundModalOpen] = useState(false);
-
   useEffect(() => {
     if (confirmDialog.isOpen || isEditModalOpen || isLostFoundModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -84,13 +77,10 @@ const HQDashboard = () => {
       document.body.style.overflow = 'unset';
     };
   }, [confirmDialog.isOpen, isEditModalOpen, isLostFoundModalOpen]);
-
   const router = useRouter();
-
   const requireConfirm = (message, onConfirm, confirmText = '実行する', icon = null) => {
     setConfirmDialog({ isOpen: true, message, onConfirm, confirmText, icon });
   };
-
   const handleLogout = async () => {
     requireConfirm(
       '本部管理画面から\n【ログアウト】しますか？',
@@ -106,12 +96,10 @@ const HQDashboard = () => {
       <LogOut className="w-7 h-7 md:w-8 md:h-8" />
     );
   };
-
   useEffect(() => {
     const authType = localStorage.getItem('ryoun_auth_type');
     if (authType !== 'hq') { router.push('/admin'); return; }
     fetchData();
-
     const channels = [
       supabase.channel('hq_realtime')
         .on('postgres_changes', { event: '*', table: 'groups' }, fetchData)
@@ -120,7 +108,6 @@ const HQDashboard = () => {
     ];
     return () => channels.forEach(c => supabase.removeChannel(c));
   }, []);
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -130,7 +117,6 @@ const HQDashboard = () => {
         .order('name');
       if (gError) throw gError;
       if (gData) setGroups(gData);
-
       const { data: lData, error: lError } = await supabase.from('lost_found').select('*').order('found_at', { ascending: false });
       if (lError) throw lError;
       if (lData) setLostFound(lData);
@@ -140,26 +126,22 @@ const HQDashboard = () => {
       setLoading(false);
     }
   };
-
   const handleBulkStatusUpdate = async (status) => {
     setIsBulkUpdating(true);
     try {
       const filteredGroups = groups.filter(g => g.department?.split(',').map(d => d.trim()).includes(selectedDept));
       const groupIds = filteredGroups.map(g => g.id);
-
       if (groupIds.length > 0) {
         await supabase.from('groups')
           .update({ reception_status: status, updated_at: new Date().toISOString() })
           .in('id', groupIds);
       }
-
       if (selectedDept === '公演') {
         const groupIds = filteredGroups.map(g => g.id);
         await supabase.from('performances')
           .update({ reception_status: status === 'open' ? 'open' : 'closed', updated_at: new Date().toISOString() })
           .in('group_id', groupIds);
       }
-
       // Update parent group's updated_at to reflect bulk changes on public page
       const affectedGroupIds = filteredGroups.map(g => g.id);
       if (affectedGroupIds.length > 0) {
@@ -167,7 +149,6 @@ const HQDashboard = () => {
           .update({ updated_at: new Date().toISOString() })
           .in('id', affectedGroupIds);
       }
-
       await fetchData();
       triggerRevalidate();
     } catch (error) {
@@ -176,16 +157,15 @@ const HQDashboard = () => {
       setIsBulkUpdating(false);
     }
   };
-
   const handleBulkLockUpdate = async (locked) => {
     setIsBulkUpdating(true);
     try {
       const filteredGroups = groups.filter(g => g.department === selectedDept);
       const groupIds = filteredGroups.map(g => g.id);
       if (groupIds.length > 0) {
-        await supabase.from('groups').update({ 
+        await supabase.from('groups').update({
           editing_locked: locked,
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString()
         }).in('id', groupIds);
       }
       await fetchData();
@@ -196,28 +176,25 @@ const HQDashboard = () => {
       setIsBulkUpdating(false);
     }
   };
-
   const handleBulkLogout = async () => {
     setIsBulkUpdating(true);
     try {
       const filteredGroups = groups.filter(g => g.department === selectedDept);
       const groupIds = filteredGroups.map(g => g.id);
       if (groupIds.length > 0) {
-        await supabase.from('groups').update({ 
+        await supabase.from('groups').update({
           last_reset_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }).in('id', groupIds);
       }
       await fetchData();
       triggerRevalidate();
-
     } catch (error) {
       console.error('Bulk logout error:', error);
     } finally {
       setIsBulkUpdating(false);
     }
   };
-
   const handleDeleteLostFound = async (id) => {
     requireConfirm('この落とし物情報を\n【削除】しますか？', async () => {
       await supabase.from('lost_found').delete().eq('id', id);
@@ -225,8 +202,6 @@ const HQDashboard = () => {
       triggerRevalidate();
     }, '削除');
   };
-
-
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-12 pb-12 pt-4 px-4 md:px-0">
@@ -250,16 +225,15 @@ const HQDashboard = () => {
           </button>
         </div>
       </div>
-
       {/* HQ Status Control */}
       {(() => {
         const hqGroup = groups.find(g => g.name === '文化委員会');
         if (!hqGroup) return null;
-        
+
         const handleHQStatusUpdate = async (status) => {
           try {
-            const { error } = await supabase.from('groups').update({ 
-              reception_status: status 
+            const { error } = await supabase.from('groups').update({
+              reception_status: status
             }).eq('id', hqGroup.id);
             if (error) throw error;
             fetchData();
@@ -267,7 +241,6 @@ const HQDashboard = () => {
             console.error(e);
           }
         };
-
         return (
           <div className="bg-white border border-brand-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-xl shadow-brand-500/5 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group">
             <div className="flex items-center gap-5 md:gap-7 relative z-10">
@@ -277,19 +250,17 @@ const HQDashboard = () => {
               <div>
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-5">
                   <h2 className="text-lg md:text-xl font-black text-slate-800 tracking-tight">文化委員会本部 受付状況</h2>
-                    <div className={`w-fit px-4 py-1.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 transition-all cursor-default ${
-                    hqGroup.reception_status === 'open' ? 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm shadow-emerald-500/10' :
-                    hqGroup.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
-                    hqGroup.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600 shadow-sm shadow-brand-500/10' :
-                    'bg-rose-50 border-rose-100 text-rose-600 shadow-sm shadow-rose-500/10'
-                  }`}>
+                  <div className={`w-fit px-4 py-1.5 rounded-full text-[11px] font-black flex items-center gap-2 border-2 transition-all cursor-default ${hqGroup.reception_status === 'open' ? 'bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm shadow-emerald-500/10' :
+                      hqGroup.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                        hqGroup.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600 shadow-sm shadow-brand-500/10' :
+                          'bg-rose-50 border-rose-100 text-rose-600 shadow-sm shadow-rose-500/10'
+                    }`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${hqGroup.reception_status === 'open' ? 'bg-emerald-500 animate-pulse' : hqGroup.reception_status === 'before_open' ? 'bg-slate-300' : hqGroup.reception_status === 'ticket_only' ? 'bg-brand-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                    {{ open: '受付中', before_open: '受付前', ticket_only: '整理券のみ受付', closed: '受付終了'}[hqGroup.reception_status]}
+                    {{ open: '受付中', before_open: '受付前', ticket_only: '整理券のみ受付', closed: '受付終了' }[hqGroup.reception_status]}
                   </div>
                 </div>
               </div>
             </div>
-
             <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto relative z-10">
               {[
                 { id: 'before_open', label: '受付前', color: 'hover:bg-slate-600 hover:text-white bg-slate-50 text-slate-500', icon: <Clock size={14} /> },
@@ -309,7 +280,6 @@ const HQDashboard = () => {
           </div>
         );
       })()}
-
       {/* Tabs / Navigation */}
       <div className="flex w-full overflow-hidden pb-2 md:pb-0">
         <div className="flex w-full p-1.5 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2.5rem] border border-slate-200/50 shadow-inner">
@@ -328,7 +298,6 @@ const HQDashboard = () => {
           ))}
         </div>
       </div>
-
       {activeTab === 'groups' && (
         <div className="space-y-6 md:space-y-10">
           <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3.5rem] shadow-sm overflow-hidden">
@@ -348,7 +317,6 @@ const HQDashboard = () => {
                         </div>
                       </div>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                       {/* Group 1: Reception */}
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
@@ -380,7 +348,6 @@ const HQDashboard = () => {
                           </button>
                         </div>
                       </div>
-
                       {/* Group 2: Lock Control */}
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">編集権限</span>
@@ -403,7 +370,6 @@ const HQDashboard = () => {
                           </button>
                         </div>
                       </div>
-
                       {/* Group 3: Session Management */}
                       <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">セッション管理</span>
@@ -418,7 +384,6 @@ const HQDashboard = () => {
                       </div>
                     </div>
                   </div>
-
                   {/* Category Filter - Bottom */}
                   <div className="space-y-3 pt-6 border-t border-slate-100">
                     <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
@@ -439,7 +404,6 @@ const HQDashboard = () => {
                 </div>
               </div>
             </div>
-
             {/* Desktop Table View */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left">
@@ -475,18 +439,16 @@ const HQDashboard = () => {
                         <td className="px-10 py-8 border-l border-slate-50">
                           <div className="flex items-center justify-center gap-4 flex-wrap max-w-[600px] mx-auto text-center">
                             {g.has_reception && (
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${
-                                g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' : 
-                                g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' : 
-                                g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
-                                'bg-emerald-50 border-emerald-100 text-emerald-600'
-                              }`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${
-                                  g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-500' : 
-                                  g.reception_status === 'before_open' ? 'bg-slate-300' : 
-                                  g.reception_status === 'ticket_only' ? 'bg-brand-500 animate-pulse' :
-                                  'bg-emerald-500 animate-pulse'
-                                }`}></div>
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                  g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                                    g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
+                                      'bg-emerald-50 border-emerald-100 text-emerald-600'
+                                }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-500' :
+                                    g.reception_status === 'before_open' ? 'bg-slate-300' :
+                                      g.reception_status === 'ticket_only' ? 'bg-brand-500 animate-pulse' :
+                                        'bg-emerald-500 animate-pulse'
+                                  }`}></div>
                                 {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ受付', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
                               </div>
                             )}
@@ -498,21 +460,19 @@ const HQDashboard = () => {
                               <span>{g.editing_locked ? '編集ロック中' : '編集許可中'}</span>
                             </div>
                             {g.has_waiting_time && g.reception_status !== 'closed' && g.reception_status !== 'ended' && g.reception_status !== 'before_open' && (
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black border-2 ${
-                                g.waiting_time === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                                g.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                                'bg-rose-50 border-rose-100 text-rose-600'
-                              }`}>
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black border-2 ${g.waiting_time === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                  g.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                                    'bg-rose-50 border-rose-100 text-rose-600'
+                                }`}>
                                 {g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`}
                               </div>
                             )}
                             {g.has_ticket_status && (
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${
-                                g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                                g.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                                g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                                'bg-slate-50 border-slate-100 text-slate-400'
-                              }`}>
+                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 ${g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                  g.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                                    g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                      'bg-slate-50 border-slate-100 text-slate-400'
+                                }`}>
                                 <Ticket size={12} strokeWidth={3} />
                                 {{ distributing: '配布中', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
                               </div>
@@ -577,7 +537,6 @@ const HQDashboard = () => {
                 </tbody>
               </table>
             </div>
-
             {/* Mobile Card View */}
             <div className="lg:hidden divide-y divide-slate-100">
               {groups.filter(g => g.department?.split(',').map(d => d.trim()).includes(selectedDept)).map(g => {
@@ -628,12 +587,11 @@ const HQDashboard = () => {
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">現在の状況</span>
                         <div className="flex items-center gap-2">
                           {g.has_reception && (
-                            <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${
-                              g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' : 
-                              g.reception_status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' : 
-                              g.reception_status === 'ticket_only' ? 'bg-brand-100 border-brand-200 text-brand-600' :
-                              'bg-emerald-100 border-emerald-200 text-emerald-600'
-                            }`}>
+                            <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' :
+                                g.reception_status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' :
+                                  g.reception_status === 'ticket_only' ? 'bg-brand-100 border-brand-200 text-brand-600' :
+                                    'bg-emerald-100 border-emerald-200 text-emerald-600'
+                              }`}>
                               {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
                             </div>
                           )}
@@ -657,11 +615,10 @@ const HQDashboard = () => {
                       {g.has_ticket_status && (
                         <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
                           <span className="text-[10px] font-black text-slate-400">配布状況</span>
-                          <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 transition-all ${
-                            g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                            g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                            'bg-slate-50 border-slate-100 text-slate-400'
-                          }`}>
+                          <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 transition-all ${g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                              g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                                'bg-slate-50 border-slate-100 text-slate-400'
+                            }`}>
                             <Ticket size={12} strokeWidth={3} />
                             {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
                           </div>
@@ -698,7 +655,6 @@ const HQDashboard = () => {
           </div>
         </div>
       )}
-
       {activeTab === 'lost_found' && (
         <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-12 shadow-sm space-y-6 md:space-y-10">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -743,8 +699,6 @@ const HQDashboard = () => {
         </div>
       )}
 
-
-
       {/* Confirm Dialog */}
       <AnimatePresence>
         {confirmDialog.isOpen && (
@@ -768,7 +722,6 @@ const HQDashboard = () => {
           </Portal>
         )}
       </AnimatePresence>
-
       {/* Edit Group Modal */}
       <AnimatePresence>
         {isEditModalOpen && editingGroup && (
@@ -784,7 +737,6 @@ const HQDashboard = () => {
           </Portal>
         )}
       </AnimatePresence>
-
       {/* Lost & Found Modal */}
       <AnimatePresence>
         {isLostFoundModalOpen && editingLostFound && (
@@ -801,11 +753,9 @@ const HQDashboard = () => {
         )}
       </AnimatePresence>
 
-
     </div >
   );
 };
-
 const EditGroupModal = ({ group, onClose, onSave }) => {
   const [editData, setEditData] = useState({
     reception_status: group.reception_status || 'before_open',
@@ -815,7 +765,6 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
   const [performances, setPerformances] = useState(JSON.parse(JSON.stringify(group.performances || [])));
   const [editingLocked, setEditingLocked] = useState(group.editing_locked);
   const [isSaving, setIsSaving] = useState(false);
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -845,7 +794,6 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
       setIsSaving(false);
     }
   };
-
   const handleForceLogout = async () => {
     if (!window.confirm('この団体のセッションを\n【強制終了】させますか？')) return;
     setIsSaving(true);
@@ -862,7 +810,6 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
       setIsSaving(false);
     }
   };
-
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
       <motion.div
@@ -881,7 +828,6 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
             <p className="text-sm font-bold text-slate-400">{group.title || 'Official Program'}</p>
           </div>
         </div>
-
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-12 custom-scrollbar">
           {/* Admin Management Section */}
@@ -908,31 +854,114 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
               </button>
             </div>
           </div>
-
-            <div className="space-y-6">
-              {(!group.has_performances && (group.has_reception || group.has_waiting_time || group.has_ticket_status)) ? (
-                <>
-                  <div className="flex items-center gap-4">
-                    <div className="h-px flex-1 bg-slate-100"></div>
-                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">運営状況 管理</h3>
-                    <div className="h-px flex-1 bg-slate-100"></div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {group.has_reception && (
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
-                        <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1 overflow-x-auto scrollbar-hide">
+          <div className="space-y-6">
+            {(!group.has_performances && (group.has_reception || group.has_waiting_time || group.has_ticket_status)) ? (
+              <>
+                <div className="flex items-center gap-4">
+                  <div className="h-px flex-1 bg-slate-100"></div>
+                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">運営状況 管理</h3>
+                  <div className="h-px flex-1 bg-slate-100"></div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {group.has_reception && (
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
+                      <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1 overflow-x-auto scrollbar-hide">
+                        {(() => {
+                          const options = ['before_open', 'open', 'closed'];
+                          if (editData.ticket_status === 'distributing' || editData.ticket_status === 'ended') {
+                            options.splice(2, 0, 'ticket_only');
+                          }
+                          return options.map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setEditData(prev => ({ ...prev, reception_status: s }))}
+                              className={`flex-1 min-w-fit px-3 py-3 rounded-xl text-[10px] font-black transition-all ${editData.reception_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                            >
+                              {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                  {group.has_waiting_time && (
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">待ち時間</label>
+                      <select
+                        value={editData.waiting_time}
+                        onChange={(e) => setEditData(prev => ({ ...prev, waiting_time: parseInt(e.target.value) }))}
+                        className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black text-slate-700 outline-none transition-all"
+                      >
+                        {Array.from({ length: 25 }, (_, i) => i * 5).map(t => (
+                          <option key={t} value={t}>{t === 0 ? '待ちなし' : `${t}分待ち`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {group.has_ticket_status && (
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
+                      <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
+                        {['none', 'distributing', 'ended'].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => setEditData(prev => ({ ...prev, ticket_status: s }))}
+                            className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${editData.ticket_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                          >
+                            {{ none: 'なし', distributing: '配布中', ended: '終了' }[s]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : !group.has_performances && (
+              <div className="flex flex-col items-center justify-center py-10 px-6 text-center space-y-4">
+                <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
+                  <Info size={24} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">編集項目はありません</h3>
+                  <p className="text-xs font-bold text-slate-400 mt-2 leading-relaxed">
+                    この団体に本部で設定された編集項目はありません。
+                  </p>
+                </div>
+              </div>
+            )}
+            {group.has_performances && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-px flex-1 bg-slate-100"></div>
+                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">公演スケジュール 管理</h3>
+                  <div className="h-px flex-1 bg-slate-100"></div>
+                </div>
+                {performances.sort((a, b) => {
+                  if (a.part_id !== b.part_id) return a.part_id - b.part_id;
+                  return a.start_time.localeCompare(b.start_time);
+                }).map(perf => (
+                  <div key={perf.id} className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-900 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-brand-600" />
+                        Part{perf.part_id} ({perf.start_time})
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
+                        <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
                           {(() => {
                             const options = ['before_open', 'open', 'closed'];
-                            if (editData.ticket_status === 'distributing' || editData.ticket_status === 'ended') {
+                            if (perf.status === 'distributing' || perf.status === 'ended') {
                               options.splice(2, 0, 'ticket_only');
                             }
                             return options.map(s => (
                               <button
                                 key={s}
-                                onClick={() => setEditData(prev => ({ ...prev, reception_status: s }))}
-                                className={`flex-1 min-w-fit px-3 py-3 rounded-xl text-[10px] font-black transition-all ${editData.reception_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                                onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
+                                className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all ${perf.reception_status === s ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                               >
                                 {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
                               </button>
@@ -940,117 +969,27 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                           })()}
                         </div>
                       </div>
-                    )}
-
-                    {group.has_waiting_time && (
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">待ち時間</label>
-                        <select
-                          value={editData.waiting_time}
-                          onChange={(e) => setEditData(prev => ({ ...prev, waiting_time: parseInt(e.target.value) }))}
-                          className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black text-slate-700 outline-none transition-all"
-                        >
-                          {Array.from({ length: 25 }, (_, i) => i * 5).map(t => (
-                            <option key={t} value={t}>{t === 0 ? '待ちなし' : `${t}分待ち`}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {group.has_ticket_status && (
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
-                        <div className="flex bg-slate-50 p-1.5 rounded-2xl gap-1">
+                      <div className="space-y-3">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
+                        <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
                           {['none', 'distributing', 'ended'].map(s => (
                             <button
                               key={s}
-                              onClick={() => setEditData(prev => ({ ...prev, ticket_status: s }))}
-                              className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all ${editData.ticket_status === s ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400'}`}
+                              onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
+                              className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all ${perf.status === s ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                             >
-                              {{ none: 'なし', distributing: '配布中', ended: '終了' }[s]}
+                              {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
                             </button>
                           ))}
                         </div>
                       </div>
-                    )}
-                  </div>
-                </>
-              ) : !group.has_performances && (
-                <div className="flex flex-col items-center justify-center py-10 px-6 text-center space-y-4">
-                  <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
-                    <Info size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">編集項目はありません</h3>
-                    <p className="text-xs font-bold text-slate-400 mt-2 leading-relaxed">
-                      この団体に本部で設定された編集項目はありません。
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {group.has_performances && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-px flex-1 bg-slate-100"></div>
-                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">公演スケジュール 管理</h3>
-                    <div className="h-px flex-1 bg-slate-100"></div>
-                  </div>
-                  {performances.sort((a, b) => {
-                    if (a.part_id !== b.part_id) return a.part_id - b.part_id;
-                    return a.start_time.localeCompare(b.start_time);
-                  }).map(perf => (
-                    <div key={perf.id} className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 space-y-6">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-900 flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-brand-600" />
-                          Part{perf.part_id} ({perf.start_time})
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
-                          <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
-                            {(() => {
-                              const options = ['before_open', 'open', 'closed'];
-                              if (perf.status === 'distributing' || perf.status === 'ended') {
-                                options.splice(2, 0, 'ticket_only');
-                              }
-                              return options.map(s => (
-                                <button
-                                  key={s}
-                                  onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
-                                  className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all ${perf.reception_status === s ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                >
-                                  {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
-                                </button>
-                              ));
-                            })()}
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
-                          <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
-                            {['none', 'distributing', 'ended'].map(s => (
-                              <button
-                                key={s}
-                                onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
-                                className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all ${perf.status === s ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                              >
-                                {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-
         {/* Modal Footer */}
         <div className="p-6 md:p-10 border-t border-slate-50 bg-slate-50/30 flex gap-4 shrink-0">
           <button
@@ -1073,17 +1012,14 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
     </div>
   );
 };
-
 const EditLostFoundModal = ({ item, onClose, onSave }) => {
   const [formData, setFormData] = useState({ ...item });
   const [isSaving, setIsSaving] = useState(false);
-
   const handleSave = async () => {
     setIsSaving(true);
     try {
       // Remove id from formData if it exists for insert
       const { id, ...saveData } = formData;
-
       let res;
       if (item.id) {
         res = await supabase.from('lost_found').update({
@@ -1094,9 +1030,7 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
           { ...saveData }
         ]);
       }
-
       if (res.error) throw res.error;
-
       await onSave();
       triggerRevalidate();
       onClose();
@@ -1107,7 +1041,6 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
       setIsSaving(false);
     }
   };
-
   return (
     <Portal>
       <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
@@ -1168,7 +1101,5 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
     </Portal>
   );
 };
-
-
 
 export default HQDashboard;
