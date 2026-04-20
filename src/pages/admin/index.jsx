@@ -168,7 +168,7 @@ const AdminLogin = () => {
         <div className="pt-8 text-center border-t border-slate-50">
           <p className="text-[11px] text-slate-400 font-bold tracking-tight leading-relaxed">
             ログインできない場合は<br />
-            <span className="text-brand-600">文化委員会本部 (仮校舎 東201)</span> までお越しください。
+            <span className="text-brand-600">文化委員会本部 (東館201)</span> までお越しください。
           </p>
         </div>
       </motion.div>

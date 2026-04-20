@@ -35,20 +35,20 @@ const LostFound = ({ initialItems }) => {
           <h2 className="text-2xl font-black text-slate-900">受け取り方法</h2>
         </div>
         <p className="text-slate-600 leading-relaxed font-bold text-base">
-          心当たりのある方は<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (仮校舎 東201)</span> までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
+          心当たりのある方は、<span className="text-brand-600 font-black px-2 py-0.5 bg-brand-50 rounded-lg">文化委員会本部 (東館201)</span> までお越しください。本人確認のため、特徴などを詳しく伺う場合があります。
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence mode="popLayout">
           {items.map((item, idx) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, delay: idx * 0.03 }}
-              className="bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-6 md:p-10 group flex flex-col items-start gap-6 md:gap-8 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300"
-            >
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: idx * 0.03 }}
+                className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300"
+              >
               <div className="flex justify-between items-start w-full gap-4">
                 <div className="flex items-start gap-4">
                   <div>
@@ -77,7 +77,7 @@ const LostFound = ({ initialItems }) => {
         </AnimatePresence>
 
         {items.length === 0 && (
-          <div className="md:col-span-2 text-center py-32 space-y-4 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-3xl">
+          <div className="md:col-span-2 lg:col-span-3 text-center py-32 space-y-4 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-3xl">
             <PackageSearch className="text-slate-200 mx-auto" size={48} />
             <p className="text-slate-400 font-bold text-lg md:text-xl">現在、登録されている落とし物はありません</p>
           </div>

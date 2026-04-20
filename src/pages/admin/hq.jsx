@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import {
   Users, PackageSearch, ShieldCheck,
   Lock, Unlock, Plus, RefreshCw, MapPin,
-  LogOut, CheckCircle2, Clock, Edit2, XCircle,
+  LogOut, CheckCircle2, Clock, Edit2, XCircle, X,
   AlertTriangle, Info, Ticket, Save, Filter, Loader2,
   ChevronDown, Search
 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerRevalidate } from '../../lib/revalidate';
 import Portal from '../../components/Portal';
+import { Calendar } from 'lucide-react';
 
 const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
 const formatDateTime = (isoString) => {
@@ -53,6 +54,298 @@ const normalizeString = (str) => {
 const GRADES = ['すべて', '1年', '2年', '3年', '有志'];
 const BUILDINGS = ['すべて', '仮校舎', '体育館', 'セミナー', '南館'];
 
+const HQGroupCard = ({ 
+  g, 
+  selectedDept, 
+  setEditingGroup, 
+  setIsEditModalOpen, 
+  requireConfirm, 
+  fetchData, 
+  formatRelativeTime 
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
+
+  const getStatusColors = (status, type) => {
+    if (type === 'reception') {
+      if (status === 'closed' || status === 'ended') return 'text-slate-400';
+      if (status === 'before_open') return 'text-slate-400';
+      if (status === 'ticket_only') return 'text-brand-600';
+      return 'text-emerald-600';
+    } else {
+      if (status === 'distributing') return 'text-emerald-600';
+      return 'text-slate-400';
+    }
+  };
+
+  return (
+    <motion.div
+      layout
+      key={g.id}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      className="group bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300 flex flex-col gap-6"
+    >
+      <div className="flex justify-between items-start">
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {g.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
+              <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
+                {dept}
+              </span>
+            ))}
+          </div>
+          <h3 className="text-xl font-black text-slate-900 tracking-tight leading-tight group-hover:text-brand-600 transition-colors">
+            {g.name}
+          </h3>
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] text-slate-400 font-bold flex items-center">
+              <MapPin size={12} className="mr-1.5 opacity-50" />
+              {g.building}
+            </p>
+            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{g.room}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 items-end scale-90 origin-top-right">
+          {!(g.department?.split(',').map(d => d.trim()).includes('公演')) ? (
+            <>
+              {g.has_reception && (
+                <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+                  g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                  g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                  g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
+                  'bg-emerald-50 border-emerald-100 text-emerald-600'
+                }`}>
+                  {g.reception_status === 'closed' || g.reception_status === 'ended' ? <XCircle size={12} strokeWidth={3} /> :
+                    g.reception_status === 'before_open' ? <Clock size={12} strokeWidth={3} /> :
+                    <CheckCircle2 size={12} strokeWidth={3} />}
+                  {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
+                </div>
+              )}
+              {g.has_ticket_status && (
+                <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+                  g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                  g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                  'bg-slate-50 border-slate-100 text-slate-400'
+                }`}>
+                  <Ticket size={12} strokeWidth={3} />
+                  {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
+                </div>
+              )}
+              <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+                g.editing_locked ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-slate-50 border-slate-100 text-slate-400'
+              }`}>
+                {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
+                <span>{g.editing_locked ? 'ロック中' : '許可中'}</span>
+              </div>
+              {g.has_waiting_time && g.reception_status !== 'closed' && g.reception_status !== 'ended' && g.reception_status !== 'before_open' && (
+                <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+                  g.waiting_time === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                  g.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                  'bg-rose-50 border-rose-100 text-rose-600'
+                }`}>
+                  <Clock size={12} strokeWidth={3} />
+                  {g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+              g.editing_locked ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-slate-50 border-slate-100 text-slate-400'
+            }`}>
+              {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
+              <span>{g.editing_locked ? 'ロック中' : '許可中'}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-black text-brand-600 truncate flex-1">
+            {g.title || 'Official Program'}
+          </span>
+        </div>
+
+        {g.department?.split(',').map(d => d.trim()).includes('公演') && (
+          <div className="flex flex-col gap-2 items-start scale-90 origin-left">
+            {g.has_reception && (
+              <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+                g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
+                'bg-emerald-50 border-emerald-100 text-emerald-600'
+              }`}>
+                {g.reception_status === 'closed' || g.reception_status === 'ended' ? <XCircle size={12} strokeWidth={3} /> :
+                  g.reception_status === 'before_open' ? <Clock size={12} strokeWidth={3} /> :
+                  <CheckCircle2 size={12} strokeWidth={3} />}
+                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
+              </div>
+            )}
+            {g.has_ticket_status && (
+              <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+                g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                'bg-slate-50 border-slate-100 text-slate-400'
+              }`}>
+                <Ticket size={12} strokeWidth={3} />
+                {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
+              </div>
+            )}
+            {g.has_waiting_time && g.reception_status !== 'closed' && g.reception_status !== 'ended' && g.reception_status !== 'before_open' && (
+              <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+                g.waiting_time === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                g.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                'bg-rose-50 border-rose-100 text-rose-600'
+              }`}>
+                <Clock size={12} strokeWidth={3} />
+                {g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`}
+              </div>
+            )}
+          </div>
+        )}
+
+        {g.department?.split(',').map(d => d.trim()).includes('公演') && g.performances?.length > 0 && (
+          <div className="space-y-4 pt-4 border-t border-slate-50">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 group/btn ${
+                isExpanded 
+                ? 'bg-slate-50 border-slate-200' 
+                : 'bg-white border-slate-100 hover:border-brand-300 hover:bg-brand-50/10 shadow-sm hover:shadow-md'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl transition-all duration-500 ${isExpanded ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 group-hover/btn:scale-110'}`}>
+                  <Calendar size={14} strokeWidth={3} />
+                </div>
+                <div className="flex flex-col items-start translate-y-[-1px]">
+                  <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">公演スケジュール</span>
+                  <span className="text-[9px] font-bold text-slate-400 mt-0.5">
+                    {isExpanded ? 'タップで閉じる' : 'タップしてすべての回を表示'}
+                  </span>
+                </div>
+              </div>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${isExpanded ? 'bg-brand-100 text-brand-600 shadow-inner' : 'bg-slate-50 text-slate-400 group-hover/btn:bg-brand-50 group-hover/btn:text-brand-600'}`}>
+                <ChevronDown 
+                  size={18} 
+                  strokeWidth={3}
+                  className={`transition-transform duration-500 ${isExpanded ? 'rotate-180' : ''}`}
+                />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-6 pt-2 pb-2">
+                    {[1, 2, 3].map(partId => {
+                      const partPerfs = g.performances?.filter(p => p.part_id === partId).sort((a, b) => a.start_time.localeCompare(b.start_time));
+                      if (!partPerfs || partPerfs.length === 0) return null;
+
+                      const nextPerf = (() => {
+                        const now = new Date();
+                        const sorted = (g.performances || [])
+                          .map(p => {
+                            const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
+                            return { ...p, fullDate: new Date(`${festDate}T${p.start_time}:00`) };
+                          })
+                          .filter(p => p.fullDate > now)
+                          .sort((a, b) => a.fullDate - b.fullDate);
+                        return sorted[0] || null;
+                      })();
+
+                      return (
+                        <div key={partId} className="space-y-2">
+                          <div className="flex items-center gap-2 px-1">
+                            <div className="w-1 h-3 bg-brand-500 rounded-full" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Part {partId} ({partId === 3 ? '6/14' : '6/13'})</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {partPerfs.map(p => {
+                              const isNext = nextPerf && p.id === nextPerf.id;
+                              const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
+                              const isPast = p.end_time ? new Date(`${festDate}T${p.end_time}:00`) < new Date() : new Date(`${festDate}T${p.start_time}:00`) < new Date();
+
+                              return (
+                                <div key={p.id} className={`px-4 py-3 rounded-xl border transition-all flex flex-col justify-center gap-1 ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60 saturate-50' : isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 'bg-white text-slate-600 border-slate-100'}`}>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-xs font-black">
+                                      {p.start_time}{p.end_time && ` ～ ${p.end_time}`}
+                                    </span>
+                                    {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                  </div>
+                                  <div className="flex flex-col gap-1 mt-1.5">
+                                    <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${getStatusColors(p.reception_status, 'reception')}`}>
+                                      {p.reception_status === 'closed' ? <XCircle size={10} strokeWidth={3} /> :
+                                        p.reception_status === 'before_open' ? <Clock size={10} strokeWidth={3} /> :
+                                        <CheckCircle2 size={10} strokeWidth={3} />}
+                                      {{ before_open: '受付前', ticket_only: '整理券のみ', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
+                                    </div>
+                                    <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${getStatusColors(p.status, 'ticket')}`}>
+                                      <Ticket size={10} strokeWidth={3} />
+                                      {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[p.status] || p.status}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-5 border-t border-slate-50 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-300">
+          <RefreshCw size={8} />
+          <span>更新: {formatRelativeTime(g.updated_at).replace('更新: ', '')}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              requireConfirm('セッションを\n【強制終了】させますか？', async () => {
+                await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
+                await fetchData();
+              }, '強制終了');
+            }}
+            className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+          >
+            <LogOut size={16} strokeWidth={2.5} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingGroup(g);
+              setIsEditModalOpen(true);
+            }}
+            className="px-5 py-2 bg-brand-600 text-white rounded-xl text-[11px] font-black shadow-lg shadow-brand-500/20 transition-all hover:bg-brand-700 active:scale-95"
+          >
+            編集
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 const renderFormattedMessage = (message) => {
   if (!message) return null;
   const parts = message.split(/(【[^】]+】)/g);
@@ -86,6 +379,38 @@ const HQDashboard = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterGrade, setFilterGrade] = useState('すべて');
   const [filterBuilding, setFilterBuilding] = useState('すべて');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // フィルター・検索状態の復元
+  useEffect(() => {
+    const saved = sessionStorage.getItem('ryoun_hq_filters');
+    if (saved) {
+      try {
+        const filters = JSON.parse(saved);
+        if (filters.activeTab) setActiveTab(filters.activeTab);
+        if (filters.selectedDept) setSelectedDept(filters.selectedDept);
+        if (filters.searchQuery) setSearchQuery(filters.searchQuery);
+        if (filters.filterGrade) setFilterGrade(filters.filterGrade);
+        if (filters.filterBuilding) setFilterBuilding(filters.filterBuilding);
+        if (filters.sortBy) setSortBy(filters.sortBy);
+        if (filters.isFilterOpen !== undefined) setIsFilterOpen(filters.isFilterOpen);
+        if (filters.isBulkOpen !== undefined) setIsBulkOpen(filters.isBulkOpen);
+      } catch (e) {
+        console.error('Failed to parse saved filters', e);
+      }
+    }
+  }, []);
+
+  // フィルター・検索状態の保存
+  useEffect(() => {
+    const state = { activeTab, selectedDept, searchQuery, filterGrade, filterBuilding, isFilterOpen, isBulkOpen, sortBy };
+    sessionStorage.setItem('ryoun_hq_filters', JSON.stringify(state));
+  }, [activeTab, selectedDept, searchQuery, filterGrade, filterBuilding, isFilterOpen, isBulkOpen, sortBy]);
+
   useEffect(() => {
     if (confirmDialog.isOpen || isEditModalOpen || isLostFoundModalOpen || loading || isBulkUpdating) {
       document.body.style.overflow = 'hidden';
@@ -109,6 +434,7 @@ const HQDashboard = () => {
         localStorage.removeItem('ryoun_group_id');
         localStorage.removeItem('ryoun_password');
         localStorage.removeItem('ryoun_login_at');
+        sessionStorage.removeItem('ryoun_hq_filters');
         router.push('/admin');
       },
       'ログアウト',
@@ -225,6 +551,23 @@ const HQDashboard = () => {
     }, '削除');
   };
 
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+        <div className="relative">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-4 border-slate-100 border-t-brand-600 rounded-full"
+          />
+        </div>
+        <p className="mt-6 text-sm font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
+          初期化中...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-10 pb-12 pt-4 px-4 md:px-0">
       {/* HQ Header */}
@@ -278,7 +621,7 @@ const HQDashboard = () => {
                           'bg-rose-50 border-rose-100 text-rose-600 shadow-sm shadow-rose-500/10'
                     }`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${hqGroup.reception_status === 'open' ? 'bg-emerald-500 animate-pulse' : hqGroup.reception_status === 'before_open' ? 'bg-slate-300' : hqGroup.reception_status === 'ticket_only' ? 'bg-brand-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                    {{ open: '受付中', before_open: '受付前', ticket_only: '整理券のみ受付', closed: '受付終了' }[hqGroup.reception_status]}
+                    {{ open: '受付中', before_open: '受付前', ticket_only: '整理券のみ', closed: '受付終了' }[hqGroup.reception_status]}
                   </div>
                 </div>
               </div>
@@ -430,7 +773,7 @@ const HQDashboard = () => {
                   {/* Search Bar (Moved here) */}
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-                      <PackageSearch size={22} className="text-slate-300 group-focus-within:text-brand-500 transition-colors" strokeWidth={3} />
+                      <Search size={22} className="text-slate-300 group-focus-within:text-brand-500 transition-colors" strokeWidth={3} />
                     </div>
                     <input
                       type="text"
@@ -444,7 +787,7 @@ const HQDashboard = () => {
                         onClick={() => setSearchQuery('')}
                         className="absolute inset-y-0 right-6 flex items-center text-slate-300 hover:text-slate-500 transition-colors"
                       >
-                        <XCircle size={22} strokeWidth={3} />
+                        <X size={22} strokeWidth={3} />
                       </button>
                     )}
                   </div>
@@ -557,407 +900,76 @@ const HQDashboard = () => {
                 </div>
               </div>
 
-              {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-slate-50/50 border-b border-slate-100 text-slate-400 font-black text-[11px] uppercase tracking-[0.2em]">
-                  <tr>
-                    <th className="px-10 py-8">団体情報</th>
-                    <th className="px-10 py-8 text-center border-l border-slate-50">現在公開中の情報</th>
-                    <th className="px-10 py-8 text-center border-l border-slate-50">最終更新日時</th>
-                    <th className="px-10 py-8 text-center border-l border-slate-50">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {groups
-                    .filter(g => {
-                      const matchesDept = selectedDept === 'すべて' || g.department?.split(',').map(d => d.trim()).includes(selectedDept);
-                      const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
-                      const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <AnimatePresence mode="popLayout">
+                {groups
+                  .filter(g => {
+                    const matchesDept = selectedDept === 'すべて' || g.department?.split(',').map(d => d.trim()).includes(selectedDept);
+                    const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
+                    const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
 
-                      if (!matchesDept || !matchesGrade || !matchesBuilding) return false;
-                      if (!searchQuery) return true;
+                    if (!matchesDept || !matchesGrade || !matchesBuilding) return false;
+                    if (!searchQuery) return true;
 
-                      const query = searchQuery.toLowerCase();
-                      const normalizedQuery = normalizeString(searchQuery);
+                    const query = searchQuery.toLowerCase();
+                    const normalizedQuery = normalizeString(searchQuery);
 
-                      return (
-                        g.name?.toLowerCase().includes(query) ||
-                        normalizeString(g.name).includes(normalizedQuery) ||
-                        (g.name_kana && normalizeString(g.name_kana).includes(normalizedQuery)) ||
-                        g.title?.toLowerCase().includes(query) ||
-                        normalizeString(g.title).includes(normalizedQuery) ||
-                        (g.title_kana && normalizeString(g.title_kana).includes(normalizedQuery)) ||
-                        g.building?.toLowerCase().includes(query) ||
-                        normalizeString(g.building).includes(normalizedQuery) ||
-                        g.room?.toLowerCase().includes(query) ||
-                        normalizeString(g.room).includes(normalizedQuery)
-                      );
-                    })
-                    .sort((a, b) => {
-                      if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
-                      if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
-                      if (sortBy === 'area') {
-                        if (a.building !== b.building) return a.building.localeCompare(b.building, 'ja');
-                        return a.room.localeCompare(b.room, 'ja');
-                      }
-                      
-                      // 優先度判定: クラス（1年->2年->3年） > 有志
-                      const getPriority = (name) => {
-                        if (name.startsWith('1年')) return 1;
-                        if (name.startsWith('2年')) return 2;
-                        if (name.startsWith('3年')) return 3;
-                        return 4; // 有志
-                      };
-
-                      const priorityA = getPriority(a.name);
-                      const priorityB = getPriority(b.name);
-
-                      if (priorityA !== priorityB) {
-                        return priorityA - priorityB;
-                      }
-
-                      // クラス同士、または有志同士の場合のソートキー
-                      const getSortKey = (g) => {
-                        // クラス（1年, 2年, 3年）は名称（1年A組, 1年B組...）でA-Z順にソート
-                        if (priorityA < 4) return g.name;
-
-                        // 有志団体などは読み仮名（name_kana / title_kana）を優先して五十音順
-                        if (g.name_kana) return g.name_kana;
-                        if (g.title_kana) return g.title_kana;
-                        return g.name;
-                      };
-                      return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
-                    })
-                    .map(g => {
                     return (
-                      <tr key={g.id} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-10 py-8">
-                          <div className="flex flex-col gap-2">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {g.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
-                                <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
-                                  {dept}
-                                </span>
-                              ))}
-                            </div>
-                            <span className="font-black text-slate-900 text-lg">{g.name}</span>
-                            <div className="flex items-center gap-3">
-                              <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{g.building} {g.room}</span>
-                              <div className="w-1 h-1 rounded-full bg-slate-300"></div>
-                              <span className="text-[11px] text-brand-600 font-black truncate max-w-[200px]">{g.title || 'Official Program'}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-10 py-8 border-l border-slate-50">
-                          <div className="flex items-center justify-center gap-4 flex-wrap max-w-[600px] mx-auto text-center">
-                            {g.has_reception && (
-                              <div className={`w-[124px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                                  g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
-                                    g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
-                                      'bg-emerald-50 border-emerald-100 text-emerald-600'
-                                }`}>
-                                {g.reception_status === 'closed' || g.reception_status === 'ended' ? <XCircle size={12} strokeWidth={3} /> :
-                                 g.reception_status === 'before_open' ? <Clock size={12} strokeWidth={3} /> :
-                                 <CheckCircle2 size={12} strokeWidth={3} />}
-                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ受付', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
-                              </div>
-                            )}
-                            <div className={`flex items-center justify-center gap-2 w-[124px] py-2 rounded-full border text-[10px] font-black transition-all shadow-sm ${g.editing_locked
-                              ? 'bg-rose-50 text-rose-600 border-rose-100'
-                              : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                              }`}>
-                              {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
-                              <span>{g.editing_locked ? '編集ロック中' : '編集許可中'}</span>
-                            </div>
-                            {g.has_waiting_time && g.reception_status !== 'closed' && g.reception_status !== 'ended' && g.reception_status !== 'before_open' && (
-                              <div className={`px-4 py-2 rounded-2xl text-[10px] font-black border-2 ${g.waiting_time === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                                  g.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                                    'bg-rose-50 border-rose-100 text-rose-600'
-                                }`}>
-                                {g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`}
-                              </div>
-                            )}
-                            {g.has_ticket_status && (
-                              <div className={`w-[124px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                                  g.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                                    g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                                      'bg-slate-50 border-slate-100 text-slate-400'
-                                }`}>
-                                <Ticket size={12} strokeWidth={3} />
-                                {{ distributing: '配布中', ended: '終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
-                              </div>
-                            )}
-                            {selectedDept === '公演' && g.performances?.length > 0 && (
-                              <div className="flex flex-col gap-4 min-w-[280px]">
-                                {[1, 2, 3].map(partId => {
-                                  const partPerfs = g.performances?.filter(p => p.part_id === partId).sort((a, b) => a.start_time.localeCompare(b.start_time));
-                                  if (!partPerfs || partPerfs.length === 0) return null;
-                                  return (
-                                    <div key={partId} className="space-y-2 text-left">
-                                      <div className="flex items-center gap-2 px-1">
-                                        <div className="w-1 h-3 bg-brand-500 rounded-full" />
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Part {partId}</span>
-                                      </div>
-                                      <div className="space-y-2">
-                                        {partPerfs.map(p => (
-                                          <div key={p.id} className="flex items-center justify-between px-4 py-3 bg-slate-50/50 rounded-2xl border border-slate-100/50 group/perf">
-                                            <div className="flex flex-col gap-0.5">
-                                              <span className="text-[10px] font-black text-slate-900">{p.start_time}{p.end_time ? ` ～ ${p.end_time}` : ''}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <div className={`w-[84px] py-1 rounded-full border text-[9px] font-black flex items-center justify-center gap-1.5 shadow-sm ${
-                                                p.reception_status === 'closed' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                                                p.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
-                                                p.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
-                                                'bg-emerald-50 border-emerald-100 text-emerald-600'
-                                              }`}>
-                                                {p.reception_status === 'closed' ? <XCircle size={10} strokeWidth={3} /> :
-                                                 p.reception_status === 'before_open' ? <Clock size={10} strokeWidth={3} /> :
-                                                 <CheckCircle2 size={10} strokeWidth={3} />}
-                                                {{ before_open: '受付前', ticket_only: '整理券のみ', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
-                                              </div>
-                                              <div className={`w-[84px] py-1 rounded-full border text-[9px] font-black flex items-center justify-center gap-1.5 shadow-sm ${
-                                                p.status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                                                p.status === 'none' ? 'bg-slate-50 border-slate-100 text-slate-400' :
-                                                'bg-emerald-50 border-emerald-100 text-emerald-600'
-                                              }`}>
-                                                <Ticket size={10} strokeWidth={3} />
-                                                {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[p.status] || p.status}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-10 py-8 border-l border-slate-50 text-center">
-                          <span className="text-[11px] font-black text-slate-400">
-                            {formatRelativeTime(g.updated_at)}
-                          </span>
-                        </td>
-                        <td className="px-10 py-8 border-l border-slate-50">
-                          <div className="flex items-center justify-center gap-3">
-                            <button
-                              onClick={() => {
-                                setEditingGroup(g);
-                                setIsEditModalOpen(true);
-                              }}
-                              className="px-8 py-4 bg-brand-600 text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-brand-700 transition-all shadow-xl shadow-brand-500/20 active:scale-95 group"
-                            >
-                              <Edit2 size={18} strokeWidth={2.5} className="group-hover:rotate-12 transition-transform" />
-                              <span className="font-black text-sm">編集</span>
-                            </button>
-                            <button
-                              onClick={() => requireConfirm('セッションを\n【強制終了】させますか？', async () => {
-                                await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
-                                await fetchData();
-                              }, '強制終了')}
-                              className="w-12 h-12 bg-white border border-slate-100 text-slate-300 rounded-2xl hover:bg-rose-50 hover:border-rose-100 hover:text-rose-500 transition-all shadow-sm flex items-center justify-center group"
-                              title="強制終了"
-                            >
-                              <LogOut size={20} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                      g.name?.toLowerCase().includes(query) ||
+                      normalizeString(g.name).includes(normalizedQuery) ||
+                      (g.name_kana && normalizeString(g.name_kana).includes(normalizedQuery)) ||
+                      g.title?.toLowerCase().includes(query) ||
+                      normalizeString(g.title).includes(normalizedQuery) ||
+                      (g.title_kana && normalizeString(g.title_kana).includes(normalizedQuery)) ||
+                      g.building?.toLowerCase().includes(query) ||
+                      normalizeString(g.building).includes(normalizedQuery) ||
+                      g.room?.toLowerCase().includes(query) ||
+                      normalizeString(g.room).includes(normalizedQuery)
+                    );
+                  })
+                  .sort((a, b) => {
+                    if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
+                    if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
+                    if (sortBy === 'area') {
+                      if (a.building !== b.building) return a.building.localeCompare(b.building, 'ja');
+                      return a.room.localeCompare(b.room, 'ja');
+                    }
+                    
+                    const getPriority = (name) => {
+                      if (name.startsWith('1年')) return 1;
+                      if (name.startsWith('2年')) return 2;
+                      if (name.startsWith('3年')) return 3;
+                      return 4;
+                    };
+
+                    const priorityA = getPriority(a.name);
+                    const priorityB = getPriority(b.name);
+                    if (priorityA !== priorityB) return priorityA - priorityB;
+
+                    const getSortKey = (g) => {
+                      if (priorityA < 4) return g.name;
+                      if (g.name_kana) return g.name_kana;
+                      if (g.title_kana) return g.title_kana;
+                      return g.name;
+                    };
+                    return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
+                  })
+                  .map(g => (
+                    <HQGroupCard
+                      key={g.id}
+                      g={g}
+                      selectedDept={selectedDept}
+                      setEditingGroup={setEditingGroup}
+                      setIsEditModalOpen={setIsEditModalOpen}
+                      requireConfirm={requireConfirm}
+                      fetchData={fetchData}
+                      formatRelativeTime={formatRelativeTime}
+                    />
+                  ))
+                }
+              </AnimatePresence>
             </div>
-            {/* Mobile Card View */}
-            <div className="lg:hidden divide-y divide-slate-100">
-              {groups
-                .filter(g => {
-                  const matchesDept = selectedDept === 'すべて' || g.department?.split(',').map(d => d.trim()).includes(selectedDept);
-                  const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
-                  const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
 
-                  if (!matchesDept || !matchesGrade || !matchesBuilding) return false;
-                  if (!searchQuery) return true;
-
-                  const query = searchQuery.toLowerCase();
-                  const normalizedQuery = normalizeString(searchQuery);
-
-                  return (
-                    g.name?.toLowerCase().includes(query) ||
-                    normalizeString(g.name).includes(normalizedQuery) ||
-                    (g.name_kana && normalizeString(g.name_kana).includes(normalizedQuery)) ||
-                    g.title?.toLowerCase().includes(query) ||
-                    normalizeString(g.title).includes(normalizedQuery) ||
-                    (g.title_kana && normalizeString(g.title_kana).includes(normalizedQuery)) ||
-                    g.building?.toLowerCase().includes(query) ||
-                    normalizeString(g.building).includes(normalizedQuery) ||
-                    g.room?.toLowerCase().includes(query) ||
-                    normalizeString(g.room).includes(normalizedQuery)
-                  );
-                })
-                .sort((a, b) => {
-                  if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
-                  if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
-                  if (sortBy === 'area') {
-                    if (a.building !== b.building) return a.building.localeCompare(b.building, 'ja');
-                    return a.room.localeCompare(b.room, 'ja');
-                  }
-                  
-                  // 優先度判定: クラス（1年->2年->3年） > 有志
-                  const getPriority = (name) => {
-                    if (name.startsWith('1年')) return 1;
-                    if (name.startsWith('2年')) return 2;
-                    if (name.startsWith('3年')) return 3;
-                    return 4; // 有志
-                  };
-
-                  const priorityA = getPriority(a.name);
-                  const priorityB = getPriority(b.name);
-
-                  if (priorityA !== priorityB) {
-                    return priorityA - priorityB;
-                  }
-
-                  // クラス同士、または有志同士の場合のソートキー
-                  const getSortKey = (g) => {
-                    // クラス（1年, 2年, 3年）は名称（1年A組, 1年B組...）でA-Z順にソート
-                    if (priorityA < 4) return g.name;
-
-                    // 有志団体などは読み仮名（name_kana / title_kana）を優先して五十音順
-                    if (g.name_kana) return g.name_kana;
-                    if (g.title_kana) return g.title_kana;
-                    return g.name;
-                  };
-                  return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
-                })
-                .map(g => {
-                return (
-                  <div key={g.id} className="p-4 md:p-6 space-y-5 bg-white">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-2 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {g.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
-                            <span key={dept} className="text-[8px] px-1.5 py-0.5 rounded bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
-                              {dept}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-slate-900 text-base leading-tight truncate">{g.name}</span>
-                          <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold shrink-0">{g.room}</span>
-                          <span className="text-[10px] font-black text-slate-300 shrink-0">
-                            {formatRelativeTime(g.updated_at).replace('更新: ', '')}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-brand-600 font-bold line-clamp-1">{g.title || 'Official Program'}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingGroup(g);
-                            setIsEditModalOpen(true);
-                          }}
-                          className="px-4 py-3 bg-brand-600 text-white rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 active:scale-95"
-                        >
-                          <Edit2 size={16} strokeWidth={2.5} />
-                          <span className="font-black text-xs whitespace-nowrap">編集</span>
-                        </button>
-                        <button
-                          onClick={() => requireConfirm('セッションを\n【強制終了】させますか？', async () => {
-                            await supabase.from('groups').update({ last_reset_at: new Date().toISOString() }).eq('id', g.id);
-                            await fetchData();
-                          }, '強制終了')}
-                          className="w-12 h-12 bg-slate-50 border border-slate-100 text-slate-300 rounded-xl flex items-center justify-center active:scale-90 shadow-sm"
-                        >
-                          <LogOut size={16} strokeWidth={2.5} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">現在の状況</span>
-                        <div className="flex items-center gap-2">
-                          {g.has_reception && (
-                            <div className={`px-3 py-1.5 rounded-full text-[10px] font-black border-2 ${g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-100 border-rose-200 text-rose-600' :
-                                g.reception_status === 'before_open' ? 'bg-slate-100 border-slate-200 text-slate-400' :
-                                  g.reception_status === 'ticket_only' ? 'bg-brand-100 border-brand-200 text-brand-600' :
-                                    'bg-emerald-100 border-emerald-200 text-emerald-600'
-                              }`}>
-                              {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
-                            </div>
-                          )}
-                          <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 transition-all ${g.editing_locked
-                            ? 'bg-rose-50 text-rose-600 border-rose-100'
-                            : 'bg-slate-50 text-slate-400 border-slate-100'
-                            }`}>
-                            {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
-                            {g.editing_locked ? 'ロック中' : '許可中'}
-                          </div>
-                        </div>
-                      </div>
-                      {g.has_waiting_time && (
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
-                          <span className="text-[10px] font-black text-slate-400">待ち時間</span>
-                          <span className="text-sm font-black text-slate-700">
-                            {g.reception_status === 'closed' ? '-' : (g.reception_status === 'before_open' ? '' : (g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`))}
-                          </span>
-                        </div>
-                      )}
-                      {g.has_ticket_status && (
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/50">
-                          <span className="text-[10px] font-black text-slate-400">配布状況</span>
-                          <div className={`px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 border-2 transition-all ${g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                              g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                                'bg-slate-50 border-slate-100 text-slate-400'
-                            }`}>
-                            <Ticket size={12} strokeWidth={3} />
-                            {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
-                          </div>
-                        </div>
-                      )}
-                      {selectedDept === '公演' && g.performances?.length > 0 && (
-                        <div className="space-y-4 pt-2 border-t border-slate-200/50">
-                          {[1, 2, 3].map(partId => {
-                            const partPerfs = g.performances?.filter(p => p.part_id === partId).sort((a, b) => a.start_time.localeCompare(b.start_time));
-                            if (!partPerfs || partPerfs.length === 0) return null;
-                            return (
-                              <div key={partId} className="space-y-2">
-                                <div className="flex items-center gap-2 px-1">
-                                  <div className="w-1 h-3 bg-brand-500 rounded-full" />
-                                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Part {partId}</span>
-                                </div>
-                                <div className="space-y-1.5">
-                                  {partPerfs.map(p => (
-                                    <div key={p.id} className="flex items-center justify-between px-4 py-2 bg-slate-50/50 rounded-xl border border-slate-100/50">
-                                      <span className="text-[10px] font-bold text-slate-400">{p.start_time}{p.end_time ? ` ～ ${p.end_time}` : ''}</span>
-                                      <div className="flex flex-col items-end gap-0.5">
-                                        <span className={`text-[10px] font-black ${p.reception_status === 'closed' ? 'text-rose-500' :
-                                          p.reception_status === 'before_open' ? 'text-slate-500' :
-                                            p.reception_status === 'ticket_only' ? 'text-brand-500' :
-                                              'text-emerald-500'
-                                          }`}>
-                                          {{ before_open: '受付前', ticket_only: '整理券のみ受付', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
-                                        </span>
-                                        <span className="text-[9px] font-black text-slate-400">
-                                          整理券{{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[p.status] || p.status}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  )
-                })}
-            </div>
           </div>
         </div>
       )}
@@ -975,9 +987,9 @@ const HQDashboard = () => {
               新規追加
             </button>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {lostFound.map(item => (
-              <div key={item.id} className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 group flex flex-col items-start gap-6 md:gap-8 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 transition-all duration-300">
+              <div key={item.id} className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 transition-all duration-300">
                 <div className="flex justify-between items-start w-full gap-4">
                   <div>
                     <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
@@ -1106,31 +1118,49 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
   const [performances, setPerformances] = useState(JSON.parse(JSON.stringify(group.performances || [])));
   const [editingLocked, setEditingLocked] = useState(group.editing_locked);
   const [isSaving, setIsSaving] = useState(false);
+
+  const nextPerf = useMemo(() => {
+    const now = new Date();
+    const sorted = [...performances]
+      .map(p => {
+        const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
+        return { ...p, fullDate: new Date(`${festDate}T${p.start_time}:00`) };
+      })
+      .filter(p => p.fullDate > now)
+      .sort((a, b) => a.fullDate - b.fullDate);
+    return sorted[0] || null;
+  }, [performances]);
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
       // Update group general settings & status
-      await supabase.from('groups').update({
+      const { error: groupError } = await supabase.from('groups').update({
         editing_locked: editingLocked,
         reception_status: editData.reception_status,
         waiting_time: editData.waiting_time,
         ticket_status: editData.ticket_status,
         updated_at: new Date().toISOString()
       }).eq('id', group.id);
+
+      if (groupError) throw groupError;
+
       // Update performances
       for (const perf of performances) {
-        await supabase.from('performances').update({
+        const { error: perfError } = await supabase.from('performances').update({
           status: perf.status,
-          reception_status: perf.reception_status,
+          reception_status: perf.reception_status || 'open',
           updated_at: new Date().toISOString()
         }).eq('id', perf.id);
+
+        if (perfError) throw perfError;
       }
       await onSave();
       triggerRevalidate();
       onClose();
     } catch (error) {
       console.error('Save error:', error);
-      alert('保存に失敗しました');
+      alert('保存に失敗しました: ' + (error.message || '不明なエラー'));
     } finally {
       setIsSaving(false);
     }
@@ -1171,7 +1201,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
         </div>
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-12 custom-scrollbar">
-          {/* Admin Management Section */}
+          {/* Admin Management Section - ALWAYS AT TOP */}
           <div className="bg-rose-50/50 rounded-3xl p-6 border border-rose-100/50 space-y-6">
             <div className="flex items-center gap-3">
               <ShieldCheck className="w-5 h-5 text-rose-500" />
@@ -1195,9 +1225,11 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
               </button>
             </div>
           </div>
+
           <div className="space-y-6">
             {(!group.has_performances && (group.has_reception || group.has_waiting_time || group.has_ticket_status)) ? (
               <>
+
                 <div className="flex items-center gap-4">
                   <div className="h-px flex-1 bg-slate-100"></div>
                   <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">運営状況 管理</h3>
@@ -1235,13 +1267,21 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                     <div className="space-y-4">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">待ち時間</label>
                       <select
-                        value={editData.waiting_time}
+                        value={['before_open', 'closed', 'ended'].includes(editData.reception_status) ? 'disabled' : editData.waiting_time}
+                        disabled={['before_open', 'closed', 'ended'].includes(editData.reception_status)}
                         onChange={(e) => setEditData(prev => ({ ...prev, waiting_time: parseInt(e.target.value) }))}
-                        className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black text-slate-700 outline-none transition-all"
+                        className={`w-full border-2 rounded-2xl py-4 px-6 text-sm font-black transition-all outline-none ${['before_open', 'closed', 'ended'].includes(editData.reception_status)
+                          ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                          : 'bg-slate-50 border-transparent text-slate-700 focus:border-brand-500'
+                          }`}
                       >
-                        {Array.from({ length: 25 }, (_, i) => i * 5).map(t => (
-                          <option key={t} value={t}>{t === 0 ? '待ちなし' : `${t}分待ち`}</option>
-                        ))}
+                        {['before_open', 'closed', 'ended'].includes(editData.reception_status) ? (
+                          <option value="disabled">選択不可</option>
+                        ) : (
+                          Array.from({ length: 25 }, (_, i) => i * 5).map(t => (
+                            <option key={t} value={t}>{t === 0 ? '待ちなし' : `${t}分待ち`}</option>
+                          ))
+                        )}
                       </select>
                     </div>
                   )}
@@ -1266,6 +1306,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                     </div>
                   )}
                 </div>
+
               </>
             ) : !group.has_performances && (
               <div className="flex flex-col items-center justify-center py-10 px-6 text-center space-y-4">
@@ -1281,72 +1322,108 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
               </div>
             )}
             {group.has_performances && (
-              <div className="space-y-6">
+              <div className="space-y-10">
                 <div className="flex items-center gap-4">
                   <div className="h-px flex-1 bg-slate-100"></div>
                   <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">公演スケジュール 管理</h3>
                   <div className="h-px flex-1 bg-slate-100"></div>
                 </div>
-                {performances.sort((a, b) => {
-                  if (a.part_id !== b.part_id) return a.part_id - b.part_id;
-                  return a.start_time.localeCompare(b.start_time);
-                }).map(perf => (
-                  <div key={perf.id} className="p-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black text-slate-900 flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-brand-600" />
-                        Part{perf.part_id} ({perf.start_time})
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
-                        <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
-                          {(() => {
-                            const options = ['before_open', 'open', 'closed'];
-                            if (perf.status === 'distributing' || perf.status === 'ended') {
-                              options.splice(2, 0, 'ticket_only');
-                            }
-                            return options.map(s => (
-                              <button
-                                key={s}
-                                onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
-                                className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all border-2 ${perf.reception_status === s ?
-                                  (s === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
-                                   s === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10' :
-                                   s === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10' :
-                                   'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10')
-                                  : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
-                              >
-                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
-                              </button>
-                            ));
-                          })()}
+
+                {[1, 2, 3].map(partId => {
+                  const partPerfs = performances
+                    .filter(p => p.part_id === partId)
+                    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+                  
+                  if (partPerfs.length === 0) return null;
+
+                  return (
+                    <div key={partId} className="space-y-6">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-4 bg-brand-500 rounded-full" />
+                          <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
+                            Part {partId} ({partId === 3 ? '6/14' : '6/13'})
+                          </span>
                         </div>
+                        <div className="h-px flex-1 bg-slate-50"></div>
                       </div>
-                      <div className="space-y-3">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
-                        <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
-                          {['none', 'distributing', 'ended'].map(s => (
-                            <button
-                              key={s}
-                              onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
-                              className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all border-2 ${perf.status === s ?
-                                (s === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
-                                 s === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
-                                 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10')
-                                : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
-                            >
-                              {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
-                            </button>
-                          ))}
-                        </div>
+
+                      <div className="grid grid-cols-1 gap-6">
+                        {partPerfs.map(perf => {
+                          const isNext = nextPerf && perf.id === nextPerf.id;
+                          const festDate = perf.part_id === 3 ? '2026-06-14' : '2026-06-13';
+                          const isPast = perf.end_time 
+                            ? new Date(`${festDate}T${perf.end_time}:00`) < new Date() 
+                            : new Date(`${festDate}T${perf.start_time}:00`) < new Date();
+
+                          return (
+                            <div key={perf.id} className={`p-6 rounded-[2rem] border transition-all space-y-6 ${
+                              isPast ? 'opacity-60 saturate-50 bg-slate-50 border-slate-100' :
+                                isNext ? 'bg-brand-50/50 border-brand-200 ring-4 ring-brand-500/5' :
+                                  'bg-slate-50/50 border-slate-100 shadow-sm'
+                            }`}>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-black text-slate-900 flex items-center gap-2">
+                                  <Clock className={`w-4 h-4 ${isNext ? 'text-brand-600' : isPast ? 'text-slate-300' : 'text-slate-400'}`} />
+                                  {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
+                                  {isNext && <span className="ml-2 bg-brand-600 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
+                                  <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
+                                    {(() => {
+                                      const options = ['before_open', 'open', 'closed'];
+                                      if (perf.status === 'distributing' || perf.status === 'ended') {
+                                        options.splice(2, 0, 'ticket_only');
+                                      }
+                                      return options.map(s => (
+                                        <button
+                                          key={s}
+                                          onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
+                                          className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all border-2 ${perf.reception_status === s ?
+                                            (s === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                             s === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10' :
+                                             s === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10' :
+                                             'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10')
+                                            : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                                        >
+                                          {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                                        </button>
+                                      ));
+                                    })()}
+                                  </div>
+                                </div>
+                                <div className="space-y-3">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
+                                  <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
+                                    {['none', 'distributing', 'ended'].map(s => (
+                                      <button
+                                        key={s}
+                                        onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
+                                        className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all border-2 ${perf.status === s ?
+                                          (s === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                           s === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
+                                           'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10')
+                                          : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                                      >
+                                        {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
+
           </div>
         </div>
         {/* Modal Footer */}
@@ -1466,8 +1543,20 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
               <input
                 type="datetime-local"
                 value={formData.found_at ? new Date(new Date(formData.found_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
-                onChange={e => setFormData({ ...formData, found_at: new Date(e.target.value).toISOString() })}
-                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+                onClick={(e) => e.currentTarget.showPicker()}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.showPicker();
+                }}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const date = new Date(val);
+                  if (!isNaN(date.getTime())) {
+                    setFormData({ ...formData, found_at: date.toISOString() });
+                  }
+                }}
+                className="w-full block bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all text-left appearance-none select-none caret-transparent"
               />
             </div>
           </div>

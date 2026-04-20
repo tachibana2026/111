@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Portal from '../components/Portal';
 
 const PARTS = [
-  { id: 1, name: 'Part 1', day: 1, range: ['08:45', '12:15'] },
-  { id: 2, name: 'Part 2', day: 1, range: ['12:45', '16:15'] },
-  { id: 3, name: 'Part 3', day: 2, range: ['08:45', '12:15'] }
+  { id: 1, name: 'Part 1 (6/13)', day: 1, range: ['08:45', '12:15'] },
+  { id: 2, name: 'Part 2 (6/13)', day: 1, range: ['12:45', '16:15'] },
+  { id: 3, name: 'Part 3 (6/14)', day: 2, range: ['08:45', '12:15'] }
 ];
 
 const BUILDING_ORDER = ['仮校舎', '体育館', 'セミナー', '南館'];
@@ -186,7 +186,7 @@ const Timetable = ({ initialPerformances }) => {
 
   const getReceptionLabel = (status) => {
     if (status === 'before_open') return '受付前';
-    if (status === 'ticket_only') return '整理券をお持ちの方のみ受付中';
+    if (status === 'ticket_only') return '整理券のみ';
     return status === 'closed' ? '受付終了' : '受付中';
   };
 
@@ -387,9 +387,9 @@ const Timetable = ({ initialPerformances }) => {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[80px]">
+                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
                       <div className="flex items-center gap-1.5 text-slate-400">
                         <CheckCircle2 size={10} strokeWidth={3} />
                         <span className="text-[8px] font-black uppercase tracking-widest">公演受付</span>
@@ -404,7 +404,7 @@ const Timetable = ({ initialPerformances }) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[80px]">
+                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
                       <div className="flex items-center gap-1.5 text-slate-400">
                         <Ticket size={10} strokeWidth={3} />
                         <span className="text-[8px] font-black uppercase tracking-widest">整理券</span>

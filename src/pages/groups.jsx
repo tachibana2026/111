@@ -60,17 +60,20 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
     const currentReception = isOver ? 'closed' : (perf.reception_status || 'open');
     let receptionStatus = '受付中';
     if (currentReception === 'closed') receptionStatus = '受付終了';
-    else if (currentReception === 'ticket_only') receptionStatus = '整理券のみ受付中';
+    else if (currentReception === 'ticket_only') receptionStatus = '整理券のみ';
     else if (currentReception === 'before_open') receptionStatus = '受付前';
 
     return { ticketStatus, receptionStatus, currentReception, actualTicket };
   };
 
   return (
-    <div className="space-y-4">
-      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-        {dayLabel}
-      </h4>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 px-1">
+        <div className="w-1 h-3 bg-brand-500 rounded-full" />
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          {dayLabel}
+        </span>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         {partSchedule.map((p, i) => {
           const isPast = p.end_time ? new Date(`${festDate}T${p.end_time}:00`) < now : new Date(`${festDate}T${p.start_time}:00`) < now;
@@ -95,18 +98,18 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                 </span>
                 {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] uppercase tracking-tighter animate-pulse">次</span>}
               </div>
-              <div className="flex items-center gap-2 mt-1 px-1">
-                <div className={`flex-1 flex items-center justify-center gap-1.5 text-[9px] font-black ${
+              <div className="flex flex-col gap-1 mt-1.5">
+                <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${
                   currentReception === 'ticket_only' ? 'text-brand-600' : 
                   ['closed', 'ended', 'before_open'].includes(currentReception) ? 'text-slate-400' : 
-                  'text-emerald-500'
+                  'text-emerald-600'
                 }`}>
                   <CheckCircle2 size={10} strokeWidth={3} />
-                  {receptionStatus.replace('受付中', '受付中').replace('受付前', '受付前').replace('整理券をお持ちの方のみ受付中', '整理券のみ')}
+                  {receptionStatus}
                 </div>
-                <div className={`flex-1 flex items-center justify-center gap-1.5 text-[9px] font-black border-l border-slate-100 ${
+                <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${
                   ['ended', 'none'].includes(actualTicket) ? 'text-slate-400' :
-                  'text-emerald-500'
+                  'text-emerald-600'
                 }`}>
                   <Ticket size={10} strokeWidth={3} />
                   {ticketStatus.replace('整理券', '')}
@@ -215,7 +218,7 @@ const GroupCard = ({
                   transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
                   className="overflow-hidden"
                 >
-                  <div className="space-y-6 pt-6">
+                  <div className="space-y-6 pt-2 pb-2">
                   <div className="flex items-center gap-2 px-1 pb-1">
                     <p className="text-[10px] font-bold text-slate-400">各公演回をタップすると詳細が表示されます</p>
                   </div>
@@ -322,6 +325,30 @@ const Groups = ({ initialGroups }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+  // フィルター・検索状態の復元
+  useEffect(() => {
+    const saved = sessionStorage.getItem('ryoun_groups_filters');
+    if (saved) {
+      try {
+        const filters = JSON.parse(saved);
+        if (filters.filterDept) setFilterDept(filters.filterDept);
+        if (filters.filterGrade) setFilterGrade(filters.filterGrade);
+        if (filters.filterBuilding) setFilterBuilding(filters.filterBuilding);
+        if (filters.sortBy) setSortBy(filters.sortBy);
+        if (filters.searchQuery) setSearchQuery(filters.searchQuery);
+        if (filters.isFilterOpen !== undefined) setIsFilterOpen(filters.isFilterOpen);
+      } catch (e) {
+        console.error('Failed to parse saved filters', e);
+      }
+    }
+  }, []);
+
+  // フィルター・検索状態の保存
+  useEffect(() => {
+    const state = { filterDept, filterGrade, filterBuilding, sortBy, searchQuery, isFilterOpen };
+    sessionStorage.setItem('ryoun_groups_filters', JSON.stringify(state));
+  }, [filterDept, filterGrade, filterBuilding, sortBy, searchQuery, isFilterOpen]);
+
   useEffect(() => {
     if (selectedPerf) {
       document.body.style.overflow = 'hidden';
@@ -345,7 +372,7 @@ const Groups = ({ initialGroups }) => {
       return 'bg-slate-50 border-slate-100 text-slate-400';
     }
 
-    // 整理券のみ受付（青）
+    // 整理券のみ（青）
     if (reception_status === 'ticket_only') {
       return 'bg-brand-50 border-brand-100 text-brand-600';
     }
@@ -380,7 +407,7 @@ const Groups = ({ initialGroups }) => {
 
     if (reception_status === 'closed' || reception_status === 'ended') return '受付終了';
     if (reception_status === 'before_open') return '受付前';
-    if (reception_status === 'ticket_only') return '整理券のみ受付';
+    if (reception_status === 'ticket_only') return '整理券のみ';
 
     if (has_performances) return '公演情報';
 
@@ -409,7 +436,7 @@ const Groups = ({ initialGroups }) => {
 
   const getReceptionLabel = (status) => {
     if (status === 'before_open') return '受付前';
-    if (status === 'ticket_only') return '整理券をお持ちの方のみ受付中';
+    if (status === 'ticket_only') return '整理券のみ';
     return status === 'closed' || status === 'ended' ? '受付終了' : '受付中';
   };
 
@@ -694,10 +721,10 @@ const Groups = ({ initialGroups }) => {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center h-[110px]">
-                      <div className="flex items-center gap-1.5 text-slate-400 min-h-[16px]">
+                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+                      <div className="flex items-center gap-1.5 text-slate-400">
                         <CheckCircle2 size={10} strokeWidth={3} />
                         <span className="text-[8px] font-black uppercase tracking-widest">公演受付</span>
                       </div>
@@ -711,8 +738,8 @@ const Groups = ({ initialGroups }) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center h-[110px]">
-                      <div className="flex items-center gap-1.5 text-slate-400 min-h-[16px]">
+                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+                      <div className="flex items-center gap-1.5 text-slate-400">
                         <Ticket size={10} strokeWidth={3} />
                         <span className="text-[8px] font-black uppercase tracking-widest">整理券</span>
                       </div>

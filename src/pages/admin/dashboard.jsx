@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
-  CheckCircle2, XCircle, LogOut, Lock, Save, Check, User, Shield, Clock, Info, Utensils, ChevronDown, Edit2, Loader2, RefreshCw
+  CheckCircle2, XCircle, LogOut, Lock, Save, Check, User, Shield, Clock, Info, Utensils, ChevronDown, Edit2, Loader2, RefreshCw, Ticket
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -40,6 +40,42 @@ const GroupDashboard = () => {
   const [publishedPerformances, setPublishedPerformances] = useState([]); // 現在公開中の情報 (DBから取得)
   const [lastClientUpdate, setLastClientUpdate] = useState(null);
   const [now, setNow] = useState(new Date());
+  const [expandedPerformances, setExpandedPerformances] = useState([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const nextPerf = useMemo(() => {
+    if (!performances.length) return null;
+    const nowLocal = new Date();
+    const sorted = [...performances]
+      .map(p => {
+        const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
+        return { ...p, fullDate: new Date(`${festDate}T${p.start_time}:00`) };
+      })
+      .filter(p => {
+        const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
+        const endTime = p.end_time || p.start_time;
+        const fullEndDate = new Date(`${festDate}T${endTime}:00`);
+        return fullEndDate > nowLocal;
+      })
+      .sort((a, b) => a.fullDate - b.fullDate);
+    return sorted[0] || null;
+  }, [performances]);
+
+  useEffect(() => {
+    if (nextPerf && expandedPerformances.length === 0) {
+      setExpandedPerformances([nextPerf.id]);
+    }
+  }, [nextPerf]);
+
+  const togglePerformance = (id) => {
+    setExpandedPerformances(prev => 
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
+  };
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -132,7 +168,6 @@ const GroupDashboard = () => {
 
     const password = localStorage.getItem('ryoun_password');
 
-    // 団体情報を更新
     const groupUpdate = supabase.from('groups').update({
       reception_status: editData.reception_status,
       waiting_time: editData.waiting_time,
@@ -141,7 +176,7 @@ const GroupDashboard = () => {
     }).eq('id', group.id);
 
     // 公演情報を更新
-    const perfUpdates = performances.map(perf => {
+    const perfUpdates = (performances || []).map(perf => {
       return supabase.rpc('update_performance_secure', {
         target_id: perf.id,
         provided_password: password,
@@ -155,8 +190,8 @@ const GroupDashboard = () => {
 
     if (errors.length > 0) {
       console.error('Update Errors:', errors);
-      const errMsg = errors[0]?.message || errors[0]?.details || '不明なエラー';
-      alert(`情報の更新に失敗しました。\n詳細: ${errMsg}`);
+      const errMsg = errors.map(e => e.message || e.details || '不明なエラー').join('\n');
+      alert(`情報の更新に失敗しました。\n詳細:\n${errMsg}`);
     } else {
       setShowSuccess(true);
       setLastClientUpdate(new Date());
@@ -177,6 +212,13 @@ const GroupDashboard = () => {
     const endTime = perf.end_time || perf.start_time;
     return new Date(`${festDate}T${endTime}:00`) < new Date();
   }, []);
+
+  const getStatusColors = (status, type) => {
+    if (status === 'closed' || status === 'ended') return 'text-rose-500';
+    if (status === 'before_open' || status === 'none') return 'text-slate-400';
+    if (status === 'ticket_only') return 'text-brand-500';
+    return 'text-emerald-600';
+  };
 
   const handleLocalPerformanceUpdate = (id, field, value) => {
     const perf = performances.find(p => p.id === id);
@@ -241,7 +283,7 @@ const GroupDashboard = () => {
     return `${diffYears}年前`;
   }, [group, publishedPerformances, now]);
 
-  if (!group && loading) {
+  if (!isMounted || (loading && !group)) {
     return (
       <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-white backdrop-blur-sm">
         <div className="relative">
@@ -252,7 +294,7 @@ const GroupDashboard = () => {
           />
         </div>
         <p className="mt-6 text-sm font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
-          読み込み中...
+        {loading ? '読み込み中...' : '初期化中...'}
         </p>
       </div>
     );
@@ -332,7 +374,7 @@ const GroupDashboard = () => {
                 }`}>
                   {group.reception_status === 'closed' ? '受付終了' :
                     group.reception_status === 'before_open' ? '受付前' :
-                    group.reception_status === 'ticket_only' ? '整理券のみ受付' :
+                    group.reception_status === 'ticket_only' ? '整理券のみ' :
                       (group.has_waiting_time && group.waiting_time > 0 ? `${group.waiting_time}分待ち` :
                         group.has_waiting_time && group.waiting_time === 0 ? '待ちなし' : '受付中')}
                 </span>
@@ -356,33 +398,41 @@ const GroupDashboard = () => {
                     return (
                       <div key={partId} className="space-y-2">
                         <div className="flex items-center gap-2 px-1">
-                          <div className="w-1 h-3 bg-brand-500 rounded-full" />
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Part {partId}</span>
+                          <div className="w-1.5 h-4 bg-brand-500 rounded-full" />
+                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
+                              Part {partId} ({partId === 3 ? '6/14' : '6/13'})
+                            </span>
                         </div>
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
                           {partPerfs.map(perf => {
+                            const isNext = nextPerf && perf.id === nextPerf.id;
                             const isOver = isPerformancePast(perf);
                             const displayStatus = (isOver && perf.status === 'distributing') ? 'ended' : perf.status;
                             const displayReception = isOver ? 'closed' : (perf.reception_status || 'open');
+
                             return (
-                              <div key={perf.id} className="flex items-center justify-between px-4 py-2 bg-slate-50/50 rounded-xl">
-                                <span className="text-[10px] font-bold text-slate-400">
-                                  {perf.start_time}{perf.end_time ? ` ～ ${perf.end_time}` : ''}
-                                </span>
-                                <div className="flex flex-col items-end gap-1">
-                                  <span className={`text-xs font-black ${displayReception === 'closed' ? 'text-rose-500' :
-                                    displayReception === 'before_open' ? 'text-slate-500' :
-                                      displayReception === 'ticket_only' ? 'text-brand-500' :
-                                        'text-emerald-500'
-                                    }`}>
-                                    {displayReception === 'closed' ? '受付終了' :
-                                      displayReception === 'before_open' ? '受付前' :
-                                        displayReception === 'ticket_only' ? '整理券のみ受付' :
-                                          '受付中'}
+                              <div key={perf.id} className={`px-4 py-3 rounded-xl border transition-all flex flex-col justify-center gap-1 ${
+                                isOver ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60' : 
+                                isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 
+                                'bg-white text-slate-600 border-slate-100'
+                              }`}>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs font-black">
+                                    {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
                                   </span>
-                                  <span className="text-[10px] font-black text-slate-400">
-                                    整理券{displayStatus === 'distributing' ? '配布中' : displayStatus === 'ended' ? '配布終了' : '配布なし'}
-                                  </span>
+                                  {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                </div>
+                                <div className="flex flex-col gap-1 mt-1.5">
+                                  <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${getStatusColors(displayReception, 'reception')}`}>
+                                    {displayReception === 'closed' ? <XCircle size={10} strokeWidth={3} /> :
+                                      displayReception === 'before_open' ? <Clock size={10} strokeWidth={3} /> :
+                                      <CheckCircle2 size={10} strokeWidth={3} />}
+                                    {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[displayReception]}
+                                  </div>
+                                  <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${getStatusColors(displayStatus, 'ticket')}`}>
+                                    <Ticket size={10} strokeWidth={3} />
+                                    {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[displayStatus]}
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -424,7 +474,7 @@ const GroupDashboard = () => {
                       <button
                         onClick={() => handleLocalStateUpdate('reception_status', 'ticket_only')}
                         className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-lg shadow-brand-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
-                      >整理券のみ受付</button>
+                      >整理券のみ</button>
                     )}
                     <button
                       onClick={() => handleLocalStateUpdate('reception_status', 'closed')}
@@ -442,16 +492,16 @@ const GroupDashboard = () => {
                   </div>
                   <div className="relative">
                     <select
-                      value={editData.reception_status === 'closed' ? 'closed' : editData.waiting_time}
-                      disabled={editData.reception_status === 'closed'}
+                      value={['before_open', 'closed', 'ended'].includes(editData.reception_status) ? 'disabled' : editData.waiting_time}
+                      disabled={['before_open', 'closed', 'ended'].includes(editData.reception_status)}
                       onChange={(e) => handleLocalStateUpdate('waiting_time', parseInt(e.target.value))}
-                      className={`w-full border-2 rounded-2xl py-5 px-6 font-black transition-all appearance-none focus:outline-none ${editData.reception_status === 'closed'
+                      className={`w-full border-2 rounded-2xl py-5 px-6 font-black transition-all appearance-none focus:outline-none ${['before_open', 'closed', 'ended'].includes(editData.reception_status)
                         ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                         : 'bg-slate-50 border-slate-100 text-slate-700 focus:border-brand-500 cursor-pointer'
                         }`}
                     >
-                      {editData.reception_status === 'closed' ? (
-                        <option value="closed">選択不可</option>
+                      {['before_open', 'closed', 'ended'].includes(editData.reception_status) ? (
+                        <option value="disabled">選択不可</option>
                       ) : (
                         Array.from({ length: 25 }, (_, i) => i * 5).map((mins) => (
                           <option key={mins} value={mins}>
@@ -460,7 +510,7 @@ const GroupDashboard = () => {
                         ))
                       )}
                     </select>
-                    <div className={`absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none ${editData.reception_status === 'closed' ? 'text-slate-300' : 'text-slate-400'}`}>
+                    <div className={`absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none ${['before_open', 'closed', 'ended'].includes(editData.reception_status) ? 'text-slate-300' : 'text-slate-400'}`}>
                       <ChevronDown size={20} strokeWidth={2.5} />
                     </div>
                   </div>
@@ -491,99 +541,161 @@ const GroupDashboard = () => {
 
               {/* Performance Management */}
               {group.has_performances && (
-                <div className="space-y-8">
+                <div className="space-y-12">
+                  <div className="flex items-center gap-4">
+                    <div className="h-px flex-1 bg-slate-100"></div>
+                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">公演スケジュール 管理</h3>
+                    <div className="h-px flex-1 bg-slate-100"></div>
+                  </div>
+
                   {[1, 2, 3].map(partId => {
                     const partPerfs = performances.filter(p => p.part_id === partId);
                     if (partPerfs.length === 0) return null;
 
                     return (
-                      <div key={partId} className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-px flex-1 bg-slate-50"></div>
-                          <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Part {partId}</span>
+                      <div key={partId} className="space-y-6">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-4 bg-brand-500 rounded-full" />
+                            <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">
+                              Part {partId} ({partId === 3 ? '6/14' : '6/13'})
+                            </span>
+                          </div>
                           <div className="h-px flex-1 bg-slate-50"></div>
                         </div>
-                        <div className="grid grid-cols-1 gap-4">
-                          {partPerfs.map(perf => (
-                            <div key={perf.id} className="p-6 bg-slate-50/50 rounded-3xl border border-slate-100/50 space-y-6">
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                  <Clock size={16} className="text-brand-600" />
-                                  <span className="text-sm font-black text-slate-900">{perf.start_time}〜 の公演</span>
-                                </div>
-                              </div>
-                              <div className="space-y-4">
-                                <div className="space-y-2">
-                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">公演受付状況</label>
-                                  <div className="grid grid-cols-3 gap-2">
-                                    {[
-                                      { id: 'before_open', label: '受付前' },
-                                      { id: 'open', label: '受付中' },
-                                      { id: 'ticket_only', label: '整理券のみ受付', hide: perf.status === 'none' },
-                                      { id: 'closed', label: '受付終了' }
-                                    ].filter(s => !s.hide).map(s => {
-                                      const isPast = isPerformancePast(perf);
-                                      const displayReception = isPast ? 'closed' : (perf.reception_status || 'open');
-                                      const isActive = displayReception === s.id;
-                                      return (
-                                        <button
-                                          key={s.id}
-                                          onClick={() => handleLocalPerformanceUpdate(perf.id, 'reception_status', s.id)}
-                                          disabled={isPast}
-                                          className={`py-3 px-1 sm:px-2 rounded-2xl text-[9px] sm:text-[10px] font-black transition-all border-2 break-keep ${isActive
-                                            ? s.id === 'open'
-                                              ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10'
-                                              : s.id === 'ticket_only'
-                                                ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10'
-                                                : s.id === 'before_open'
-                                                  ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
-                                                  : 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10'
-                                            : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'
-                                            } ${isPast ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
-                                        >
-                                          {s.label}
-                                        </button>
-                                      );
-                                    })}
+
+                        <div className="grid grid-cols-1 gap-6">
+                          {partPerfs.map(perf => {
+                            const isExpanded = expandedPerformances.includes(perf.id);
+                            const isNext = nextPerf && perf.id === nextPerf.id;
+                            const isPast = isPerformancePast(perf);
+
+                            return (
+                              <div key={perf.id} className={`rounded-[2.5rem] border transition-all duration-500 shadow-sm overflow-hidden ${
+                                isPast ? 'bg-slate-50/30 border-slate-100 opacity-60' :
+                                isExpanded ? 'bg-white border-brand-200 ring-4 ring-brand-500/5' :
+                                'bg-slate-50/50 border-slate-100 hover:bg-slate-100/50'
+                              }`}>
+                                <button
+                                  onClick={() => togglePerformance(perf.id)}
+                                  className="w-full p-6 flex items-center justify-between group/btn text-left transition-colors"
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isExpanded ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20 rotate-[360deg]' : 'bg-brand-50 text-brand-600 group-hover/btn:scale-110'}`}>
+                                      <Clock size={20} strokeWidth={2.5} />
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[15px] font-black text-slate-900 tracking-tight">
+                                          {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
+                                        </span>
+                                        {isNext && <span className="bg-brand-600 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                      </div>
+                                      {!isExpanded && (
+                                        <div className="flex items-center gap-3">
+                                          <span className={`text-[10px] font-black ${perf.reception_status === 'closed' ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                            {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[perf.reception_status]}
+                                          </span>
+                                          <span className="text-[10px] font-bold text-slate-300">
+                                            整理券{perf.status === 'distributing' ? '配布中' : perf.status === 'ended' ? '終了' : 'なし'}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
-                                  <div className="grid grid-cols-3 gap-2">
-                                    {[
-                                      { id: 'none', label: 'なし' },
-                                      { id: 'distributing', label: '配布中' },
-                                      { id: 'ended', label: '終了' }
-                                    ].map(s => {
-                                      const isPast = isPerformancePast(perf);
-                                      const displayStatus = isPast && perf.status !== 'none' ? 'ended' : perf.status;
-                                      return (
-                                        <button
-                                          key={s.id}
-                                          onClick={() => handleLocalPerformanceUpdate(perf.id, 'status', s.id)}
-                                          disabled={isPast}
-                                          className={`py-3 rounded-2xl text-[10px] font-black transition-all border-2 ${displayStatus === s.id
-                                            ? s.id === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
-                                              s.id === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
-                                              'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
-                                            : 'bg-white border-slate-50 text-slate-300'
-                                            } ${isPast ? 'opacity-30 cursor-not-allowed filter grayscale' : 'hover:border-slate-100'}`}
-                                        >
-                                          {s.label}
-                                        </button>
-                                      );
-                                    })}
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isExpanded ? 'bg-brand-100 text-brand-600 rotate-180' : 'bg-white text-slate-400 shadow-sm group-hover/btn:bg-brand-50 group-hover/btn:text-brand-600'}`}>
+                                    <ChevronDown size={20} strokeWidth={3} />
                                   </div>
-                                </div>
+                                </button>
+                                
+                                <AnimatePresence initial={false}>
+                                  {isExpanded && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
+                                      className="overflow-hidden"
+                                    >
+                                      <div className="px-6 pb-8 pt-2 space-y-8 border-t border-slate-50/50 mx-4">
+                                        <div className="pt-6 space-y-8">
+                                          <div className="space-y-4">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">公演受付状況</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                              {[
+                                                { id: 'before_open', label: '受付前' },
+                                                { id: 'open', label: '受付中' },
+                                                { id: 'ticket_only', label: '整理券のみ', hide: perf.status === 'none' },
+                                                { id: 'closed', label: '受付終了' }
+                                              ].filter(s => !s.hide).map(s => {
+                                                const isPastLocal = isPerformancePast(perf);
+                                                const displayReception = isPastLocal ? 'closed' : (perf.reception_status || 'open');
+                                                const isActive = displayReception === s.id;
+                                                return (
+                                                  <button
+                                                    key={s.id}
+                                                    onClick={() => handleLocalPerformanceUpdate(perf.id, 'reception_status', s.id)}
+                                                    disabled={isPastLocal}
+                                                    className={`py-4 px-1 sm:px-2 rounded-2xl text-[10px] font-black transition-all border-2 break-keep ${isActive
+                                                      ? s.id === 'open'
+                                                        ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10'
+                                                        : s.id === 'ticket_only'
+                                                          ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10'
+                                                          : s.id === 'before_open'
+                                                            ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
+                                                            : 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10'
+                                                      : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100 hover:bg-slate-50'
+                                                      } ${isPastLocal ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
+                                                  >
+                                                    {s.label}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-4">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
+                                            <div className="grid grid-cols-3 gap-2">
+                                              {[
+                                                { id: 'none', label: 'なし' },
+                                                { id: 'distributing', label: '配布中' },
+                                                { id: 'ended', label: '終了' }
+                                              ].map(s => {
+                                                const isPastLocal = isPerformancePast(perf);
+                                                const displayStatus = isPastLocal && perf.status !== 'none' ? 'ended' : perf.status;
+                                                return (
+                                                  <button
+                                                    key={s.id}
+                                                    onClick={() => handleLocalPerformanceUpdate(perf.id, 'status', s.id)}
+                                                    disabled={isPastLocal}
+                                                    className={`py-4 rounded-2xl text-[10px] font-black transition-all border-2 ${displayStatus === s.id
+                                                      ? s.id === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                                        s.id === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
+                                                        'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
+                                                      : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100 hover:bg-slate-50'
+                                                      } ${isPastLocal ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
+                                                  >
+                                                    {s.label}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               )}
+
 
               {!group.has_reception && !group.has_waiting_time && !group.has_ticket_status && !group.has_performances && (
                 <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4">
