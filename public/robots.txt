@@ -1,8 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /groups
-Disallow: /timetable
-Disallow: /lost-found
 Disallow: /admin
 Disallow: /ryoun-hq-portal
 Disallow: /api

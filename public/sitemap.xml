@@ -2,8 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://festival-tachibana2026.vercel.app/</loc>
-    <lastmod>2026-04-17</lastmod>
+    <lastmod>2026-04-21</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://festival-tachibana2026.vercel.app/groups</loc>
+    <lastmod>2026-04-21</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://festival-tachibana2026.vercel.app/timetable</loc>
+    <lastmod>2026-04-21</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://festival-tachibana2026.vercel.app/lost-found</loc>
+    <lastmod>2026-04-21</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
   </url>
 </urlset>
