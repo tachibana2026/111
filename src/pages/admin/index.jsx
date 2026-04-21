@@ -101,7 +101,7 @@ const AdminLogin = () => {
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ログインID</label>
             <div className="relative group">
-              <User className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors" size={22} />
+              <User className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors pointer-events-none" size={22} />
                 <input
                   type="text"
                   required
@@ -117,7 +117,7 @@ const AdminLogin = () => {
           <div className="space-y-3">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">パスワード</label>
             <div className="relative group">
-              <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors" size={22} />
+              <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors pointer-events-none" size={22} />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
