@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
   Users, PackageSearch, ShieldCheck,
@@ -90,7 +90,7 @@ const HQGroupCard = ({
       <div className="flex justify-between items-start">
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1.5">
-            {g.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
+            {(g.department || '').split(',').filter(Boolean).map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
               <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
                 {dept}
               </span>
@@ -109,7 +109,7 @@ const HQGroupCard = ({
         </div>
 
         <div className="flex flex-col gap-2 items-end scale-90 origin-top-right">
-          {!(g.department?.split(',').map(d => d.trim()).includes('公演')) ? (
+          {!( (g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes('公演')) ? (
             <>
               {g.has_reception && (
                 <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
@@ -169,7 +169,7 @@ const HQGroupCard = ({
           </span>
         </div>
 
-        {g.department?.split(',').map(d => d.trim()).includes('公演') && (
+        {(g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes('公演') && (
           <div className="flex flex-col gap-2 items-start scale-90 origin-left">
             {g.has_reception && (
               <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
@@ -207,7 +207,7 @@ const HQGroupCard = ({
           </div>
         )}
 
-        {g.department?.split(',').map(d => d.trim()).includes('公演') && g.performances?.length > 0 && (
+        {(g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes('公演') && (g.performances || []).length > 0 && (
           <div className="space-y-4 pt-4 border-t border-slate-50">
             <button
               onClick={(e) => {
@@ -251,7 +251,7 @@ const HQGroupCard = ({
                 >
                   <div className="space-y-6 pt-2 pb-2">
                     {[1, 2, 3].map(partId => {
-                      const partPerfs = g.performances?.filter(p => p.part_id === partId).sort((a, b) => a.start_time.localeCompare(b.start_time));
+                      const partPerfs = (g.performances || []).filter(p => p.part_id === partId).sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
                       if (!partPerfs || partPerfs.length === 0) return null;
 
                       const nextPerf = (() => {
@@ -904,7 +904,7 @@ const HQDashboard = () => {
               <AnimatePresence mode="popLayout">
                 {groups
                   .filter(g => {
-                    const matchesDept = selectedDept === 'すべて' || g.department?.split(',').map(d => d.trim()).includes(selectedDept);
+                    const matchesDept = selectedDept === 'すべて' || (g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes(selectedDept);
                     const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
                     const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
 
@@ -931,11 +931,12 @@ const HQDashboard = () => {
                     if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
                     if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
                     if (sortBy === 'area') {
-                      if (a.building !== b.building) return a.building.localeCompare(b.building, 'ja');
-                      return a.room.localeCompare(b.room, 'ja');
+                      if ((a.building || '') !== (b.building || '')) return (a.building || '').localeCompare(b.building || '', 'ja');
+                      return (a.room || '').localeCompare(b.room || '', 'ja');
                     }
                     
                     const getPriority = (name) => {
+                      if (!name) return 4;
                       if (name.startsWith('1年')) return 1;
                       if (name.startsWith('2年')) return 2;
                       if (name.startsWith('3年')) return 3;
@@ -947,10 +948,10 @@ const HQDashboard = () => {
                     if (priorityA !== priorityB) return priorityA - priorityB;
 
                     const getSortKey = (g) => {
-                      if (priorityA < 4) return g.name;
+                      if (priorityA < 4) return g.name || '';
                       if (g.name_kana) return g.name_kana;
                       if (g.title_kana) return g.title_kana;
-                      return g.name;
+                      return g.name || '';
                     };
                     return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
                   })
@@ -1030,11 +1031,20 @@ const HQDashboard = () => {
       )}
 
       {/* Confirm Dialog */}
-      <AnimatePresence>
-        {confirmDialog.isOpen && (
-          <Portal>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
-              <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100 text-slate-800">
+      <Portal>
+        <AnimatePresence>
+          {confirmDialog.isOpen && (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md"
+              onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-8 md:p-10 max-w-sm w-full text-center shadow-2xl border border-slate-100 text-slate-800"
+                onClick={e => e.stopPropagation()}
+              >
                 <div className="w-16 h-16 md:w-20 md:h-20 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-inner">
                   {confirmDialog.icon || <AlertTriangle className="w-7 h-7 md:w-8 md:h-8" />}
                 </div>
@@ -1042,16 +1052,27 @@ const HQDashboard = () => {
                   {renderFormattedMessage(confirmDialog.message)}
                 </h3>
                 <div className="flex flex-col md:flex-row gap-3">
-                  <button onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors">キャンセル</button>
-                  <button onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(prev => ({ ...prev, isOpen: false })); }} className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all">
+                  <button
+                    onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                    className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+                      setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                    }}
+                    className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all"
+                  >
                     {confirmDialog.confirmText}
                   </button>
                 </div>
               </motion.div>
             </div>
-          </Portal>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </Portal>
       {/* Edit Group Modal */}
       <AnimatePresence>
         {isEditModalOpen && editingGroup && (
@@ -1083,9 +1104,9 @@ const HQDashboard = () => {
         )}
       </AnimatePresence>
       {/* Loading Overlay */}
-      <AnimatePresence>
-        {(loading || isBulkUpdating) && (
-          <Portal>
+      <Portal>
+        <AnimatePresence>
+          {(loading || isBulkUpdating) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1103,9 +1124,9 @@ const HQDashboard = () => {
                 {isBulkUpdating ? '更新中...' : '読み込み中...'}
               </p>
             </motion.div>
-          </Portal>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </Portal>
     </div >
   );
 };
@@ -1332,7 +1353,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                 {[1, 2, 3].map(partId => {
                   const partPerfs = performances
                     .filter(p => p.part_id === partId)
-                    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+                    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
                   
                   if (partPerfs.length === 0) return null;
 
@@ -1543,20 +1564,18 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
               <input
                 type="datetime-local"
                 value={formData.found_at ? new Date(new Date(formData.found_at).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
-                onClick={(e) => e.currentTarget.showPicker()}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.showPicker();
-                }}
                 onChange={e => {
                   const val = e.target.value;
-                  if (!val) return;
+                  if (!val) {
+                    setFormData({ ...formData, found_at: null });
+                    return;
+                  }
                   const date = new Date(val);
                   if (!isNaN(date.getTime())) {
                     setFormData({ ...formData, found_at: date.toISOString() });
                   }
                 }}
-                className="w-full block bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all text-left appearance-none select-none caret-transparent"
+                className="w-full block bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all text-left appearance-none"
               />
             </div>
           </div>

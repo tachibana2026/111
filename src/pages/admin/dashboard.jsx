@@ -214,7 +214,7 @@ const GroupDashboard = () => {
   }, []);
 
   const getStatusColors = (status, type) => {
-    if (status === 'closed' || status === 'ended') return 'text-rose-500';
+    if (status === 'closed' || status === 'ended') return 'text-slate-400';
     if (status === 'before_open' || status === 'none') return 'text-slate-400';
     if (status === 'ticket_only') return 'text-brand-500';
     return 'text-emerald-600';
@@ -366,12 +366,7 @@ const GroupDashboard = () => {
             {group.has_reception && (
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-xs font-black text-slate-500">{group.department || '運営状況'}</span>
-                <span className={`text-xl font-black ${
-                  group.reception_status === 'closed' || group.reception_status === 'ended' ? 'text-rose-500' : 
-                  group.reception_status === 'before_open' ? 'text-slate-400' : 
-                  group.reception_status === 'ticket_only' ? 'text-brand-500' :
-                  'text-emerald-500'
-                }`}>
+                <span className={`text-xl font-black ${getStatusColors(group.reception_status, 'reception')}`}>
                   {group.reception_status === 'closed' ? '受付終了' :
                     group.reception_status === 'before_open' ? '受付前' :
                     group.reception_status === 'ticket_only' ? '整理券のみ' :
@@ -593,7 +588,7 @@ const GroupDashboard = () => {
                                       </div>
                                       {!isExpanded && (
                                         <div className="flex items-center gap-3">
-                                          <span className={`text-[10px] font-black ${perf.reception_status === 'closed' ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                          <span className={`text-[10px] font-black ${getStatusColors(perf.reception_status, 'reception')}`}>
                                             {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[perf.reception_status]}
                                           </span>
                                           <span className="text-[10px] font-bold text-slate-300">
@@ -735,10 +730,13 @@ const GroupDashboard = () => {
         </div>
       </div>
 
-      <AnimatePresence>
-        {confirmDialog.isOpen && (
-          <Portal>
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
+      <Portal>
+        <AnimatePresence>
+          {confirmDialog.isOpen && (
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md"
+              onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+            >
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -753,7 +751,7 @@ const GroupDashboard = () => {
                 </h2>
                 <div className="flex flex-col md:flex-row gap-3">
                   <button
-                    onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                    onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
                     className="order-2 md:order-1 flex-1 py-4 text-slate-400 font-black text-sm hover:bg-slate-50 rounded-2xl transition-colors"
                   >
                     キャンセル
@@ -761,7 +759,7 @@ const GroupDashboard = () => {
                   <button
                     onClick={() => {
                       if (confirmDialog.onConfirm) confirmDialog.onConfirm();
-                      setConfirmDialog({ ...confirmDialog, isOpen: false });
+                      setConfirmDialog(prev => ({ ...prev, isOpen: false }));
                     }}
                     className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all"
                   >
@@ -770,12 +768,12 @@ const GroupDashboard = () => {
                 </div>
               </motion.div>
             </div>
-          </Portal>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {(loading || updating) && (
-          <Portal>
+          )}
+        </AnimatePresence>
+      </Portal>
+      <Portal>
+        <AnimatePresence>
+          {(loading || updating) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -790,12 +788,12 @@ const GroupDashboard = () => {
                 />
               </div>
               <p className="mt-6 text-sm font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">
-              {updating ? '更新中...' : '読み込み中...'}
+                {updating ? '更新中...' : '読み込み中...'}
               </p>
             </motion.div>
-          </Portal>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </Portal>
     </div>
   );
 };

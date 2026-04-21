@@ -41,7 +41,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
   const partSchedule = useMemo(() => 
     [...schedule]
       .filter(p => p.part_id === partId)
-      .sort((a, b) => a.start_time.localeCompare(b.start_time)),
+      .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || '')),
     [schedule, partId]
   );
   if (partSchedule.length === 0) return null;
@@ -147,7 +147,7 @@ const GroupCard = ({
       <div className="flex justify-between items-start mb-5">
         <div className="flex-1 min-w-0 pr-2">
           <div className="flex flex-wrap items-center gap-2 mb-2.5">
-            {group.department?.split(',').map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
+            {(group.department || '').split(',').filter(Boolean).map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
               <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider whitespace-nowrap">
                 {dept}
               </span>
@@ -500,12 +500,13 @@ const Groups = ({ initialGroups }) => {
           return (b.waiting_time || 0) - (a.waiting_time || 0);
         }
         if (sortBy === 'area') {
-          if (a.building !== b.building) return a.building.localeCompare(b.building, 'ja');
-          return a.room.localeCompare(b.room, 'ja');
+          if ((a.building || '') !== (b.building || '')) return (a.building || '').localeCompare(b.building || '', 'ja');
+          return (a.room || '').localeCompare(b.room || '', 'ja');
         }
 
         // 優先度判定: クラス（1年->2年->3年） > 有志
         const getPriority = (name) => {
+          if (!name) return 4;
           if (name.startsWith('1年')) return 1;
           if (name.startsWith('2年')) return 2;
           if (name.startsWith('3年')) return 3;
@@ -522,12 +523,12 @@ const Groups = ({ initialGroups }) => {
         // クラス同士、または有志同士の場合のソートキー
         const getSortKey = (g) => {
           // クラス（1年, 2年, 3年）は名称（1年A組, 1年B組...）でA-Z順にソート
-          if (priorityA < 4) return g.name;
+          if (priorityA < 4) return g.name || '';
           
           // 有志団体などは読み仮名（name_kana / title_kana）を優先して五十音順
           if (g.name_kana) return g.name_kana;
           if (g.title_kana) return g.title_kana;
-          return g.name;
+          return g.name || '';
         };
 
         return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });

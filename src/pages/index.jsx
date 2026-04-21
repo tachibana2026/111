@@ -322,7 +322,7 @@ const Home = () => {
               <h2 className="text-2xl font-black text-white">フィードバック</h2>
             </div>
 
-            <p className="text-slate-400 font-bold max-w-xl">不具合の報告･ご意見等はこちらからお願いします。</p>
+            <p className="text-slate-400 font-bold max-w-xl">サイト不具合の報告･ご意見等はこちらからお願いします。</p>
 
             <div className="flex items-center justify-center gap-4 bg-white/10 px-10 py-5 rounded-2xl text-white font-black group-hover:bg-white/20 transition-all w-full">
               <span>フォームを開く</span>

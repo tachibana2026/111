@@ -84,6 +84,7 @@ const Timetable = ({ initialPerformances }) => {
   };
 
   const getPerfWidth = (perf) => {
+    if (!perf.start_time) return 0;
     const [h1, m1] = perf.start_time.split(':').map(Number);
     const diffMinutes = perf.end_time 
       ? (() => {
@@ -171,8 +172,8 @@ const Timetable = ({ initialPerformances }) => {
 
     return BUILDING_ORDER.map(building => {
       const groups = map.get(building).sort((a, b) => {
-        if (a.room !== b.room) return a.room.localeCompare(b.room, 'ja', { numeric: true });
-        return a.name.localeCompare(b.name, 'ja', { numeric: true });
+        if ((a.room || '') !== (b.room || '')) return (a.room || '').localeCompare(b.room || '', 'ja', { numeric: true });
+        return (a.name || '').localeCompare(b.name || '', 'ja', { numeric: true });
       });
       return { building, groups };
     }).filter(b => b.groups.length > 0);
