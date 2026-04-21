@@ -102,14 +102,15 @@ const AdminLogin = () => {
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ログインID</label>
             <div className="relative group">
               <User className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors" size={22} />
-              <input
-                type="text"
-                required
-                placeholder="IDを入力"
-                className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl py-5 pl-16 pr-8 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-300"
-                value={groupId}
-                onChange={(e) => setGroupId(e.target.value)}
-              />
+                <input
+                  type="text"
+                  required
+                  placeholder="IDを入力"
+                  autoComplete="username"
+                  className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl py-5 pl-16 pr-8 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-300"
+                  value={groupId}
+                  onChange={(e) => setGroupId(e.target.value)}
+                />
             </div>
           </div>
 
@@ -117,14 +118,15 @@ const AdminLogin = () => {
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">パスワード</label>
             <div className="relative group">
               <Lock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-brand-600 transition-colors" size={22} />
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                placeholder="パスワードを入力"
-                className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl py-5 pl-16 pr-14 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-300"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="パスワードを入力"
+                  autoComplete="current-password"
+                  className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl py-5 pl-16 pr-14 focus:bg-white focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all text-slate-700 font-bold placeholder:text-slate-300"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}

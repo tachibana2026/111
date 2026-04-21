@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, forwardRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
   Users, PackageSearch, ShieldCheck,
@@ -54,7 +54,7 @@ const normalizeString = (str) => {
 const GRADES = ['すべて', '1年', '2年', '3年', '有志'];
 const BUILDINGS = ['すべて', '仮校舎', '体育館', 'セミナー', '南館'];
 
-const HQGroupCard = ({ 
+const HQGroupCard = forwardRef(({ 
   g, 
   selectedDept, 
   setEditingGroup, 
@@ -62,7 +62,7 @@ const HQGroupCard = ({
   requireConfirm, 
   fetchData, 
   formatRelativeTime 
-}) => {
+}, ref) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
 
@@ -80,6 +80,7 @@ const HQGroupCard = ({
 
   return (
     <motion.div
+      ref={ref}
       layout
       key={g.id}
       initial={{ opacity: 0, scale: 0.98 }}
@@ -345,7 +346,7 @@ const HQGroupCard = ({
       </div>
     </motion.div>
   );
-};
+});
 const renderFormattedMessage = (message) => {
   if (!message) return null;
   const parts = message.split(/(【[^】]+】)/g);
@@ -507,8 +508,7 @@ const HQDashboard = () => {
 
       if (groupIds.length > 0) {
         await supabase.from('groups').update({
-          editing_locked: locked,
-          updated_at: new Date().toISOString()
+          editing_locked: locked
         }).in('id', groupIds);
       }
       await fetchData();
@@ -531,8 +531,7 @@ const HQDashboard = () => {
       
       if (groupIds.length > 0) {
         await supabase.from('groups').update({
-          last_reset_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          last_reset_at: new Date().toISOString()
         }).in('id', groupIds);
       }
       await fetchData();
@@ -1155,24 +1154,45 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Update group general settings & status
-      const { error: groupError } = await supabase.from('groups').update({
+      const hasGroupChanged = 
+        editData.reception_status !== group.reception_status ||
+        editData.waiting_time !== group.waiting_time ||
+        editData.ticket_status !== group.ticket_status;
+
+      const groupUpdatePayload = {
         editing_locked: editingLocked,
         reception_status: editData.reception_status,
         waiting_time: editData.waiting_time,
         ticket_status: editData.ticket_status,
-        updated_at: new Date().toISOString()
-      }).eq('id', group.id);
+      };
+
+      if (hasGroupChanged) {
+        groupUpdatePayload.updated_at = new Date().toISOString();
+      }
+
+      // Update group general settings & status
+      const { error: groupError } = await supabase.from('groups').update(groupUpdatePayload).eq('id', group.id);
 
       if (groupError) throw groupError;
 
       // Update performances
       for (const perf of performances) {
-        const { error: perfError } = await supabase.from('performances').update({
+        const originalPerf = group.performances?.find(p => p.id === perf.id);
+        const hasPerfChanged = originalPerf && (
+          originalPerf.status !== perf.status ||
+          originalPerf.reception_status !== (perf.reception_status || 'open')
+        );
+
+        const perfUpdatePayload = {
           status: perf.status,
-          reception_status: perf.reception_status || 'open',
-          updated_at: new Date().toISOString()
-        }).eq('id', perf.id);
+          reception_status: perf.reception_status || 'open'
+        };
+
+        if (hasPerfChanged) {
+          perfUpdatePayload.updated_at = new Date().toISOString();
+        }
+
+        const { error: perfError } = await supabase.from('performances').update(perfUpdatePayload).eq('id', perf.id);
 
         if (perfError) throw perfError;
       }
@@ -1191,8 +1211,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
     setIsSaving(true);
     try {
       await supabase.from('groups').update({
-        last_reset_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        last_reset_at: new Date().toISOString()
       }).eq('id', group.id);
       alert('セッションを強制終了しました');
       await onSave();

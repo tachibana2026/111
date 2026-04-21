@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, forwardRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Filter, SortDesc, Instagram, ExternalLink, MapPin, ChevronDown, RefreshCw, Calendar, Search, X, Ticket, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -123,7 +123,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
   );
 };
 
-const GroupCard = ({ 
+const GroupCard = forwardRef(({ 
   group, 
   groups, 
   setSelectedGroup, 
@@ -132,11 +132,12 @@ const GroupCard = ({
   getStatusText, 
   getNextPerformance, 
   formatRelativeTime 
-}) => {
+}, ref) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <motion.div
+      ref={ref}
       layout
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -289,7 +290,7 @@ const GroupCard = ({
       </div>
     </motion.div>
   );
-};
+});
 
 const formatRelativeTime = (isoString) => {
   if (!isoString) return 'データなし';
