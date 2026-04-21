@@ -459,21 +459,21 @@ const GroupDashboard = () => {
                   <div className={`grid ${editData.ticket_status === 'distributing' || editData.ticket_status === 'ended' ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
                     <button
                       onClick={() => handleLocalStateUpdate('reception_status', 'before_open')}
-                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 active:scale-95 ${editData.reception_status === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付前</button>
                     <button
                       onClick={() => handleLocalStateUpdate('reception_status', 'open')}
-                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 active:scale-95 ${editData.reception_status === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-lg shadow-emerald-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付中</button>
                     {(editData.ticket_status === 'distributing' || editData.ticket_status === 'ended') && (
                       <button
                         onClick={() => handleLocalStateUpdate('reception_status', 'ticket_only')}
-                        className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-lg shadow-brand-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                        className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 active:scale-95 ${editData.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-lg shadow-brand-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                       >整理券のみ</button>
                     )}
                     <button
                       onClick={() => handleLocalStateUpdate('reception_status', 'closed')}
-                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.reception_status === 'closed' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-lg shadow-rose-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                      className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 active:scale-95 ${editData.reception_status === 'closed' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-lg shadow-rose-500/10' : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                     >受付終了</button>
                   </div>
                 </div>
@@ -525,7 +525,7 @@ const GroupDashboard = () => {
                       <button
                         key={s.id}
                         onClick={() => handleLocalStateUpdate('ticket_status', s.id)}
-                        className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 ${editData.ticket_status === s.id ? s.color : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                        className={`py-4 rounded-2xl text-[11px] font-black transition-all border-2 active:scale-95 ${editData.ticket_status === s.id ? s.color : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                       >
                         {s.label}
                       </button>

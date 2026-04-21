@@ -81,7 +81,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
           const { ticketStatus, receptionStatus, currentReception, actualTicket } = getPerfStatusText(p);
           return (
             <div
-              key={i}
+              key={p.id}
               onClick={(e) => {
                 e.stopPropagation();
                 const targetGroup = groups.find(g => g.id === p.group_id);

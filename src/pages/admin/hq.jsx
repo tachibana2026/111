@@ -5,13 +5,12 @@ import {
   Lock, Unlock, Plus, RefreshCw, MapPin,
   LogOut, CheckCircle2, Clock, Edit2, XCircle, X,
   AlertTriangle, Info, Ticket, Save, Filter, Loader2,
-  ChevronDown, Search
+  ChevronDown, Search, Calendar
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { triggerRevalidate } from '../../lib/revalidate';
 import Portal from '../../components/Portal';
-import { Calendar } from 'lucide-react';
 
 const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
 const formatDateTime = (isoString) => {
@@ -59,12 +58,12 @@ const HQGroupCard = forwardRef(({
   selectedDept, 
   setEditingGroup, 
   setIsEditModalOpen, 
-  requireConfirm, 
-  fetchData, 
-  formatRelativeTime 
+  requireConfirm,
 }, ref) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
+  const departments = useMemo(() => (g.department || '').split(',').filter(Boolean).map(d => d.trim()), [g.department]);
+  const isPerformance = useMemo(() => departments.includes('公演'), [departments]);
 
   const getStatusColors = (status, type) => {
     if (type === 'reception') {
@@ -91,7 +90,7 @@ const HQGroupCard = forwardRef(({
       <div className="flex justify-between items-start">
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1.5">
-            {(g.department || '').split(',').filter(Boolean).map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
+            {departments.sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
               <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider">
                 {dept}
               </span>
@@ -110,7 +109,7 @@ const HQGroupCard = forwardRef(({
         </div>
 
         <div className="flex flex-col gap-2 items-end scale-90 origin-top-right">
-          {!( (g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes('公演')) ? (
+          {!isPerformance ? (
             <>
               {g.has_reception && (
                 <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
@@ -170,7 +169,7 @@ const HQGroupCard = forwardRef(({
           </span>
         </div>
 
-        {(g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes('公演') && (
+        {isPerformance && (
           <div className="flex flex-col gap-2 items-start scale-90 origin-left">
             {g.has_reception && (
               <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
@@ -208,7 +207,7 @@ const HQGroupCard = forwardRef(({
           </div>
         )}
 
-        {(g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes('公演') && (g.performances || []).length > 0 && (
+        {isPerformance && (g.performances || []).length > 0 && (
           <div className="space-y-4 pt-4 border-t border-slate-50">
             <button
               onClick={(e) => {
@@ -317,7 +316,7 @@ const HQGroupCard = forwardRef(({
       <div className="pt-5 border-t border-slate-50 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-300">
           <RefreshCw size={8} />
-          <span>更新: {formatRelativeTime(g.updated_at).replace('更新: ', '')}</span>
+          <span>更新: {formatRelativeTime(g.updated_at)}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
