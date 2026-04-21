@@ -656,28 +656,11 @@ const HQDashboard = () => {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 justify-center px-6 md:px-10 py-3 md:py-4 rounded-xl md:rounded-[1.5rem] text-[13px] md:text-sm font-black transition-all flex items-center gap-2 md:gap-3 whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {activeTab === 'groups' && (
-        <div className="space-y-6 md:space-y-10">
-          <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3.5rem] shadow-sm overflow-hidden">
-            <div className="p-6 md:p-10 border-b border-slate-50 bg-white/50 backdrop-blur-xl">
-              <div className="flex flex-col space-y-4 md:space-y-6 flex-1">
-                  {/* Bulk Management Accordion */}
+                               {/* Bulk Management (Permanently Visible) */}
                   <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100/50 overflow-hidden">
-                    <button
-                      onClick={() => setIsBulkOpen(!isBulkOpen)}
-                      className="w-full px-8 py-5 flex items-center justify-between group hover:bg-slate-100/50 transition-colors"
-                    >
+                    <div className="w-full px-8 py-5 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${isBulkOpen ? 'bg-slate-900 text-white rotate-[360deg]' : 'bg-slate-100 text-slate-900 transition-transform group-hover:scale-110'}`}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-900 text-white">
                           <RefreshCw className={`w-5 h-5 ${isBulkUpdating ? 'animate-spin' : ''}`} />
                         </div>
                         <div className="text-left">
@@ -685,71 +668,78 @@ const HQDashboard = () => {
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">※本部･公演団体を除く</p>
                         </div>
                       </div>
-                      <div className={`p-2 rounded-full transition-all duration-300 ${isBulkOpen ? 'bg-slate-900 text-white rotate-180' : 'bg-slate-100 text-slate-400'}`}>
-                        <ChevronDown size={18} />
-                      </div>
-                    </button>
+                    </div>
 
-                    <AnimatePresence>
-                      {isBulkOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="px-8 pb-8 pt-2"
-                        >
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
-                            {/* Group 1: Reception */}
-                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</span>
-                              <div className="grid grid-cols-3 gap-2">
-                                <button
-                                  onClick={() => requireConfirm(`全団体の受付状況を\n【受付前】にしますか？`, () => handleBulkStatusUpdate('before_open'), '受付前')}
-                                  disabled={isBulkUpdating}
-                                  className="py-4 rounded-xl bg-slate-50 text-slate-500 text-[10px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
-                                >
-                                  <Clock size={14} />
-                                  <span>受付前</span>
-                                </button>
-                                <button
-                                  onClick={() => requireConfirm(`全団体の受付状況を\n【受付中】にしますか？`, () => handleBulkStatusUpdate('open'), '受付開始')}
-                                  disabled={isBulkUpdating}
-                                  className="py-4 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
-                                >
-                                  <CheckCircle2 size={14} />
-                                  <span>受付開始</span>
-                                </button>
-                                <button
-                                  onClick={() => requireConfirm(`全団体の受付状況を\n【受付終了】にしますか？`, () => handleBulkStatusUpdate('closed'), '受付終了')}
-                                  disabled={isBulkUpdating}
-                                  className="py-4 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
-                                >
-                                  <XCircle size={14} />
-                                  <span>受付終了</span>
-                                </button>
-                              </div>
-                            </div>
-                            {/* Group 2: Lock Control */}
-                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">編集権限</span>
-                              <div className="grid grid-cols-2 gap-2">
-                                <button
-                                  onClick={() => requireConfirm(`全団体の編集権限を\n【剥奪】しますか？`, () => handleBulkLockUpdate(true), '権限剥奪')}
-                                  disabled={isBulkUpdating}
-                                  className="py-4 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
-                                >
-                                  <Lock size={14} />
-                                  <span>権限剥奪</span>
-                                </button>
-                                <button
-                                  onClick={() => requireConfirm(`全団体の編集権限を\n【付与】しますか？`, () => handleBulkLockUpdate(false), '権限付与')}
-                                  disabled={isBulkUpdating}
-                                  className="py-4 rounded-xl bg-slate-50 text-slate-500 text-[10px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
-                                >
-                                  <Unlock size={14} />
-                                  <span>権限付与</span>
-                                </button>
-                              </div>
+                    <div className="px-8 pb-8 pt-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
+                        {/* Group 1: Reception */}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</span>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              onClick={() => requireConfirm(`全団体の受付状況を\n【受付前】にしますか？`, () => handleBulkStatusUpdate('before_open'), '受付前')}
+                              disabled={isBulkUpdating}
+                              className="py-4 rounded-xl bg-slate-50 text-slate-500 text-[10px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                            >
+                              <Clock size={14} />
+                              <span>受付前</span>
+                            </button>
+                            <button
+                              onClick={() => requireConfirm(`全団体の受付状況を\n【受付中】にしますか？`, () => handleBulkStatusUpdate('open'), '受付開始')}
+                              disabled={isBulkUpdating}
+                              className="py-4 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                            >
+                              <CheckCircle2 size={14} />
+                              <span>受付開始</span>
+                            </button>
+                            <button
+                              onClick={() => requireConfirm(`全団体の受付状況を\n【受付終了】にしますか？`, () => handleBulkStatusUpdate('closed'), '受付終了')}
+                              disabled={isBulkUpdating}
+                              className="py-4 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                            >
+                              <XCircle size={14} />
+                              <span>受付終了</span>
+                            </button>
+                          </div>
+                        </div>
+                        {/* Group 2: Lock Control */}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">編集権限</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => requireConfirm(`全団体の編集権限を\n【剥奪】しますか？`, () => handleBulkLockUpdate(true), '権限剥奪')}
+                              disabled={isBulkUpdating}
+                              className="py-4 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-black border border-rose-100 hover:bg-rose-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                            >
+                              <Lock size={14} />
+                              <span>権限剥奪</span>
+                            </button>
+                            <button
+                              onClick={() => requireConfirm(`全団体の編集権限を\n【付与】しますか？`, () => handleBulkLockUpdate(false), '権限付与')}
+                              disabled={isBulkUpdating}
+                              className="py-4 rounded-xl bg-slate-50 text-slate-500 text-[10px] font-black border border-slate-100 hover:bg-slate-600 hover:text-white transition-all active:scale-95 flex flex-col items-center justify-center gap-1.5"
+                            >
+                              <Unlock size={14} />
+                              <span>権限付与</span>
+                            </button>
+                          </div>
+                        </div>
+                        {/* Group 3: Session Management */}
+                        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">セッション管理</span>
+                          <button
+                            onClick={() => requireConfirm(`全団体のセッションを\n【強制終了】させますか？`, () => handleBulkLogout(), '強制終了')}
+                            disabled={isBulkUpdating}
+                            className="py-4 h-full rounded-xl bg-slate-900 text-white text-[10px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all active:scale-95 flex items-center justify-center gap-3"
+                          >
+                            <LogOut size={14} />
+                            <span>強制終了</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+   </div>
                             </div>
                             {/* Group 3: Session Management */}
                             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
