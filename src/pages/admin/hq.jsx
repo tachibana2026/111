@@ -656,11 +656,25 @@ const HQDashboard = () => {
           ].map(tab => (
             <button
               key={tab.id}
-                               {/* Bulk Management (Permanently Visible) */}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 justify-center px-6 md:px-10 py-3 md:py-4 rounded-xl md:rounded-[1.5rem] text-[13px] md:text-sm font-black transition-all flex items-center gap-2 md:gap-3 whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {activeTab === 'groups' && (
+        <div className="space-y-6 md:space-y-10">
+          <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3.5rem] shadow-sm overflow-hidden">
+            <div className="p-6 md:p-10 border-b border-slate-50 bg-white/50 backdrop-blur-xl">
+              <div className="flex flex-col space-y-4 md:space-y-6 flex-1">
+                  {/* Bulk Management (Permanently Visible) */}
                   <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100/50 overflow-hidden">
-                    <div className="w-full px-8 py-5 flex items-center justify-between">
+                    <div className="w-full px-8 py-5 flex items-center justify-between border-b border-white/50">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-slate-900 text-white">
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center">
                           <RefreshCw className={`w-5 h-5 ${isBulkUpdating ? 'animate-spin' : ''}`} />
                         </div>
                         <div className="text-left">
@@ -670,7 +684,7 @@ const HQDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="px-8 pb-8 pt-2">
+                    <div className="px-8 py-8">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
                         {/* Group 1: Reception */}
                         <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
@@ -738,25 +752,6 @@ const HQDashboard = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-   </div>
-                            </div>
-                            {/* Group 3: Session Management */}
-                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col gap-3">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">セッション管理</span>
-                              <button
-                                onClick={() => requireConfirm(`全団体のセッションを\n【強制終了】させますか？`, () => handleBulkLogout(), '強制終了')}
-                                disabled={isBulkUpdating}
-                                className="py-4 h-full rounded-xl bg-slate-900 text-white text-[10px] font-black shadow-lg shadow-slate-900/10 hover:bg-rose-600 transition-all active:scale-95 flex items-center justify-center gap-3"
-                              >
-                                <LogOut size={14} />
-                                <span>強制終了</span>
-                              </button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
 
                   {/* Search Bar (Moved here) */}
