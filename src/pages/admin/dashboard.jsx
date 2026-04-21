@@ -318,6 +318,14 @@ const GroupDashboard = () => {
       {/* Header Section */}
       <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div className="flex items-center space-x-5">
+          <button
+            onClick={() => fetchGroupData(group.id)}
+            disabled={loading || updating}
+            className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50"
+            title="最新の情報に更新"
+          >
+            <RefreshCw className={`w-6 h-6 ${(loading && !group) || updating ? 'animate-spin' : ''}`} />
+          </button>
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">{group.name} 管理画面</h1>
           </div>

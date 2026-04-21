@@ -507,7 +507,8 @@ const HQDashboard = () => {
 
       if (groupIds.length > 0) {
         await supabase.from('groups').update({
-          editing_locked: locked
+          editing_locked: locked,
+          updated_at: new Date().toISOString()
         }).in('id', groupIds);
       }
       await fetchData();
@@ -596,10 +597,12 @@ const HQDashboard = () => {
         const handleHQStatusUpdate = async (status) => {
           try {
             const { error } = await supabase.from('groups').update({
-              reception_status: status
+              reception_status: status,
+              updated_at: new Date().toISOString()
             }).eq('id', hqGroup.id);
             if (error) throw error;
-            fetchData();
+            await fetchData();
+            triggerRevalidate();
           } catch (e) {
             console.error(e);
           }
@@ -673,9 +676,14 @@ const HQDashboard = () => {
                   <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100/50 overflow-hidden">
                     <div className="w-full px-8 py-5 flex items-center justify-between border-b border-white/50">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center">
-                          <RefreshCw className={`w-5 h-5 ${isBulkUpdating ? 'animate-spin' : ''}`} />
-                        </div>
+                        <button
+                          onClick={fetchData}
+                          disabled={loading || isBulkUpdating}
+                          className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50"
+                          title="最新の情報に更新"
+                        >
+                          <RefreshCw className={`w-5 h-5 ${loading || isBulkUpdating ? 'animate-spin' : ''}`} />
+                        </button>
                         <div className="text-left">
                           <h3 className="text-base font-black text-slate-800 tracking-tight text-lg">全団体一括操作</h3>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">※本部･公演団体を除く</p>
@@ -1138,21 +1146,13 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const hasGroupChanged = 
-        editData.reception_status !== group.reception_status ||
-        editData.waiting_time !== group.waiting_time ||
-        editData.ticket_status !== group.ticket_status;
-
       const groupUpdatePayload = {
         editing_locked: editingLocked,
         reception_status: editData.reception_status,
         waiting_time: editData.waiting_time,
         ticket_status: editData.ticket_status,
+        updated_at: new Date().toISOString()
       };
-
-      if (hasGroupChanged) {
-        groupUpdatePayload.updated_at = new Date().toISOString();
-      }
 
       // Update group general settings & status
       const { error: groupError } = await supabase.from('groups').update(groupUpdatePayload).eq('id', group.id);
