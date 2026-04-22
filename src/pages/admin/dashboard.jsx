@@ -65,6 +65,14 @@ const GroupDashboard = () => {
     return sorted[0] || null;
   }, [performances]);
 
+  const isEditable = useMemo(() => {
+    if (!group) return false;
+    if (group.has_performances) {
+      return group.has_reception || group.has_ticket_status;
+    }
+    return group.has_reception || group.has_waiting_time || group.has_ticket_status;
+  }, [group]);
+
   useEffect(() => {
     if (nextPerf && expandedPerformances.length === 0) {
       setExpandedPerformances([nextPerf.id]);
@@ -596,127 +604,153 @@ const GroupDashboard = () => {
                             const isExpanded = expandedPerformances.includes(perf.id);
                             const isNext = nextPerf && perf.id === nextPerf.id;
                             const isPast = isPerformancePast(perf);
+                            const canEditPerf = group.has_reception || group.has_ticket_status;
+                            const isCurrentlyExpanded = isExpanded && canEditPerf;
 
                             return (
-                              <div key={perf.id} className={`rounded-[2.5rem] border transition-all duration-500 shadow-sm overflow-hidden ${
+                              <div key={perf.id} className={`${(!canEditPerf) ? 'rounded-[1.5rem]' : 'rounded-[2.5rem]'} border transition-all duration-500 shadow-sm overflow-hidden ${
                                 isPast ? 'bg-slate-50/30 border-slate-100 opacity-60' :
-                                isExpanded ? 'bg-white border-brand-200 ring-4 ring-brand-500/5' :
+                                isCurrentlyExpanded ? 'bg-white border-brand-200 ring-4 ring-brand-500/5' :
                                 'bg-slate-50/50 border-slate-100 hover:bg-slate-100/50'
                               }`}>
-                                <button
-                                  onClick={() => togglePerformance(perf.id)}
-                                  className="w-full p-6 flex items-center justify-between group/btn text-left transition-colors"
-                                >
-                                  <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isExpanded ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20 rotate-[360deg]' : 'bg-brand-50 text-brand-600 group-hover/btn:scale-110'}`}>
-                                      <Clock size={20} strokeWidth={2.5} />
-                                    </div>
-                                    <div className="flex flex-col gap-0.5">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-[15px] font-black text-slate-900 tracking-tight">
-                                          {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
-                                        </span>
-                                        {isNext && <span className="bg-brand-600 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                {canEditPerf ? (
+                                  <button
+                                    onClick={() => togglePerformance(perf.id)}
+                                    className="w-full p-6 flex items-center justify-between group/btn text-left transition-colors"
+                                  >
+                                    <div className="flex items-center gap-4">
+                                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isCurrentlyExpanded ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20 rotate-[360deg]' : 'bg-brand-50 text-brand-600 group-hover/btn:scale-110'}`}>
+                                        <Clock size={20} strokeWidth={2.5} />
                                       </div>
-                                      {!isExpanded && (
-                                        <div className="flex items-center gap-3">
-                                          <span className={`text-[10px] font-black ${getStatusColors(perf.reception_status, 'reception')}`}>
-                                            {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[perf.reception_status]}
+                                      <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-[15px] font-black text-slate-900 tracking-tight">
+                                            {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
                                           </span>
-                                          <span className="text-[10px] font-bold text-slate-300">
-                                            整理券{perf.status === 'distributing' ? '配布中' : perf.status === 'ended' ? '終了' : 'なし'}
-                                          </span>
+                                          {isNext && <span className="bg-brand-600 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
                                         </div>
-                                      )}
+                                        {!isCurrentlyExpanded && (
+                                          <div className="flex items-center gap-3">
+                                            {group.has_reception && (
+                                              <span className={`text-[10px] font-black ${getStatusColors(perf.reception_status, 'reception')}`}>
+                                                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[perf.reception_status]}
+                                              </span>
+                                            )}
+                                            {group.has_ticket_status && (
+                                              <span className="text-[10px] font-bold text-slate-300">
+                                                整理券{perf.status === 'distributing' ? '配布中' : perf.status === 'ended' ? '終了' : 'なし'}
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isCurrentlyExpanded ? 'bg-brand-100 text-brand-600 rotate-180' : 'bg-white text-slate-400 shadow-sm group-hover/btn:bg-brand-50 group-hover/btn:text-brand-600'}`}>
+                                      <ChevronDown size={20} strokeWidth={3} />
+                                    </div>
+                                  </button>
+                                ) : (
+                                  <div className="w-full p-4 flex items-center justify-between text-left">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                                        <Clock size={18} strokeWidth={2.5} />
+                                      </div>
+                                      <div className="flex flex-col gap-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-[14px] font-black text-slate-900 tracking-tight">
+                                            {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
+                                          </span>
+                                          {isNext && <span className="bg-brand-600 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isExpanded ? 'bg-brand-100 text-brand-600 rotate-180' : 'bg-white text-slate-400 shadow-sm group-hover/btn:bg-brand-50 group-hover/btn:text-brand-600'}`}>
-                                    <ChevronDown size={20} strokeWidth={3} />
-                                  </div>
-                                </button>
+                                )}
                                 
-                                <AnimatePresence initial={false}>
-                                  {isExpanded && (
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: 'auto', opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
-                                      className="overflow-hidden"
-                                    >
-                                      <div className="px-6 pb-8 pt-2 space-y-8 border-t border-slate-50/50 mx-4">
-                                        <div className="pt-6 space-y-8">
-                                          {group.has_reception && (
-                                            <div className="space-y-4">
-                                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">公演受付状況</label>
-                                              <div className="grid grid-cols-3 gap-2">
-                                                {[
-                                                  { id: 'before_open', label: '受付前' },
-                                                  { id: 'open', label: '受付中' },
-                                                  { id: 'ticket_only', label: '整理券のみ', hide: perf.status === 'none' },
-                                                  { id: 'closed', label: '受付終了' }
-                                                ].filter(s => !s.hide).map(s => {
-                                                  const isPastLocal = isPerformancePast(perf);
-                                                  const displayReception = isPastLocal ? 'closed' : (perf.reception_status || 'open');
-                                                  const isActive = displayReception === s.id;
-                                                  return (
-                                                    <button
-                                                      key={s.id}
-                                                      onClick={() => handleLocalPerformanceUpdate(perf.id, 'reception_status', s.id)}
-                                                      disabled={isPastLocal}
-                                                      className={`py-4 px-1 sm:px-2 rounded-2xl text-[10px] font-black transition-all border-2 break-keep ${isActive
-                                                        ? s.id === 'open'
-                                                          ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10'
-                                                          : s.id === 'ticket_only'
-                                                            ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10'
-                                                            : s.id === 'before_open'
-                                                              ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
-                                                              : 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10'
-                                                        : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100 hover:bg-slate-50'
-                                                        } ${isPastLocal ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
-                                                    >
-                                                      {s.label}
-                                                    </button>
-                                                  );
-                                                })}
+                                {canEditPerf && (
+                                  <AnimatePresence initial={false}>
+                                    {isExpanded && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
+                                        className="overflow-hidden"
+                                      >
+                                        <div className="px-6 pb-8 pt-2 space-y-8 border-t border-slate-50/50 mx-4">
+                                          <div className="pt-6 space-y-8">
+                                            {group.has_reception && (
+                                              <div className="space-y-4">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">公演受付状況</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                  {[
+                                                    { id: 'before_open', label: '受付前' },
+                                                    { id: 'open', label: '受付中' },
+                                                    { id: 'ticket_only', label: '整理券のみ', hide: perf.status === 'none' },
+                                                    { id: 'closed', label: '受付終了' }
+                                                  ].filter(s => !s.hide).map(s => {
+                                                    const isPastLocal = isPerformancePast(perf);
+                                                    const displayReception = isPastLocal ? 'closed' : (perf.reception_status || 'open');
+                                                    const isActive = displayReception === s.id;
+                                                    return (
+                                                      <button
+                                                        key={s.id}
+                                                        onClick={() => handleLocalPerformanceUpdate(perf.id, 'reception_status', s.id)}
+                                                        disabled={isPastLocal}
+                                                        className={`py-4 px-1 sm:px-2 rounded-2xl text-[10px] font-black transition-all border-2 break-keep ${isActive
+                                                          ? s.id === 'open'
+                                                            ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10'
+                                                            : s.id === 'ticket_only'
+                                                              ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10'
+                                                              : s.id === 'before_open'
+                                                                ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
+                                                                : 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10'
+                                                          : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100 hover:bg-slate-50'
+                                                          } ${isPastLocal ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
+                                                      >
+                                                        {s.label}
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </div>
                                               </div>
-                                            </div>
-                                          )}
-                                          {group.has_ticket_status && (
-                                            <div className="space-y-4">
-                                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
-                                              <div className="grid grid-cols-3 gap-2">
-                                                {[
-                                                  { id: 'none', label: 'なし' },
-                                                  { id: 'distributing', label: '配布中' },
-                                                  { id: 'ended', label: '終了' }
-                                                ].map(s => {
-                                                  const isPastLocal = isPerformancePast(perf);
-                                                  const displayStatus = isPastLocal && perf.status !== 'none' ? 'ended' : perf.status;
-                                                  return (
-                                                    <button
-                                                      key={s.id}
-                                                      onClick={() => handleLocalPerformanceUpdate(perf.id, 'status', s.id)}
-                                                      disabled={isPastLocal}
-                                                      className={`py-4 rounded-2xl text-[10px] font-black transition-all border-2 ${displayStatus === s.id
-                                                        ? s.id === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
-                                                          s.id === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
-                                                          'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
-                                                        : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100 hover:bg-slate-50'
-                                                        } ${isPastLocal ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
-                                                    >
-                                                      {s.label}
-                                                    </button>
-                                                  );
-                                                })}
+                                            )}
+                                            {group.has_ticket_status && (
+                                              <div className="space-y-4">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                  {[
+                                                    { id: 'none', label: 'なし' },
+                                                    { id: 'distributing', label: '配布中' },
+                                                    { id: 'ended', label: '終了' }
+                                                  ].map(s => {
+                                                    const isPastLocal = isPerformancePast(perf);
+                                                    const displayStatus = isPastLocal && perf.status !== 'none' ? 'ended' : perf.status;
+                                                    return (
+                                                      <button
+                                                        key={s.id}
+                                                        onClick={() => handleLocalPerformanceUpdate(perf.id, 'status', s.id)}
+                                                        disabled={isPastLocal}
+                                                        className={`py-4 rounded-2xl text-[10px] font-black transition-all border-2 ${displayStatus === s.id
+                                                          ? s.id === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                                            s.id === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
+                                                            'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
+                                                          : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100 hover:bg-slate-50'
+                                                          } ${isPastLocal ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
+                                                      >
+                                                        {s.label}
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </div>
                                               </div>
-                                            </div>
-                                          )}
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                )}
                               </div>
                             );
                           })}
@@ -744,11 +778,15 @@ const GroupDashboard = () => {
               )}
             </div>
 
-            {(group.has_reception || group.has_waiting_time || group.has_ticket_status || (group.has_performances && performances && performances.length > 0)) && (
+            {isEditable && (
               <button
                 onClick={handleUpdate}
-                disabled={updating || group.editing_locked}
-                className={`w-full py-6 rounded-[2rem] font-black text-lg shadow-xl shadow-brand-500/20 flex items-center justify-center space-x-3 transition-all active:scale-95 ${updating ? 'bg-slate-100 text-slate-400' : 'bg-brand-600 text-white hover:bg-brand-700 hover:translate-y-[-2px]'}`}
+                disabled={updating || group.editing_locked || !isEditable}
+                className={`w-full py-6 rounded-[2rem] font-black text-lg shadow-xl flex items-center justify-center space-x-3 transition-all ${
+                  updating || group.editing_locked || !isEditable
+                    ? 'bg-slate-200 text-slate-400 shadow-none cursor-not-allowed'
+                    : 'bg-brand-600 text-white hover:bg-brand-700 hover:translate-y-[-2px] shadow-brand-500/20 active:scale-95'
+                }`}
               >
                 {updating ? (
                   <div className="flex items-center space-x-4">
@@ -757,8 +795,8 @@ const GroupDashboard = () => {
                   </div>
                 ) : (
                   <div className="flex items-center space-x-4">
-                    <Save size={24} />
-                    <span>変更を保存する</span>
+                    {isEditable ? <Save size={24} /> : <XCircle size={24} />}
+                    <span>{isEditable ? '変更を保存する' : '編集項目なし'}</span>
                   </div>
                 )}
               </button>

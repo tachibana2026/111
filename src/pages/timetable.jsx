@@ -18,8 +18,6 @@ const TIME_SLOTS_MAP = {
   3: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00']
 };
 
-const COLUMN_WIDTH = 100; // 30分あたりの幅
-
 const Timetable = ({ initialPerformances }) => {
   const [performances, setPerformances] = useState(initialPerformances);
   const [activePart, setActivePart] = useState(1);
@@ -38,33 +36,23 @@ const Timetable = ({ initialPerformances }) => {
     };
   }, [selectedPerf]);
 
-  const scrollContainerRefs = useRef([]);
+  const mainScrollRef = useRef(null);
   const sidebarRef = useRef(null);
   const buildingRefs = useRef({});
 
   useEffect(() => {
-    // Current time ticking
     const interval = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    if (performances.length > 0 && scrollContainerRefs.current.length > 0) {
+    if (performances.length > 0 && mainScrollRef.current) {
       const timer = setTimeout(() => {
         scrollToCurrentTime(true);
       }, 500);
       return () => clearTimeout(timer);
     }
   }, [activePart, performances]);
-
-  const handleScroll = (e) => {
-    const scrollLeft = e.target.scrollLeft;
-    scrollContainerRefs.current.forEach(ref => {
-      if (ref && ref !== e.target) {
-        ref.scrollLeft = scrollLeft;
-      }
-    });
-  };
 
   const currentPartInfo = useMemo(() => {
     const info = PARTS.find(p => p.id === activePart);
@@ -91,12 +79,12 @@ const Timetable = ({ initialPerformances }) => {
           const [h2, m2] = perf.end_time.split(':').map(Number);
           return (h2 * 60 + m2) - (h1 * 60 + m1);
         })()
-      : 25; // デフォルト25分
+      : 25;
     return (diffMinutes / currentPartInfo.duration) * 100;
   };
 
   const scrollToCurrentTime = (smooth = false) => {
-    if (scrollContainerRefs.current.length === 0 || !sidebarRef.current) return;
+    if (!mainScrollRef.current || !sidebarRef.current) return;
     if (!currentTime.toISOString().startsWith('2026-06')) return;
 
     const h = currentTime.getHours();
@@ -105,19 +93,13 @@ const Timetable = ({ initialPerformances }) => {
 
     if (totalNow >= currentPartInfo.startTotal && totalNow <= currentPartInfo.endTotal) {
       const diffMinutes = totalNow - currentPartInfo.startTotal;
-      const ref = scrollContainerRefs.current.find(r => r);
-      if (!ref) return;
       const sidebarWidth = sidebarRef.current.offsetWidth;
-      const timelineWidth = ref.scrollWidth - sidebarWidth;
+      const timelineWidth = mainScrollRef.current.scrollWidth - sidebarWidth;
       const left = (diffMinutes / currentPartInfo.duration) * timelineWidth;
 
-      scrollContainerRefs.current.forEach(r => {
-        if (r) {
-          r.scrollTo({
-            left: Math.max(0, left - 40),
-            behavior: smooth ? 'smooth' : 'auto'
-          });
-        }
+      mainScrollRef.current.scrollTo({
+        left: Math.max(0, left - 40),
+        behavior: smooth ? 'smooth' : 'auto'
       });
     }
   };
@@ -187,7 +169,7 @@ const Timetable = ({ initialPerformances }) => {
 
   const getReceptionLabel = (status) => {
     if (status === 'before_open') return '受付前';
-    if (status === 'ticket_only') return '整理券をお持ちの方のみ案内中';
+    if (status === 'ticket_only') return '整理券のみ案内中';
     return status === 'closed' ? '受付終了' : '受付中';
   };
 
@@ -238,142 +220,149 @@ const Timetable = ({ initialPerformances }) => {
         <p className="text-xs font-black text-slate-400">各公演回をタップすると詳細が表示されます</p>
       </div>
 
-      <div className="space-y-12">
-        {buildingsData.map((bInfo, idx) => (
-          <div key={bInfo.building} ref={el => buildingRefs.current[bInfo.building] = el} className="space-y-4">
-            <div className="flex items-center justify-between px-2">
-               <div className="flex items-center gap-3">
-                 <div className="w-1.5 h-6 bg-brand-600 rounded-full" />
-                 <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">{bInfo.building}</h2>
-               </div>
+      <div 
+        className="relative overflow-x-auto no-scrollbar scroll-momentum border border-slate-200 rounded-3xl bg-white shadow-sm"
+        ref={mainScrollRef}
+      >
+        <div className="inline-block min-w-full">
+          {/* Header row with time slots */}
+          <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-30">
+            <div ref={sidebarRef} className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-slate-50 sticky left-0 z-40 flex items-center justify-start py-4 px-3">
+              <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-tighter">タイトル / 団体名</span>
             </div>
+            <div className="flex-1 flex min-w-[950px] lg:min-w-0 relative h-12 pr-6">
+              {timeSlots.map((time) => (
+                <div 
+                  key={time} 
+                  className="absolute top-0 bottom-0" 
+                  style={{ left: `${getTimeLeft(time)}%` }}
+                >
+                  <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-50 px-1 z-10 whitespace-nowrap">
+                    {time}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-            <div className="relative bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-              <div 
-                className="overflow-x-auto no-scrollbar scroll-smooth" 
-                ref={el => scrollContainerRefs.current[idx] = el}
-                onScroll={handleScroll}
-              >
-                <div className="inline-block min-w-full">
-                  <div className="flex border-b border-slate-200 bg-white sticky top-0 z-20">
-                    <div ref={idx === 0 ? sidebarRef : null} className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-30 flex items-center justify-start py-4 px-3">
-                      <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-tighter text-left">タイトル / 団体名</span>
+          <div className="relative">
+            {/* Global current time line for all buildings */}
+            <div className="absolute inset-0 pointer-events-none flex z-[15]">
+              <div className="w-24 md:w-32 flex-shrink-0" />
+              <div className="flex-1 relative min-w-[950px] lg:min-w-0 pr-6">
+                {renderCurrentTimeLine()}
+              </div>
+            </div>
+            
+            {buildingsData.map((bInfo) => (
+              <div key={bInfo.building} ref={el => buildingRefs.current[bInfo.building] = el}>
+                {/* Building separator row */}
+                <div className="bg-slate-50/90 backdrop-blur-md border-y border-slate-200 py-3 w-full">
+                  <div className="sticky left-0 z-20 px-4 flex items-center gap-3 w-max">
+                    <div className="w-1.5 h-5 bg-brand-600 rounded-full shadow-[0_0_8px_rgba(2,132,199,0.3)]" />
+                    <h2 className="text-base font-black text-slate-900 tracking-tight">{bInfo.building}</h2>
+                  </div>
+                </div>
+
+                {bInfo.groups.map((group) => (
+                  <div key={group.id} className="flex border-b border-slate-200 group hover:bg-slate-50/50 transition-colors">
+                    {/* Sticky Sidebar Cell */}
+                    <div className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-10 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors">
+                      {group.title && group.title !== group.name && (
+                        <h3 className="text-[10px] md:text-[11px] font-black text-slate-900 leading-tight break-words text-left">
+                          {group.title}
+                        </h3>
+                      )}
+                      <span className={`font-bold text-left leading-tight break-words ${group.title && group.title !== group.name ? 'text-[8px] md:text-[9px] text-slate-400' : 'text-[10px] md:text-[11px] text-slate-900'}`}>
+                        {group.name}
+                      </span>
                     </div>
-                    <div className="flex-1 flex min-w-[950px] lg:min-w-0 relative h-12 pr-6">
+
+                    {/* Timeline Cell */}
+                    <div className="flex-1 relative min-h-[110px] min-w-[950px] lg:min-w-0 pr-6">
+                      {/* Grid Lines */}
                       {timeSlots.map((time) => (
                         <div 
                           key={time} 
-                          className="absolute top-0 bottom-0" 
+                          className="absolute top-0 bottom-0 border-r border-slate-200/50" 
                           style={{ left: `${getTimeLeft(time)}%` }}
-                        >
-                          <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-white px-1 z-10 whitespace-nowrap">
-                            {time}
-                          </span>
-                        </div>
+                        ></div>
                       ))}
+
+                      {/* Performance Boxes */}
+                      {group.group_performances
+                        .filter(perf => perf.part_id === activePart)
+                        .map((perf) => {
+                          const left = getTimeLeft(perf.start_time);
+                          const width = getPerfWidth(perf);
+                          const isOver = isPast(perf);
+                          const currentReception = isOver ? 'closed' : (perf.reception_status || 'open');
+                          const computedTicket = (isOver && perf.status !== 'none') ? 'ended' : perf.status;
+                          return (
+                            <motion.div
+                              key={perf.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1 - (isOver ? 0.6 : 0), y: 0 }}
+                              onClick={() => {
+                                setSelectedGroup(group);
+                                setSelectedPerf({ ...perf, currentReception, computedTicket });
+                              }}
+                              className={`absolute top-2.5 bottom-2.5 rounded-2xl border shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-center overflow-hidden gpu-accelerated ${isOver
+                                ? 'bg-slate-50 border-slate-100 text-slate-400'
+                                : 'bg-white border-slate-200 text-slate-700 hover:border-brand-300 hover:shadow-md'
+                                }`}
+                              style={{
+                                left: `calc( ${left}% + 6px )`,
+                                width: `calc( ${width}% - 12px )`,
+                                zIndex: 5
+                              }}
+                            >
+                              <div className="flex-[4] px-2 text-center flex items-center justify-center overflow-hidden border-b border-slate-100">
+                                <span className={`whitespace-nowrap text-[11px] font-black leading-none tracking-tight ${isOver ? 'text-slate-400' : 'text-slate-700'}`}>{perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}</span>
+                              </div>
+                              <div className="flex-[6] flex flex-col justify-center gap-0.5 bg-white/50 backdrop-blur-sm py-1">
+                                {group.has_reception && (
+                                  <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
+                                    currentReception === 'ticket_only' ? 'text-brand-600' : 
+                                    ['closed', 'ended'].includes(currentReception) ? 'text-rose-500' : 
+                                    currentReception === 'before_open' ? 'text-slate-400' : 
+                                    'text-emerald-600'
+                                  }`}>
+                                    <Info size={10} className="shrink-0" strokeWidth={3} />
+                                    <span className="truncate">{currentReception === 'ticket_only' ? '整理券のみ' : getReceptionLabel(currentReception)}</span>
+                                  </div>
+                                )}
+                                {group.has_ticket_status && (
+                                  <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
+                                    ['ended', 'none'].includes(computedTicket) ? 'text-slate-400' :
+                                    'text-emerald-600'
+                                  }`}>
+                                    <Ticket size={10} className="shrink-0" strokeWidth={3} />
+                                    <span className="truncate">{getStatusLabel(computedTicket).replace('整理券', '')}</span>
+                                  </div>
+                                )}
+                                {!group.has_reception && !group.has_ticket_status && (
+                                  <div className="flex flex-col items-center justify-center w-full h-full px-0.5 overflow-visible">
+                                    <span className="font-black text-slate-500 whitespace-nowrap text-[10px] md:text-[11px] tracking-tighter transform scale-[0.85] sm:scale-[0.95] md:scale-100 origin-bottom">
+                                      公演開始時間に合わせて
+                                    </span>
+                                    <span className="font-black text-slate-500 whitespace-nowrap text-[10px] md:text-[11px] tracking-tighter transform scale-[0.85] sm:scale-[0.95] md:scale-100 origin-top">
+                                      直接会場へお越しください
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          );
+                        })
+                      }
                     </div>
                   </div>
-
-                  <div className="relative">
-                    <div className="absolute inset-0 pointer-events-none flex z-[15]">
-                      <div className="w-24 md:w-32 flex-shrink-0" />
-                      <div className="flex-1 relative min-w-[950px] lg:min-w-0 pr-6">
-                        {renderCurrentTimeLine()}
-                      </div>
-                    </div>
-                    
-                    {bInfo.groups.map((group) => (
-                      <div key={group.id} className="flex border-b border-slate-200 group hover:bg-slate-50/50 transition-colors">
-                        <div className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-10 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors">
-                          {group.title && group.title !== group.name && (
-                            <h3 className="text-[10px] md:text-[11px] font-black text-slate-900 leading-tight break-words text-left">
-                              {group.title}
-                            </h3>
-                          )}
-                          <span className={`font-bold text-left leading-tight break-words ${group.title && group.title !== group.name ? 'text-[8px] md:text-[9px] text-slate-400' : 'text-[10px] md:text-[11px] text-slate-900'}`}>
-                            {group.name}
-                          </span>
-                        </div>
-
-                        <div className="flex-1 relative min-h-[110px] min-w-[950px] lg:min-w-0 pr-6">
-                          {timeSlots.map((time) => (
-                            <div 
-                              key={time} 
-                              className="absolute top-0 bottom-0 border-r border-slate-200" 
-                              style={{ left: `${getTimeLeft(time)}%` }}
-                            ></div>
-                          ))}
-
-                          {group.group_performances
-                            .filter(perf => perf.part_id === activePart)
-                            .map((perf) => {
-                              const left = getTimeLeft(perf.start_time);
-                              const width = getPerfWidth(perf);
-                              const isOver = isPast(perf);
-                              const currentReception = isOver ? 'closed' : (perf.reception_status || 'open');
-                              const computedTicket = (isOver && perf.status !== 'none') ? 'ended' : perf.status;
-                              return (
-                                <motion.div
-                                  key={perf.id}
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1 - (isOver ? 0.6 : 0), y: 0 }}
-                                  onClick={() => {
-                                    setSelectedGroup(group);
-                                    setSelectedPerf({ ...perf, currentReception, computedTicket });
-                                  }}
-                                  className={`absolute top-2.5 bottom-2.5 rounded-2xl border shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-center px-4 overflow-hidden ${isOver
-                                    ? 'bg-slate-50 border-slate-100 text-slate-400'
-                                    : 'bg-white border-slate-200 text-slate-700'
-                                    }`}
-                                  style={{
-                                    left: `calc( ${left}% + 6px )`,
-                                    width: `calc( ${width}% - 12px )`,
-                                    zIndex: 5
-                                  }}
-                                >
-                                  <div className="flex-[4] px-2 text-center flex items-center justify-center overflow-hidden border-b border-slate-100">
-                                    <span className={`whitespace-nowrap text-[11px] font-black leading-none tracking-tight ${isOver ? 'text-slate-400' : 'text-slate-700'}`}>{perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}</span>
-                                  </div>
-                                  <div className="flex-[6] flex flex-col justify-center gap-0.5 bg-white/50 backdrop-blur-sm py-1">
-                                    {group.has_reception && (
-                                      <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
-                                        currentReception === 'ticket_only' ? 'text-brand-600' : 
-                                        ['closed', 'ended'].includes(currentReception) ? 'text-rose-500' : 
-                                        currentReception === 'before_open' ? 'text-slate-400' : 
-                                        'text-emerald-600'
-                                      }`}>
-                                        <Info size={10} className="shrink-0" strokeWidth={3} />
-                                        <span className="truncate">{currentReception === 'ticket_only' ? '整理券のみ' : getReceptionLabel(currentReception)}</span>
-                                      </div>
-                                    )}
-                                    {group.has_ticket_status && (
-                                      <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
-                                        ['ended', 'none'].includes(computedTicket) ? 'text-slate-400' :
-                                        'text-emerald-600'
-                                      }`}>
-                                        <Ticket size={10} className="shrink-0" strokeWidth={3} />
-                                        <span className="truncate">{getStatusLabel(computedTicket).replace('整理券', '')}</span>
-                                      </div>
-                                    )}
-                                    {!group.has_reception && !group.has_ticket_status && (
-                                      <div className="text-[8.5px] leading-[1.4] font-black text-slate-500 text-center px-1">
-                                        公演開始時間に合わせて<br />直接会場へお越しください
-                                      </div>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              );
-                            })
-                          }
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
-            </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
 
       <Portal>

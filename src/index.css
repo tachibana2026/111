@@ -92,6 +92,20 @@
   .rounded-super {
     border-radius: 2rem;
   }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .scroll-momentum {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .will-change-scroll {
+    will-change: scroll-position;
+  }
 }
 
 /* Scrollbar styling */

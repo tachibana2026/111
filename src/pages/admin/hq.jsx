@@ -104,7 +104,7 @@ const HQGroupCard = forwardRef(({
               <MapPin size={12} className="mr-1.5 opacity-50" />
               {g.building}
             </p>
-            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">{g.room}</span>
+              <span className="text-[11px] text-slate-400 font-bold">{g.room}</span>
           </div>
         </div>
 
@@ -241,34 +241,36 @@ const HQGroupCard = forwardRef(({
                               const actualTicket = isOver ? 'ended' : p.status;
 
                               return (
-                                <div key={p.id} className={`px-4 py-3 rounded-xl border transition-all flex flex-col justify-center gap-1 ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60 saturate-50' : isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 'bg-white text-slate-600 border-slate-100'}`}>
-                                  <div className="flex justify-between items-center">
+                                <div key={p.id} className={`px-4 ${(!g.has_reception && !g.has_ticket_status) ? 'py-4' : 'py-3'} rounded-xl border transition-all flex flex-col justify-center gap-1 ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60 saturate-50' : isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 'bg-white text-slate-600 border-slate-100'}`}>
+                                  <div className={`flex justify-between items-center ${(!g.has_reception && !g.has_ticket_status) ? 'flex-1' : ''}`}>
                                     <span className="text-xs font-black">
                                       {p.start_time}{p.end_time && ` ～ ${p.end_time}`}
                                     </span>
                                     {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
                                   </div>
-                                  <div className="flex flex-col gap-1.5 mt-2">
-                                    {g.has_reception && (
-                                      <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${
-                                        (isOver ? 'closed' : p.reception_status) === 'ticket_only' ? 'text-brand-600' : 
-                                        ['closed', 'before_open'].includes(isOver ? 'closed' : p.reception_status) ? 'text-slate-400' : 
-                                        'text-emerald-600'
-                                      }`}>
-                                        <CheckCircle2 size={8} strokeWidth={3} />
-                                        {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[isOver ? 'closed' : (p.reception_status || 'open')]}
-                                      </div>
-                                    )}
-                                    {g.has_ticket_status && (
-                                      <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${
-                                        ['ended', 'none'].includes(actualTicket) ? 'text-slate-400' :
-                                        'text-emerald-600'
-                                      }`}>
-                                        <Ticket size={8} strokeWidth={3} />
-                                        {{ distributing: '配布中', ended: '終了', none: 'なし' }[actualTicket]}
-                                      </div>
-                                    )}
-                                  </div>
+                                  {(g.has_reception || g.has_ticket_status) && (
+                                    <div className="flex flex-col gap-1.5 mt-2">
+                                      {g.has_reception && (
+                                        <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${
+                                          (isOver ? 'closed' : p.reception_status) === 'ticket_only' ? 'text-brand-600' : 
+                                          ['closed', 'before_open'].includes(isOver ? 'closed' : p.reception_status) ? 'text-slate-400' : 
+                                          'text-emerald-600'
+                                        }`}>
+                                          <CheckCircle2 size={8} strokeWidth={3} />
+                                          {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[isOver ? 'closed' : (p.reception_status || 'open')]}
+                                        </div>
+                                      )}
+                                      {g.has_ticket_status && (
+                                        <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${
+                                          ['ended', 'none'].includes(actualTicket) ? 'text-slate-400' :
+                                          'text-emerald-600'
+                                        }`}>
+                                          <Ticket size={8} strokeWidth={3} />
+                                          {{ distributing: '配布中', ended: '終了', none: 'なし' }[actualTicket]}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -1196,8 +1198,11 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
         {/* Modal Header */}
         <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between shrink-0">
           <div>
+            <div className="flex items-center gap-1.5 text-slate-400 font-bold text-[10px] mb-1">
+              <MapPin size={12} className="text-slate-300" />
+              <span>{group.building} {group.room}</span>
+            </div>
             <div className="flex items-center gap-3 mb-1">
-              <span className="px-3 py-1 bg-brand-50 text-brand-600 rounded-full text-[10px] font-black uppercase tracking-widest">{group.building} {group.room}</span>
               <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">{group.name}</h2>
             </div>
             <p className="text-sm font-bold text-slate-400">{group.title || 'Official Program'}</p>
