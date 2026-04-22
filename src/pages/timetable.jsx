@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import { Clock, MapPin, Ticket, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Clock, MapPin, Ticket, CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Portal from '../components/Portal';
 
@@ -187,7 +187,7 @@ const Timetable = ({ initialPerformances }) => {
 
   const getReceptionLabel = (status) => {
     if (status === 'before_open') return '受付前';
-    if (status === 'ticket_only') return '整理券のみ';
+    if (status === 'ticket_only') return '整理券をお持ちの方のみ案内中';
     return status === 'closed' ? '受付終了' : '受付中';
   };
 
@@ -335,21 +335,31 @@ const Timetable = ({ initialPerformances }) => {
                                     <span className={`whitespace-nowrap text-[11px] font-black leading-none tracking-tight ${isOver ? 'text-slate-400' : 'text-slate-700'}`}>{perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}</span>
                                   </div>
                                   <div className="flex-[6] flex flex-col justify-center gap-0.5 bg-white/50 backdrop-blur-sm py-1">
-                                    <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
-                                      currentReception === 'ticket_only' ? 'text-brand-600' : 
-                                      ['closed', 'before_open'].includes(currentReception) ? 'text-slate-400' : 
-                                      'text-emerald-500'
-                                    }`}>
-                                      <CheckCircle2 size={10} className="shrink-0" strokeWidth={3} />
-                                      <span className="truncate">{currentReception === 'ticket_only' ? '整理券のみ' : getReceptionLabel(currentReception)}</span>
-                                    </div>
-                                    <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
-                                      ['ended', 'none'].includes(computedTicket) ? 'text-slate-400' :
-                                      'text-emerald-500'
-                                    }`}>
-                                      <Ticket size={10} className="shrink-0" strokeWidth={3} />
-                                      <span className="truncate">{getStatusLabel(computedTicket).replace('整理券', '')}</span>
-                                    </div>
+                                    {group.has_reception && (
+                                      <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
+                                        currentReception === 'ticket_only' ? 'text-brand-600' : 
+                                        ['closed', 'ended'].includes(currentReception) ? 'text-rose-500' : 
+                                        currentReception === 'before_open' ? 'text-slate-400' : 
+                                        'text-emerald-600'
+                                      }`}>
+                                        <Info size={10} className="shrink-0" strokeWidth={3} />
+                                        <span className="truncate">{currentReception === 'ticket_only' ? '整理券のみ' : getReceptionLabel(currentReception)}</span>
+                                      </div>
+                                    )}
+                                    {group.has_ticket_status && (
+                                      <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
+                                        ['ended', 'none'].includes(computedTicket) ? 'text-slate-400' :
+                                        'text-emerald-600'
+                                      }`}>
+                                        <Ticket size={10} className="shrink-0" strokeWidth={3} />
+                                        <span className="truncate">{getStatusLabel(computedTicket).replace('整理券', '')}</span>
+                                      </div>
+                                    )}
+                                    {!group.has_reception && !group.has_ticket_status && (
+                                      <div className="text-[8.5px] leading-[1.4] font-black text-slate-500 text-center px-1">
+                                        公演開始時間に合わせて<br />直接会場へお越しください
+                                      </div>
+                                    )}
                                   </div>
                                 </motion.div>
                               );
@@ -389,41 +399,59 @@ const Timetable = ({ initialPerformances }) => {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <CheckCircle2 size={10} strokeWidth={3} />
-                        <span className="text-[8px] font-black uppercase tracking-widest">公演受付</span>
-                      </div>
-                      <div className="flex-1 flex items-center justify-center w-full">
-                        <div className={`text-base font-black text-center leading-tight ${
-                          selectedPerf.currentReception === 'ticket_only' ? 'text-brand-700' :
-                          ['closed', 'ended', 'before_open'].includes(selectedPerf.currentReception) ? 'text-slate-500' :
-                          'text-emerald-600'
-                        }`}>
-                          {getReceptionLabel(selectedPerf.currentReception || 'open')}
-                        </div>
-                      </div>
+                  {selectedGroup && !selectedGroup.has_reception && !selectedGroup.has_ticket_status ? (
+                    <div className="py-8 bg-slate-50/50 rounded-3xl border border-slate-100/50 flex items-center justify-center">
+                      <p className="text-xl font-black text-slate-900 leading-relaxed text-center">
+                        公演開始時間に合わせて<br />
+                        直接会場へお越しください
+                      </p>
                     </div>
-                    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <Ticket size={10} strokeWidth={3} />
-                        <span className="text-[8px] font-black uppercase tracking-widest">整理券</span>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        {selectedPerf.groups?.has_reception && (
+                          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                              <Info size={10} strokeWidth={3} />
+                              <span className="text-[8px] font-black uppercase tracking-widest">公演受付</span>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center w-full">
+                              <div className={`font-black text-center leading-[1.2] ${
+                                selectedPerf.currentReception === 'ticket_only' ? 'text-brand-700' :
+                                ['closed', 'ended'].includes(selectedPerf.currentReception) ? 'text-rose-600' :
+                                selectedPerf.currentReception === 'before_open' ? 'text-slate-500' :
+                                'text-emerald-600'
+                              }`}>
+                                {selectedPerf.currentReception === 'ticket_only' ? (
+                                  <>整理券を<br />お持ちの方のみ<br />案内中</>
+                                ) : getReceptionLabel(selectedPerf.currentReception || 'open')}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {selectedPerf.groups?.has_ticket_status && (
+                          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                              <Ticket size={10} strokeWidth={3} />
+                              <span className="text-[8px] font-black uppercase tracking-widest">整理券</span>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center w-full">
+                              <div className={`text-base font-black text-center leading-tight ${
+                                ['ended', 'none'].includes(selectedPerf.computedTicket || selectedPerf.status) ? 'text-slate-500' :
+                                'text-emerald-600'
+                              }`}>
+                                {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status).replace('整理券', '')}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex-1 flex items-center justify-center w-full">
-                        <div className={`text-base font-black text-center leading-tight ${
-                          ['ended', 'none'].includes(selectedPerf.computedTicket || selectedPerf.status) ? 'text-slate-500' :
-                          'text-emerald-600'
-                        }`}>
-                          {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status).replace('整理券', '')}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-slate-400 font-bold leading-relaxed text-center">
-                    整理券は紙での配布となります。<br />
-                    詳細は各団体にご確認ください。
-                  </p>
+                      <p className="text-[11px] text-slate-400 font-bold leading-relaxed text-center">
+                        整理券は紙での配布となります。<br />
+                        詳細は各団体にご確認ください。
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 <button
@@ -444,7 +472,7 @@ const Timetable = ({ initialPerformances }) => {
 export async function getStaticProps() {
   const { data, error } = await supabase
     .from('performances')
-    .select('id, group_id, part_id, start_time, end_time, status, reception_status, groups(id, title, name, building, room)')
+    .select('id, group_id, part_id, start_time, end_time, status, reception_status, groups(id, title, name, building, room, has_reception, has_ticket_status)')
     .order('part_id', { ascending: true })
     .order('start_time', { ascending: true });
 

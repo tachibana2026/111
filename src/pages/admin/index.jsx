@@ -34,17 +34,19 @@ const AdminLogin = () => {
 
     // 1. 本部ログインの試行 (Supabase Auth)
     try {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: groupId,
-        password: password,
-      });
+      if (groupId.includes('@')) {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: groupId,
+          password: password,
+        });
 
-      if (!authError && authData.user) {
-        await minWait;
-        localStorage.setItem('ryoun_auth_type', 'hq');
-        router.push('/admin/hq');
-        setLoading(false);
-        return;
+        if (!authError && authData.user) {
+          await minWait;
+          localStorage.setItem('ryoun_auth_type', 'hq');
+          router.push('/admin/hq');
+          setLoading(false);
+          return;
+        }
       }
     } catch (err) {
       // Auth認証失敗時は団体ログインのチェックへ
@@ -141,9 +143,8 @@ const AdminLogin = () => {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center space-x-3 text-rose-600 bg-rose-50 p-5 rounded-xl text-sm border border-rose-100 font-bold"
+              className="text-rose-600 bg-rose-50 p-5 rounded-3xl text-sm border border-rose-100 font-bold text-center"
             >
-              <ShieldAlert size={20} strokeWidth={2.5} />
               <span>{error}</span>
             </motion.div>
           )}

@@ -63,11 +63,11 @@ const HQGroupCard = forwardRef(({
   const [isExpanded, setIsExpanded] = useState(false);
   const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
   const departments = useMemo(() => (g.department || '').split(',').filter(Boolean).map(d => d.trim()), [g.department]);
-  const isPerformance = useMemo(() => departments.includes('公演'), [departments]);
+  const isPerformance = g.has_performances;
 
   const getStatusColors = (status, type) => {
     if (type === 'reception') {
-      if (status === 'closed' || status === 'ended') return 'text-slate-400';
+      if (status === 'closed' || status === 'ended') return 'text-rose-600';
       if (status === 'before_open') return 'text-slate-400';
       if (status === 'ticket_only') return 'text-brand-600';
       return 'text-emerald-600';
@@ -108,55 +108,52 @@ const HQGroupCard = forwardRef(({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 items-end scale-90 origin-top-right">
-          {!isPerformance ? (
+        <div className="flex flex-col gap-2 scale-90 origin-top-right">
+          <div className={`w-[110px] py-1.5 rounded-full text-[9px] font-black flex items-center justify-center gap-1.5 border shadow-sm ${
+            g.editing_locked ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-slate-50 border-slate-100 text-slate-400'
+          }`}>
+            {g.editing_locked ? <Lock size={10} strokeWidth={3} /> : <Unlock size={10} strokeWidth={3} />}
+            <span>{g.editing_locked ? 'ロック中' : '許可中'}</span>
+          </div>
+          {!g.has_performances ? (
             <>
               {g.has_reception && (
-                <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
-                  g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                <div className={`w-[110px] py-1.5 rounded-full border shadow-sm text-[9px] font-black flex items-center justify-center gap-1.5 ${
+                  g.reception_status === 'closed' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                   g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
                   g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
                   'bg-emerald-50 border-emerald-100 text-emerald-600'
                 }`}>
-                  {g.reception_status === 'closed' || g.reception_status === 'ended' ? <XCircle size={12} strokeWidth={3} /> :
-                    g.reception_status === 'before_open' ? <Clock size={12} strokeWidth={3} /> :
-                    <CheckCircle2 size={12} strokeWidth={3} />}
-                  {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
+                  <Info size={10} strokeWidth={3} />
+                  {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[g.reception_status] || g.reception_status}
                 </div>
               )}
               {g.has_ticket_status && (
-                <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
+                <div className={`w-[110px] py-1.5 rounded-full border shadow-sm text-[9px] font-black flex items-center justify-center gap-1.5 ${
                   g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                   g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                  g.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
                   'bg-slate-50 border-slate-100 text-slate-400'
                 }`}>
-                  <Ticket size={12} strokeWidth={3} />
-                  {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
+                  <Ticket size={10} strokeWidth={3} />
+                  {{ distributing: '配布中', ended: '配布終了', limited: '残りわずか', none: '配布なし' }[g.ticket_status] || g.ticket_status}
                 </div>
               )}
-              <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
-                g.editing_locked ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-slate-50 border-slate-100 text-slate-400'
-              }`}>
-                {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
-                <span>{g.editing_locked ? 'ロック中' : '許可中'}</span>
-              </div>
-              {g.has_waiting_time && g.reception_status !== 'closed' && g.reception_status !== 'ended' && g.reception_status !== 'before_open' && (
-                <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
-                  g.waiting_time === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+              {g.has_waiting_time && !['closed', 'ended', 'before_open'].includes(g.reception_status) && (
+                <div className={`w-[110px] py-1.5 rounded-full border shadow-sm text-[9px] font-black flex items-center justify-center gap-1.5 ${
+                  g.waiting_time <= 10 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                   g.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
                   'bg-rose-50 border-rose-100 text-rose-600'
                 }`}>
-                  <Clock size={12} strokeWidth={3} />
+                  <Clock size={10} strokeWidth={3} />
                   {g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`}
                 </div>
               )}
             </>
           ) : (
-            <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
-              g.editing_locked ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-slate-50 border-slate-100 text-slate-400'
-            }`}>
-              {g.editing_locked ? <Lock size={12} strokeWidth={3} /> : <Unlock size={12} strokeWidth={3} />}
-              <span>{g.editing_locked ? 'ロック中' : '許可中'}</span>
+            <div className="w-[110px] py-1.5 rounded-full text-[9px] font-black flex items-center justify-center gap-1.5 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
+              <Info size={10} strokeWidth={3} />
+              <span>公演情報</span>
             </div>
           )}
         </div>
@@ -169,43 +166,6 @@ const HQGroupCard = forwardRef(({
           </span>
         </div>
 
-        {isPerformance && (
-          <div className="flex flex-col gap-2 items-start scale-90 origin-left">
-            {g.has_reception && (
-              <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
-                g.reception_status === 'closed' || g.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                g.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
-                g.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
-                'bg-emerald-50 border-emerald-100 text-emerald-600'
-              }`}>
-                {g.reception_status === 'closed' || g.reception_status === 'ended' ? <XCircle size={12} strokeWidth={3} /> :
-                  g.reception_status === 'before_open' ? <Clock size={12} strokeWidth={3} /> :
-                  <CheckCircle2 size={12} strokeWidth={3} />}
-                {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[g.reception_status] || g.reception_status}
-              </div>
-            )}
-            {g.has_ticket_status && (
-              <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
-                g.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                g.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                'bg-slate-50 border-slate-100 text-slate-400'
-              }`}>
-                <Ticket size={12} strokeWidth={3} />
-                {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[g.ticket_status] || g.ticket_status}
-              </div>
-            )}
-            {g.has_waiting_time && g.reception_status !== 'closed' && g.reception_status !== 'ended' && g.reception_status !== 'before_open' && (
-              <div className={`w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm ${
-                g.waiting_time === 0 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                g.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                'bg-rose-50 border-rose-100 text-rose-600'
-              }`}>
-                <Clock size={12} strokeWidth={3} />
-                {g.waiting_time === 0 ? '待ちなし' : `${g.waiting_time}分待ち`}
-              </div>
-            )}
-          </div>
-        )}
 
         {isPerformance && (g.performances || []).length > 0 && (
           <div className="space-y-4 pt-4 border-t border-slate-50">
@@ -277,6 +237,8 @@ const HQGroupCard = forwardRef(({
                               const isNext = nextPerf && p.id === nextPerf.id;
                               const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
                               const isPast = p.end_time ? new Date(`${festDate}T${p.end_time}:00`) < new Date() : new Date(`${festDate}T${p.start_time}:00`) < new Date();
+                              const isOver = isPast;
+                              const actualTicket = isOver ? 'ended' : p.status;
 
                               return (
                                 <div key={p.id} className={`px-4 py-3 rounded-xl border transition-all flex flex-col justify-center gap-1 ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60 saturate-50' : isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 'bg-white text-slate-600 border-slate-100'}`}>
@@ -286,17 +248,26 @@ const HQGroupCard = forwardRef(({
                                     </span>
                                     {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
                                   </div>
-                                  <div className="flex flex-col gap-1 mt-1.5">
-                                    <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${getStatusColors(p.reception_status, 'reception')}`}>
-                                      {p.reception_status === 'closed' ? <XCircle size={10} strokeWidth={3} /> :
-                                        p.reception_status === 'before_open' ? <Clock size={10} strokeWidth={3} /> :
-                                        <CheckCircle2 size={10} strokeWidth={3} />}
-                                      {{ before_open: '受付前', ticket_only: '整理券のみ', closed: '受付終了', open: '受付中' }[p.reception_status] || p.reception_status}
-                                    </div>
-                                    <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${getStatusColors(p.status, 'ticket')}`}>
-                                      <Ticket size={10} strokeWidth={3} />
-                                      {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[p.status] || p.status}
-                                    </div>
+                                  <div className="flex flex-col gap-1.5 mt-2">
+                                    {g.has_reception && (
+                                      <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${
+                                        (isOver ? 'closed' : p.reception_status) === 'ticket_only' ? 'text-brand-600' : 
+                                        ['closed', 'before_open'].includes(isOver ? 'closed' : p.reception_status) ? 'text-slate-400' : 
+                                        'text-emerald-600'
+                                      }`}>
+                                        <CheckCircle2 size={8} strokeWidth={3} />
+                                        {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[isOver ? 'closed' : (p.reception_status || 'open')]}
+                                      </div>
+                                    )}
+                                    {g.has_ticket_status && (
+                                      <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${
+                                        ['ended', 'none'].includes(actualTicket) ? 'text-slate-400' :
+                                        'text-emerald-600'
+                                      }`}>
+                                        <Ticket size={8} strokeWidth={3} />
+                                        {{ distributing: '配布中', ended: '終了', none: 'なし' }[actualTicket]}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -507,8 +478,7 @@ const HQDashboard = () => {
 
       if (groupIds.length > 0) {
         await supabase.from('groups').update({
-          editing_locked: locked,
-          updated_at: new Date().toISOString()
+          editing_locked: locked
         }).in('id', groupIds);
       }
       await fetchData();
@@ -597,12 +567,10 @@ const HQDashboard = () => {
         const handleHQStatusUpdate = async (status) => {
           try {
             const { error } = await supabase.from('groups').update({
-              reception_status: status,
-              updated_at: new Date().toISOString()
+              reception_status: status
             }).eq('id', hqGroup.id);
             if (error) throw error;
-            await fetchData();
-            triggerRevalidate();
+            fetchData();
           } catch (e) {
             console.error(e);
           }
@@ -676,14 +644,9 @@ const HQDashboard = () => {
                   <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100/50 overflow-hidden">
                     <div className="w-full px-8 py-5 flex items-center justify-between border-b border-white/50">
                       <div className="flex items-center gap-4">
-                        <button
-                          onClick={fetchData}
-                          disabled={loading || isBulkUpdating}
-                          className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50"
-                          title="最新の情報に更新"
-                        >
-                          <RefreshCw className={`w-5 h-5 ${loading || isBulkUpdating ? 'animate-spin' : ''}`} />
-                        </button>
+                        <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+                          <RefreshCw className={`w-5 h-5 ${isBulkUpdating ? 'animate-spin' : ''}`} />
+                        </div>
                         <div className="text-left">
                           <h3 className="text-base font-black text-slate-800 tracking-tight text-lg">全団体一括操作</h3>
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">※本部･公演団体を除く</p>
@@ -792,8 +755,17 @@ const HQDashboard = () => {
                         <div className={`p-2.5 rounded-xl transition-all duration-500 ${isFilterOpen ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 shadow-sm transition-transform group-hover:scale-110'}`}>
                           <Filter size={18} strokeWidth={2.5} />
                         </div>
-                        <div className="text-left">
+                        <div className="text-left flex items-center gap-3">
                           <h2 className="text-lg font-black tracking-tight">絞り込み</h2>
+                          {!isFilterOpen && (selectedDept !== 'すべて' || filterGrade !== 'すべて' || filterBuilding !== 'すべて') && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {[filterGrade, selectedDept, filterBuilding].filter(f => f !== 'すべて').map(f => (
+                                <span key={f} className="px-2 py-0.5 bg-brand-600 text-white text-[9px] rounded-lg font-black shadow-sm shadow-brand-500/20">
+                                  {f}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className={`p-1.5 rounded-full transition-all duration-300 ${isFilterOpen ? 'bg-brand-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
@@ -864,12 +836,13 @@ const HQDashboard = () => {
                       )}
                     </AnimatePresence>
                   </div>
-                </div>
-              </div>
+               </div>
+            </div>
+          </div>
 
-              {/* Sort Controls */}
-              <div className="flex justify-end p-6 md:p-10 bg-slate-50/30 border-t border-slate-50">
-                <div className="flex items-center gap-4">
+          {/* Sort Controls */}
+          <div className="flex justify-end px-2">
+            <div className="flex items-center gap-4">
                   <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
                     <RefreshCw size={14} className="text-brand-600/50" /> 並び替え
                   </span>
@@ -887,14 +860,15 @@ const HQDashboard = () => {
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-brand-600 transition-colors">
                       <ChevronDown size={14} strokeWidth={3} />
                     </div>
-                  </div>
                 </div>
-              </div>
+            </div>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence mode="popLayout">
                 {groups
                   .filter(g => {
+                    if (g.id === '8d112d95-14cb-4eee-8a5f-2580f502668a') return false;
                     const matchesDept = selectedDept === 'すべて' || (g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes(selectedDept);
                     const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
                     const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
@@ -961,8 +935,6 @@ const HQDashboard = () => {
                 }
               </AnimatePresence>
             </div>
-
-          </div>
         </div>
       )}
       {activeTab === 'lost_found' && (
@@ -1146,13 +1118,21 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const hasGroupChanged = 
+        editData.reception_status !== group.reception_status ||
+        editData.waiting_time !== group.waiting_time ||
+        editData.ticket_status !== group.ticket_status;
+
       const groupUpdatePayload = {
         editing_locked: editingLocked,
         reception_status: editData.reception_status,
         waiting_time: editData.waiting_time,
         ticket_status: editData.ticket_status,
-        updated_at: new Date().toISOString()
       };
+
+      if (hasGroupChanged) {
+        groupUpdatePayload.updated_at = new Date().toISOString();
+      }
 
       // Update group general settings & status
       const { error: groupError } = await supabase.from('groups').update(groupUpdatePayload).eq('id', group.id);
@@ -1394,49 +1374,53 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                 </span>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-3">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
-                                  <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
-                                    {(() => {
-                                      const options = ['before_open', 'open', 'closed'];
-                                      if (perf.status === 'distributing' || perf.status === 'ended') {
-                                        options.splice(2, 0, 'ticket_only');
-                                      }
-                                      return options.map(s => (
+                                {group.has_reception && (
+                                  <div className="space-y-3">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
+                                    <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
+                                      {(() => {
+                                        const options = ['before_open', 'open', 'closed'];
+                                        if (perf.status === 'distributing' || perf.status === 'ended') {
+                                          options.splice(2, 0, 'ticket_only');
+                                        }
+                                        return options.map(s => (
+                                          <button
+                                            key={s}
+                                            onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
+                                            className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all border-2 ${perf.reception_status === s ?
+                                              (s === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                               s === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10' :
+                                               s === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10' :
+                                               'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10')
+                                              : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
+                                          >
+                                            {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                                          </button>
+                                        ));
+                                      })()}
+                                    </div>
+                                  </div>
+                                )}
+                                {group.has_ticket_status && (
+                                  <div className="space-y-3">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
+                                    <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
+                                      {['none', 'distributing', 'ended'].map(s => (
                                         <button
                                           key={s}
-                                          onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, reception_status: s } : p))}
-                                          className={`flex-1 py-2.5 rounded-lg text-[8px] font-black whitespace-nowrap transition-all border-2 ${perf.reception_status === s ?
-                                            (s === 'open' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
-                                             s === 'ticket_only' ? 'bg-brand-50 border-brand-500 text-brand-700 shadow-md ring-2 ring-brand-500/10' :
-                                             s === 'before_open' ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10' :
-                                             'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10')
+                                          onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
+                                          className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all border-2 ${perf.status === s ?
+                                            (s === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
+                                             s === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
+                                             'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10')
                                             : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                                         >
-                                          {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                                          {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
                                         </button>
-                                      ));
-                                    })()}
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="space-y-3">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
-                                  <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
-                                    {['none', 'distributing', 'ended'].map(s => (
-                                      <button
-                                        key={s}
-                                        onClick={() => setPerformances(prev => prev.map(p => p.id === perf.id ? { ...p, status: s } : p))}
-                                        className={`flex-1 py-2.5 rounded-lg text-[8px] font-black transition-all border-2 ${perf.status === s ?
-                                          (s === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
-                                           s === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
-                                           'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10')
-                                          : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
-                                      >
-                                        {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
+                                )}
                               </div>
                             </div>
                           );
