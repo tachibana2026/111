@@ -410,7 +410,7 @@ const GroupDashboard = () => {
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-xs font-black text-slate-500">整理券状況</span>
                 <span className={`text-xl font-black ${
-                  group.ticket_status === 'distributing' ? 'text-emerald-500' :
+                  group.ticket_status === 'distributing' ? 'text-emerald-600' :
                   group.ticket_status === 'ended' ? 'text-rose-500' :
                   group.ticket_status === 'limited' ? 'text-amber-500' : 'text-slate-400'
                 }`}>

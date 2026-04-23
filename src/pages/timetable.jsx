@@ -24,6 +24,31 @@ const Timetable = ({ initialPerformances }) => {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [selectedPerf, setSelectedPerf] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [hasManuallySwitched, setHasManuallySwitched] = useState(false);
+
+  // ページロード時および時間経過時に適切なPartを自動選択する
+  useEffect(() => {
+    if (hasManuallySwitched) return;
+
+    const now = currentTime;
+    const dateStr = now.toLocaleDateString('sv-SE'); // "YYYY-MM-DD"
+    const h = now.getHours();
+    const m = now.getMinutes();
+    const totalMinutes = h * 60 + m;
+
+    if (dateStr === '2026-06-13') {
+      if (totalMinutes >= 12 * 60 + 30) {
+        if (activePart !== 2) setActivePart(2);
+      } else {
+        if (activePart !== 1) setActivePart(1);
+      }
+    } else if (dateStr === '2026-06-14') {
+      if (activePart !== 3) setActivePart(3);
+    } else {
+      // 当日以外はPart 1を選択
+      if (activePart !== 1) setActivePart(1);
+    }
+  }, [currentTime, hasManuallySwitched]);
 
   useEffect(() => {
     if (selectedPerf) {
@@ -188,7 +213,10 @@ const Timetable = ({ initialPerformances }) => {
             {PARTS.map(part => (
               <button
                 key={part.id}
-                onClick={() => setActivePart(part.id)}
+                onClick={() => {
+                  setActivePart(part.id);
+                  setHasManuallySwitched(true);
+                }}
                 className={`flex-1 px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-[1.5rem] text-[13px] md:text-sm font-black transition-all flex items-center justify-center gap-2 ${activePart === part.id ? 'bg-white text-brand-700 shadow-md translate-y-[-1px]' : 'text-slate-500 hover:text-slate-700'}`}
               >
                  <Clock size={14} className={activePart === part.id ? 'text-brand-600' : 'text-slate-400'} />
@@ -221,53 +249,58 @@ const Timetable = ({ initialPerformances }) => {
       </div>
 
       <div 
-        className="relative overflow-x-auto no-scrollbar scroll-momentum border border-slate-200 rounded-3xl bg-white shadow-sm"
+        className="relative overflow-x-auto no-scrollbar scroll-momentum pb-8 px-px"
         ref={mainScrollRef}
       >
-        <div className="inline-block min-w-full">
-          {/* Header row with time slots */}
-          <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-30">
-            <div ref={sidebarRef} className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-slate-50 sticky left-0 z-40 flex items-center justify-start py-4 px-3">
-              <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-tighter">タイトル / 団体名</span>
-            </div>
-            <div className="flex-1 flex min-w-[950px] lg:min-w-0 relative h-12 pr-6">
-              {timeSlots.map((time) => (
-                <div 
-                  key={time} 
-                  className="absolute top-0 bottom-0" 
-                  style={{ left: `${getTimeLeft(time)}%` }}
-                >
-                  <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-50 px-1 z-10 whitespace-nowrap">
-                    {time}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative">
-            {/* Global current time line for all buildings */}
-            <div className="absolute inset-0 pointer-events-none flex z-[15]">
-              <div className="w-24 md:w-32 flex-shrink-0" />
-              <div className="flex-1 relative min-w-[950px] lg:min-w-0 pr-6">
-                {renderCurrentTimeLine()}
-              </div>
-            </div>
-            
-            {buildingsData.map((bInfo) => (
-              <div key={bInfo.building} ref={el => buildingRefs.current[bInfo.building] = el}>
-                {/* Building separator row */}
-                <div className="bg-slate-50/90 backdrop-blur-md border-y border-slate-200 py-3 w-full">
-                  <div className="sticky left-0 z-20 px-4 flex items-center gap-3 w-max">
-                    <div className="w-1.5 h-5 bg-brand-600 rounded-full shadow-[0_0_8px_rgba(2,132,199,0.3)]" />
-                    <h2 className="text-base font-black text-slate-900 tracking-tight">{bInfo.building}</h2>
+        <div className="inline-block min-w-full space-y-12">
+            {buildingsData.map((bInfo, bIndex) => (
+              <div key={bInfo.building} ref={el => buildingRefs.current[bInfo.building] = el} className="w-full">
+                {/* Building Title */}
+                <div className="pb-4 pt-4 w-full bg-transparent">
+                  <div className="sticky left-0 z-20 px-2 flex items-center gap-3 w-max">
+                    <div className="w-1.5 h-6 bg-brand-600 rounded-full shadow-[0_0_8px_rgba(2,132,199,0.3)]" />
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">{bInfo.building}</h2>
                   </div>
                 </div>
 
-                {bInfo.groups.map((group) => (
-                  <div key={group.id} className="flex border-b border-slate-200 group hover:bg-slate-50/50 transition-colors">
-                    {/* Sticky Sidebar Cell */}
-                    <div className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-10 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors">
+                {/* Table Container for this building */}
+                <div className="border border-l-0 border-slate-200 rounded-[2rem] bg-white shadow-sm relative">
+                  
+                  {/* Header row with time slots */}
+                  <div className="flex border-b border-slate-200 bg-slate-50/90 backdrop-blur-sm sticky top-0 z-30 rounded-t-[2rem]">
+                    <div ref={bIndex === 0 ? sidebarRef : null} className="w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-slate-50/90 backdrop-blur-sm sticky -left-px z-40 flex items-center justify-start py-4 px-3 rounded-tl-[2rem]">
+                      <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-tighter">タイトル / 団体名</span>
+                    </div>
+                    <div className="flex-1 flex min-w-[950px] lg:min-w-0 relative h-12 pr-6">
+                      {timeSlots.map((time) => (
+                        <div 
+                          key={time} 
+                          className="absolute top-0 bottom-0" 
+                          style={{ left: `${getTimeLeft(time)}%` }}
+                        >
+                          <span className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 bg-slate-50 px-1 z-10 whitespace-nowrap">
+                            {time}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    {/* Current time line for this building */}
+                    <div className="absolute inset-0 pointer-events-none flex z-[15]">
+                      <div className="w-24 md:w-32 flex-shrink-0" />
+                      <div className="flex-1 relative min-w-[950px] lg:min-w-0 pr-6">
+                        {renderCurrentTimeLine()}
+                      </div>
+                    </div>
+
+                    {bInfo.groups.map((group, index) => {
+                      const isLast = index === bInfo.groups.length - 1;
+                      return (
+                      <div key={group.id} className={`flex border-b border-slate-200 last:border-b-0 group hover:bg-slate-50/50 transition-colors ${isLast ? 'rounded-b-[2rem]' : ''}`}>
+                        {/* Sticky Sidebar Cell */}
+                        <div className={`w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-white sticky -left-px z-30 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors ${isLast ? 'rounded-bl-[2rem]' : ''}`}>
                       {group.title && group.title !== group.name && (
                         <h3 className="text-[10px] md:text-[11px] font-black text-slate-900 leading-tight break-words text-left">
                           {group.title}
@@ -358,10 +391,11 @@ const Timetable = ({ initialPerformances }) => {
                       }
                     </div>
                   </div>
-                ))}
+                ); })}
+                  </div>
+                </div>
               </div>
             ))}
-          </div>
         </div>
       </div>
 
