@@ -125,7 +125,7 @@ const HQGroupCard = forwardRef(({
                   'bg-emerald-50 border-emerald-100 text-emerald-600'
                 }`}>
                   <Info size={10} strokeWidth={3} />
-                  {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[g.reception_status] || g.reception_status}
+                  {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[g.reception_status] || g.reception_status}
                 </div>
               )}
               {g.has_ticket_status && (
@@ -257,7 +257,7 @@ const HQGroupCard = forwardRef(({
                                           'text-emerald-600'
                                         }`}>
                                           <CheckCircle2 size={8} strokeWidth={3} />
-                                          {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[isOver ? 'closed' : (p.reception_status || 'open')]}
+                                          {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[isOver ? 'closed' : (p.reception_status || 'open')]}
                                         </div>
                                       )}
                                       {g.has_ticket_status && (
@@ -266,7 +266,7 @@ const HQGroupCard = forwardRef(({
                                           'text-emerald-600'
                                         }`}>
                                           <Ticket size={8} strokeWidth={3} />
-                                          {{ distributing: '配布中', ended: '終了', none: 'なし' }[actualTicket]}
+                                          {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[actualTicket]}
                                         </div>
                                       )}
                                     </div>
@@ -601,7 +601,7 @@ const HQDashboard = () => {
               {[
                 { id: 'before_open', label: '受付前', color: 'hover:bg-slate-600 hover:text-white bg-slate-50 text-slate-500', icon: <Clock size={14} /> },
                 { id: 'open', label: '受付中', color: 'hover:bg-emerald-600 hover:text-white bg-emerald-50 text-emerald-600', icon: <CheckCircle2 size={14} /> },
-                { id: 'closed', label: '終了', color: 'hover:bg-rose-600 hover:text-white bg-rose-50 text-rose-600', icon: <XCircle size={14} /> }
+                { id: 'closed', label: '受付終了', color: 'hover:bg-rose-600 hover:text-white bg-rose-50 text-rose-600', icon: <XCircle size={14} /> }
               ].map(s => (
                 <button
                   key={s.id}
@@ -1265,7 +1265,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                   'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10')
                                  : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                             >
-                              {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                              {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[s]}
                             </button>
                           ));
                         })()}
@@ -1308,7 +1308,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10')
                                : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                           >
-                            {{ none: 'なし', distributing: '配布中', ended: '終了' }[s]}
+                            {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[s]}
                           </button>
                         ))}
                       </div>
@@ -1399,7 +1399,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                                'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10')
                                               : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100'}`}
                                           >
-                                            {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '終了' }[s]}
+                                            {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[s]}
                                           </button>
                                         ));
                                       })()}

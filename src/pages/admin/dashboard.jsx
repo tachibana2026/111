@@ -411,7 +411,7 @@ const GroupDashboard = () => {
                 <span className="text-xs font-black text-slate-500">整理券状況</span>
                 <span className={`text-xl font-black ${
                   group.ticket_status === 'distributing' ? 'text-emerald-600' :
-                  group.ticket_status === 'ended' ? 'text-rose-500' :
+                  group.ticket_status === 'ended' ? 'text-slate-400' :
                   group.ticket_status === 'limited' ? 'text-amber-500' : 'text-slate-400'
                 }`}>
                   {{ distributing: '配布中', limited: '残りわずか', ended: '配布終了', none: '配布なし' }[group.ticket_status] || group.ticket_status}
