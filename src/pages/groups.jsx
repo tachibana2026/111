@@ -218,6 +218,12 @@ const GroupCard = forwardRef(({
               <span>公演情報</span>
             </div>
           )}
+          {!group.has_reception && !group.has_ticket_status && !group.has_waiting_time && !group.has_performances && (
+            <div className="w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
+              <Info size={12} strokeWidth={3} />
+              <span>団体情報</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -439,9 +445,9 @@ const Groups = ({ initialGroups }) => {
       return 'bg-brand-50 border-brand-100 text-brand-600';
     }
 
-    // 全てFALSEの場合はエラー表示（赤）
+    // 全てFALSEの場合は「団体情報」（グレー）
     if (!has_performances && !has_ticket_status && !has_waiting_time && !has_reception) {
-      return 'bg-rose-50 border-rose-100 text-rose-600';
+      return 'bg-slate-50 border-slate-100 text-slate-400';
     }
 
     // 公演情報はスレート
@@ -486,8 +492,8 @@ const Groups = ({ initialGroups }) => {
     if (has_reception) {
       return '受付中';
     }
-
-    return 'エラー';
+    
+    return '団体情報';
   };
 
   const getStatusLabel = (status) => {
