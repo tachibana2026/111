@@ -249,7 +249,7 @@ const Timetable = ({ initialPerformances }) => {
       </div>
 
       <div 
-        className="relative overflow-x-auto no-scrollbar scroll-momentum pb-8 px-px"
+        className="relative overflow-x-auto no-scrollbar scroll-momentum pb-8"
         ref={mainScrollRef}
       >
         <div className="inline-block min-w-full space-y-12">
@@ -264,11 +264,11 @@ const Timetable = ({ initialPerformances }) => {
                 </div>
 
                 {/* Table Container for this building */}
-                <div className="border border-l-0 border-slate-200 rounded-[2rem] bg-white shadow-sm relative">
+                <div className="border border-slate-200 rounded-none bg-white shadow-sm relative">
                   
                   {/* Header row with time slots */}
-                  <div className="flex border-b border-slate-200 bg-slate-50/90 backdrop-blur-sm sticky top-0 z-30 rounded-t-[2rem]">
-                    <div ref={bIndex === 0 ? sidebarRef : null} className="w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-slate-50/90 backdrop-blur-sm sticky -left-px z-40 flex items-center justify-start py-4 px-3 rounded-tl-[2rem]">
+                  <div className="flex border-b border-slate-200 bg-slate-50/90 backdrop-blur-sm sticky top-0 z-30 rounded-none">
+                    <div ref={bIndex === 0 ? sidebarRef : null} className="w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-slate-50 sticky left-0 z-40 flex items-center justify-start py-4 px-3 rounded-none">
                       <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-tighter">タイトル / 団体名</span>
                     </div>
                     <div className="flex-1 flex min-w-[950px] lg:min-w-0 relative h-12 pr-6">
@@ -298,9 +298,9 @@ const Timetable = ({ initialPerformances }) => {
                     {bInfo.groups.map((group, index) => {
                       const isLast = index === bInfo.groups.length - 1;
                       return (
-                      <div key={group.id} className={`flex border-b border-slate-200 last:border-b-0 group hover:bg-slate-50/50 transition-colors ${isLast ? 'rounded-b-[2rem]' : ''}`}>
+                      <div key={group.id} className={`flex border-b border-slate-200 last:border-b-0 group hover:bg-slate-50/50 transition-colors ${isLast ? 'rounded-none' : ''}`}>
                         {/* Sticky Sidebar Cell */}
-                        <div className={`w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-white sticky -left-px z-30 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors ${isLast ? 'rounded-bl-[2rem]' : ''}`}>
+                        <div className={`w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-white sticky left-0 z-30 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors ${isLast ? 'rounded-none' : ''}`}>
                       {group.title && group.title !== group.name && (
                         <h3 className="text-[10px] md:text-[11px] font-black text-slate-900 leading-tight break-words text-left">
                           {group.title}
