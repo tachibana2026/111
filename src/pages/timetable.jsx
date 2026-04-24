@@ -302,11 +302,11 @@ const Timetable = ({ initialPerformances }) => {
                         {/* Sticky Sidebar Cell */}
                         <div className={`w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-white sticky left-0 z-30 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors ${isLast ? 'rounded-none' : ''}`}>
                       {group.title && group.title !== group.name && (
-                        <h3 className="text-[10px] md:text-[11px] font-black text-slate-900 leading-tight break-words text-left">
+                        <h3 className="text-[10px] md:text-[11px] font-black text-slate-900 leading-tight break-words text-left whitespace-pre-wrap">
                           {group.title}
                         </h3>
                       )}
-                      <span className={`font-bold text-left leading-tight break-words ${group.title && group.title !== group.name ? 'text-[8px] md:text-[9px] text-slate-400' : 'text-[10px] md:text-[11px] text-slate-900'}`}>
+                      <span className={`font-bold text-left leading-tight break-words whitespace-pre-wrap ${group.title && group.title !== group.name ? 'text-[8px] md:text-[9px] text-slate-400' : 'text-[10px] md:text-[11px] text-slate-900'}`}>
                         {group.name}
                       </span>
                     </div>
@@ -357,7 +357,7 @@ const Timetable = ({ initialPerformances }) => {
                                 {group.has_reception && (
                                   <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
                                     currentReception === 'ticket_only' ? 'text-brand-600' : 
-                                    ['closed', 'ended'].includes(currentReception) ? 'text-rose-500' : 
+                                    ['closed', 'ended'].includes(currentReception) ? 'text-rose-600' : 
                                     currentReception === 'before_open' ? 'text-slate-400' : 
                                     'text-emerald-600'
                                   }`}>
@@ -367,7 +367,8 @@ const Timetable = ({ initialPerformances }) => {
                                 )}
                                 {group.has_ticket_status && (
                                   <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
-                                    ['ended', 'none'].includes(computedTicket) ? 'text-slate-400' :
+                                    computedTicket === 'ended' ? 'text-rose-600' :
+                                    computedTicket === 'none' ? 'text-slate-400' :
                                     'text-emerald-600'
                                   }`}>
                                     <Ticket size={10} className="shrink-0" strokeWidth={3} />
@@ -414,7 +415,7 @@ const Timetable = ({ initialPerformances }) => {
                       {selectedPerf.start_time}{selectedPerf.end_time && ` ～ ${selectedPerf.end_time}`}
                     </span>
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 leading-tight">{selectedGroup.title || selectedGroup.name}</h2>
+                  <h2 className="text-2xl font-black text-slate-900 leading-tight whitespace-pre-wrap">{selectedGroup.title || selectedGroup.name}</h2>
                   <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
                     <MapPin size={14} />
                     <span>{selectedGroup.building} {selectedGroup.room}</span>

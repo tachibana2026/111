@@ -401,7 +401,7 @@ const GroupDashboard = () => {
             {group.has_waiting_time && !group.has_performances && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-xs font-black text-slate-500">現在の待ち時間</span>
-                <span className={`text-xl font-black ${group.waiting_time <= 10 ? 'text-emerald-600' : group.waiting_time <= 30 ? 'text-amber-500' : 'text-rose-500'}`}>
+                <span className={`text-xl font-black ${group.waiting_time <= 10 ? 'text-emerald-600' : group.waiting_time <= 30 ? 'text-amber-600' : 'text-rose-600'}`}>
                   {group.waiting_time === 0 ? '待ちなし' : `${group.waiting_time}分待ち`}
                 </span>
               </div>
@@ -411,8 +411,8 @@ const GroupDashboard = () => {
                 <span className="text-xs font-black text-slate-500">整理券状況</span>
                 <span className={`text-xl font-black ${
                   group.ticket_status === 'distributing' ? 'text-emerald-600' :
-                  group.ticket_status === 'ended' ? 'text-slate-400' :
-                  group.ticket_status === 'limited' ? 'text-amber-500' : 'text-slate-400'
+                  group.ticket_status === 'ended' ? 'text-rose-600' :
+                  group.ticket_status === 'limited' ? 'text-amber-600' : 'text-slate-400'
                 }`}>
                   {{ distributing: '配布中', limited: '残りわずか', ended: '配布終了', none: '配布なし' }[group.ticket_status] || group.ticket_status}
                 </span>

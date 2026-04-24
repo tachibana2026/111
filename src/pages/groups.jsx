@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, forwardRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Filter, SortDesc, Instagram, ExternalLink, MapPin, ChevronDown, RefreshCw, Calendar, Search, X, Ticket, CheckCircle2, XCircle, Clock, Info, Image, BookOpen, Utensils, ShoppingBag, Star, Users } from 'lucide-react';
+import { Filter, SortDesc, Instagram, Youtube, ExternalLink, MapPin, ChevronDown, RefreshCw, Calendar, Search, X, Ticket, CheckCircle2, XCircle, Clock, Info, Image, BookOpen, Utensils, ShoppingBag, Star, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Portal from '../components/Portal';
 
@@ -112,7 +112,8 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                 )}
                 {hasTicketStatus && (
                   <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${
-                    ['ended', 'none'].includes(actualTicket) ? 'text-slate-400' :
+                    actualTicket === 'ended' ? 'text-rose-600' :
+                    actualTicket === 'none' ? 'text-slate-400' :
                     'text-emerald-600'
                   }`}>
                     <Ticket size={10} strokeWidth={3} />
@@ -156,9 +157,9 @@ const GroupCard = forwardRef(({
       transition={{ duration: 0.2 }}
       className={`bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-5 md:p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'opacity-60 saturate-50' : ''}`}
     >
-      <div className="flex justify-between items-start mb-5">
-        <div className="flex-1 min-w-0 pr-2">
-          <div className="flex flex-wrap items-center gap-2 mb-2.5">
+      <div className="flex flex-col gap-4 mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {(group.department || '').split(',').filter(Boolean).map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
               <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider whitespace-nowrap">
                 {dept}
@@ -168,62 +169,66 @@ const GroupCard = forwardRef(({
               {group.name}
             </span>
           </div>
-          <h3 className="text-xl font-black text-slate-900 leading-tight mb-1.5">
+          
+          <div className="flex flex-wrap gap-2 shrink-0">
+            {!group.has_performances ? (
+              <>
+                {group.has_reception && (
+                  <div className={`px-3 py-1.5 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                    group.reception_status === 'closed' || group.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                    group.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                    group.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
+                    'bg-emerald-50 border-emerald-100 text-emerald-600'
+                  }`}>
+                    <Info size={11} strokeWidth={3} />
+                    {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[group.reception_status] || group.reception_status}
+                  </div>
+                )}
+                {group.has_ticket_status && (
+                  <div className={`px-3 py-1.5 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                    group.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                    group.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                    group.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                    'bg-slate-50 border-slate-100 text-slate-400'
+                  }`}>
+                    <Ticket size={11} strokeWidth={3} />
+                    {{ distributing: '配布中', ended: '配布終了', limited: '残りわずか', none: '配布なし' }[group.ticket_status] || group.ticket_status}
+                  </div>
+                )}
+                {group.has_waiting_time && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
+                  <div className={`px-3 py-1.5 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                    group.waiting_time <= 10 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                    group.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                    'bg-rose-50 border-rose-100 text-rose-600'
+                  }`}>
+                    <Clock size={11} strokeWidth={3} />
+                    {group.waiting_time === 0 ? '待ちなし' : `${group.waiting_time}分待ち`}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="px-3 py-1.5 rounded-full text-[10px] font-black flex items-center justify-center gap-1.5 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
+                <Info size={11} strokeWidth={3} />
+                <span>公演情報</span>
+              </div>
+            )}
+            {!group.has_reception && !group.has_ticket_status && !group.has_waiting_time && !group.has_performances && (
+              <div className="px-3 py-1.5 rounded-full text-[10px] font-black flex items-center justify-center gap-1.5 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
+                <Info size={11} strokeWidth={3} />
+                <span>団体情報</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="min-w-0 space-y-1.5">
+          <h3 className="text-xl font-black text-slate-900 leading-tight whitespace-pre-wrap">
             {group.title || group.name}
           </h3>
-          <p className="text-[11px] text-slate-400 font-bold flex items-center shrink-0">
+          <p className="text-[11px] text-slate-400 font-bold flex items-center">
             <MapPin size={12} className="mr-1.5 text-slate-300" />
             {group.building} {group.room}
           </p>
-        </div>
-        <div className="flex flex-col gap-2 scale-90 origin-top-right">
-          {!group.has_performances ? (
-            <>
-              {group.has_reception && (
-                <div className={`w-[110px] py-2 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-2 ${
-                  group.reception_status === 'closed' || group.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                  group.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
-                  group.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
-                  'bg-emerald-50 border-emerald-100 text-emerald-600'
-                }`}>
-                  <Info size={12} strokeWidth={3} />
-                  {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[group.reception_status] || group.reception_status}
-                </div>
-              )}
-              {group.has_ticket_status && (
-                <div className={`w-[110px] py-2 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-2 ${
-                  group.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                  group.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                  group.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                  'bg-slate-50 border-slate-100 text-slate-400'
-                }`}>
-                  <Ticket size={12} strokeWidth={3} />
-                  {{ distributing: '配布中', ended: '配布終了', limited: '残りわずか', none: '配布なし' }[group.ticket_status] || group.ticket_status}
-                </div>
-              )}
-              {group.has_waiting_time && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
-                <div className={`w-[110px] py-2 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-2 ${
-                  group.waiting_time <= 10 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                  group.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                  'bg-rose-50 border-rose-100 text-rose-600'
-                }`}>
-                  <Clock size={12} strokeWidth={3} />
-                  {group.waiting_time === 0 ? '待ちなし' : `${group.waiting_time}分待ち`}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
-              <Info size={12} strokeWidth={3} />
-              <span>公演情報</span>
-            </div>
-          )}
-          {!group.has_reception && !group.has_ticket_status && !group.has_waiting_time && !group.has_performances && (
-            <div className="w-[110px] py-2 rounded-full text-[10px] font-black flex items-center justify-center gap-2 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
-              <Info size={12} strokeWidth={3} />
-              <span>団体情報</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -342,6 +347,11 @@ const GroupCard = forwardRef(({
           {group.social_links?.HP && (
             <a href={group.social_links.HP} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-brand-600 transition-colors">
               <ExternalLink size={18} />
+            </a>
+          )}
+          {group.social_links?.youtube && (
+            <a href={group.social_links.youtube} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-red-600 transition-colors">
+              <Youtube size={18} />
             </a>
           )}
         </div>

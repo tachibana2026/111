@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --brand-primary: #0284c7;
     --brand-secondary: #0ea5e9;
     --bg-main: #f8fafc;

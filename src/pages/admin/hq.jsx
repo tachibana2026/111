@@ -61,7 +61,6 @@ const HQGroupCard = forwardRef(({
   requireConfirm,
 }, ref) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
   const departments = useMemo(() => (g.department || '').split(',').filter(Boolean).map(d => d.trim()), [g.department]);
   const isPerformance = g.has_performances;
 
@@ -253,7 +252,8 @@ const HQGroupCard = forwardRef(({
                                       {g.has_reception && (
                                         <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${
                                           (isOver ? 'closed' : p.reception_status) === 'ticket_only' ? 'text-brand-600' : 
-                                          ['closed', 'before_open'].includes(isOver ? 'closed' : p.reception_status) ? 'text-slate-400' : 
+                                          (isOver ? 'closed' : p.reception_status) === 'before_open' ? 'text-slate-400' : 
+                                          ['closed', 'ended'].includes(isOver ? 'closed' : p.reception_status) ? 'text-rose-600' : 
                                           'text-emerald-600'
                                         }`}>
                                           <CheckCircle2 size={8} strokeWidth={3} />
@@ -262,7 +262,8 @@ const HQGroupCard = forwardRef(({
                                       )}
                                       {g.has_ticket_status && (
                                         <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${
-                                          ['ended', 'none'].includes(actualTicket) ? 'text-slate-400' :
+                                          actualTicket === 'ended' ? 'text-rose-600' :
+                                          actualTicket === 'none' ? 'text-slate-400' :
                                           'text-emerald-600'
                                         }`}>
                                           <Ticket size={8} strokeWidth={3} />
@@ -384,6 +385,63 @@ const HQDashboard = () => {
     sessionStorage.setItem('ryoun_hq_filters', JSON.stringify(state));
   }, [activeTab, selectedDept, searchQuery, filterGrade, filterBuilding, isFilterOpen, isBulkOpen, sortBy]);
 
+  const filteredAndSortedGroups = useMemo(() => {
+    return groups
+      .filter(g => {
+        if (g.id === '8d112d95-14cb-4eee-8a5f-2580f502668a') return false;
+        const matchesDept = selectedDept === 'すべて' || (g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes(selectedDept);
+        const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
+        const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
+
+        if (!matchesDept || !matchesGrade || !matchesBuilding) return false;
+        if (!searchQuery) return true;
+
+        const query = searchQuery.toLowerCase();
+        const normalizedQuery = normalizeString(searchQuery);
+
+        return (
+          g.name?.toLowerCase().includes(query) ||
+          normalizeString(g.name).includes(normalizedQuery) ||
+          (g.name_kana && normalizeString(g.name_kana).includes(normalizedQuery)) ||
+          g.title?.toLowerCase().includes(query) ||
+          normalizeString(g.title).includes(normalizedQuery) ||
+          (g.title_kana && normalizeString(g.title_kana).includes(normalizedQuery)) ||
+          g.building?.toLowerCase().includes(query) ||
+          normalizeString(g.building).includes(normalizedQuery) ||
+          g.room?.toLowerCase().includes(query) ||
+          normalizeString(g.room).includes(normalizedQuery)
+        );
+      })
+      .sort((a, b) => {
+        if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
+        if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
+        if (sortBy === 'area') {
+          if ((a.building || '') !== (b.building || '')) return (a.building || '').localeCompare(b.building || '', 'ja');
+          return (a.room || '').localeCompare(b.room || '', 'ja');
+        }
+        
+        const getPriority = (name) => {
+          if (!name) return 4;
+          if (name.startsWith('1年')) return 1;
+          if (name.startsWith('2年')) return 2;
+          if (name.startsWith('3年')) return 3;
+          return 4;
+        };
+
+        const priorityA = getPriority(a.name);
+        const priorityB = getPriority(b.name);
+        if (priorityA !== priorityB) return priorityA - priorityB;
+
+        const getSortKey = (g) => {
+          if (priorityA < 4) return g.name || '';
+          if (g.name_kana) return g.name_kana;
+          if (g.title_kana) return g.title_kana;
+          return g.name || '';
+        };
+        return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
+      });
+  }, [groups, selectedDept, filterGrade, filterBuilding, searchQuery, sortBy]);
+
   useEffect(() => {
     if (confirmDialog.isOpen || isEditModalOpen || isLostFoundModalOpen || loading || isBulkUpdating) {
       document.body.style.overflow = 'hidden';
@@ -431,7 +489,7 @@ const HQDashboard = () => {
     try {
       const { data: gData, error: gError } = await supabase
         .from('groups')
-        .select('id, name, title, building, room, department, updated_at, last_reset_at, editing_locked, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, name_kana, title_kana, performances(id, group_id, part_id, start_time, end_time, status, reception_status)')
+        .select('id, name, title, building, room, department, password, updated_at, last_reset_at, editing_locked, reception_status, waiting_time, ticket_status, has_reception, has_waiting_time, has_ticket_status, has_performances, name_kana, title_kana, performances(id, group_id, part_id, start_time, end_time, status, reception_status)')
         .order('name');
       if (gError) throw gError;
       if (gData) setGroups(gData);
@@ -868,60 +926,7 @@ const HQDashboard = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence mode="popLayout">
-                {groups
-                  .filter(g => {
-                    if (g.id === '8d112d95-14cb-4eee-8a5f-2580f502668a') return false;
-                    const matchesDept = selectedDept === 'すべて' || (g.department || '').split(',').filter(Boolean).map(d => d.trim()).includes(selectedDept);
-                    const matchesGrade = filterGrade === 'すべて' || (filterGrade === '有志' ? !['1年', '2年', '3年'].some(year => g.name.startsWith(year)) : g.name.startsWith(filterGrade));
-                    const matchesBuilding = filterBuilding === 'すべて' || g.building === filterBuilding;
-
-                    if (!matchesDept || !matchesGrade || !matchesBuilding) return false;
-                    if (!searchQuery) return true;
-
-                    const query = searchQuery.toLowerCase();
-                    const normalizedQuery = normalizeString(searchQuery);
-
-                    return (
-                      g.name?.toLowerCase().includes(query) ||
-                      normalizeString(g.name).includes(normalizedQuery) ||
-                      (g.name_kana && normalizeString(g.name_kana).includes(normalizedQuery)) ||
-                      g.title?.toLowerCase().includes(query) ||
-                      normalizeString(g.title).includes(normalizedQuery) ||
-                      (g.title_kana && normalizeString(g.title_kana).includes(normalizedQuery)) ||
-                      g.building?.toLowerCase().includes(query) ||
-                      normalizeString(g.building).includes(normalizedQuery) ||
-                      g.room?.toLowerCase().includes(query) ||
-                      normalizeString(g.room).includes(normalizedQuery)
-                    );
-                  })
-                  .sort((a, b) => {
-                    if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
-                    if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
-                    if (sortBy === 'area') {
-                      if ((a.building || '') !== (b.building || '')) return (a.building || '').localeCompare(b.building || '', 'ja');
-                      return (a.room || '').localeCompare(b.room || '', 'ja');
-                    }
-                    
-                    const getPriority = (name) => {
-                      if (!name) return 4;
-                      if (name.startsWith('1年')) return 1;
-                      if (name.startsWith('2年')) return 2;
-                      if (name.startsWith('3年')) return 3;
-                      return 4;
-                    };
-
-                    const priorityA = getPriority(a.name);
-                    const priorityB = getPriority(b.name);
-                    if (priorityA !== priorityB) return priorityA - priorityB;
-
-                    const getSortKey = (g) => {
-                      if (priorityA < 4) return g.name || '';
-                      if (g.name_kana) return g.name_kana;
-                      if (g.title_kana) return g.title_kana;
-                      return g.name || '';
-                    };
-                    return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
-                  })
+                {filteredAndSortedGroups
                   .map(g => (
                     <HQGroupCard
                       key={g.id}
@@ -1120,48 +1125,39 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const hasGroupChanged = 
-        editData.reception_status !== group.reception_status ||
-        editData.waiting_time !== group.waiting_time ||
-        editData.ticket_status !== group.ticket_status;
+      const password = group.password;
 
-      const groupUpdatePayload = {
-        editing_locked: editingLocked,
-        reception_status: editData.reception_status,
-        waiting_time: editData.waiting_time,
-        ticket_status: editData.ticket_status,
-      };
-
-      if (hasGroupChanged) {
-        groupUpdatePayload.updated_at = new Date().toISOString();
-      }
-
-      // Update group general settings & status
-      const { error: groupError } = await supabase.from('groups').update(groupUpdatePayload).eq('id', group.id);
+      // 1. Update group general settings & status (Secure RPC)
+      const { error: groupError } = await supabase.rpc('update_group_secure', {
+        target_id: group.id,
+        provided_password: password,
+        new_reception_status: editData.reception_status,
+        new_waiting_time: editData.waiting_time,
+        new_ticket_status: editData.ticket_status,
+        // editing_locked は現時点のRPCには含まれていない可能性があるため、もし必要なら後で直接updateも試行
+      });
 
       if (groupError) throw groupError;
 
-      // Update performances
-      for (const perf of performances) {
-        const originalPerf = group.performances?.find(p => p.id === perf.id);
-        const hasPerfChanged = originalPerf && (
-          originalPerf.status !== perf.status ||
-          originalPerf.reception_status !== (perf.reception_status || 'open')
-        );
-
-        const perfUpdatePayload = {
-          status: perf.status,
-          reception_status: perf.reception_status || 'open'
-        };
-
-        if (hasPerfChanged) {
-          perfUpdatePayload.updated_at = new Date().toISOString();
-        }
-
-        const { error: perfError } = await supabase.from('performances').update(perfUpdatePayload).eq('id', perf.id);
-
-        if (perfError) throw perfError;
+      // HQ独自の編集ロック機能（もしRPCに含まれていない場合は直接更新）
+      if (editingLocked !== group.editing_locked) {
+        await supabase.from('groups').update({ editing_locked: editingLocked }).eq('id', group.id);
       }
+
+      // 2. Update performances (Secure RPC)
+      const perfUpdates = performances.map(perf => {
+        return supabase.rpc('update_performance_secure', {
+          target_id: perf.id,
+          provided_password: password,
+          new_status: perf.status,
+          new_reception_status: perf.reception_status || 'open'
+        });
+      });
+
+      const perfResults = await Promise.all(perfUpdates);
+      const firstPerfError = perfResults.find(r => r.error)?.error;
+      if (firstPerfError) throw firstPerfError;
+
       await onSave();
       triggerRevalidate();
       onClose();

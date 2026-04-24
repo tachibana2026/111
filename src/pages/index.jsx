@@ -182,7 +182,7 @@ const Home = () => {
                 </div>
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                  <p className="text-sm font-bold">食品･物販団体の販売は<span className="text-brand-600 font-black mx-1">有料</span>です。お支払いは各団体にてお願いいたします。</p>
+                  <p className="text-sm font-bold">一部食品団体と物販団体、キッチンカーでは料金が発生しますのでご注意ください。</p>
                 </div>
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>

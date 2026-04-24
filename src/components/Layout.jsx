@@ -40,18 +40,20 @@ const Layout = ({ children }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="google-site-verification" content="vPtf7XF5A3UF7EC6PKbwyGE3bvmheVPGOQvMzfO1PqM" />
         {isAdminPage && <meta name="robots" content="noindex, nofollow" />}
-        <meta name="description" content="千葉県立船橋高等学校 文化祭公式サイト" />
+        <meta name="description" content="令和8年度 千葉県立船橋高等学校 文化祭「たちばな祭2026」の公式サイト" />
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
         <meta property="og:title" content={getPageTitle()} />
-        <meta property="og:description" content="千葉県立船橋高等学校 文化祭公式サイト" />
+        <meta property="og:site_name" content="たちばな祭2026 公式サイト" />
+        <meta property="og:description" content="令和8年度 千葉県立船橋高等学校 文化祭「たちばな祭2026」の公式サイト" />
         <meta property="og:image" content="/og-image.png" />
+        <meta property="og:locale" content="ja_JP" />
 
         {/* Twitter */}
         <meta property="twitter:card" content="summary_large_image" />
         <meta property="twitter:title" content={getPageTitle()} />
-        <meta property="twitter:description" content="千葉県立船橋高等学校 文化祭公式サイト" />
+        <meta property="twitter:description" content="令和8年度 千葉県立船橋高等学校 文化祭「たちばな祭2026」の公式サイト" />
         <meta property="twitter:image" content="/og-image.png" />
 
         {/* Favicon */}
@@ -90,14 +92,14 @@ const Layout = ({ children }) => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-grow">
-        <AnimatePresence mode="wait">
+      <main className="flex-grow overflow-hidden">
+        <AnimatePresence initial={false}>
           <motion.div
             key={pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             className="container mx-auto px-4 py-8 md:py-12"
           >
             {children}
