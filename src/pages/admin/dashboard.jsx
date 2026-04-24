@@ -53,12 +53,14 @@ const GroupDashboard = () => {
     const sorted = [...performances]
       .map(p => {
         const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
-        return { ...p, fullDate: new Date(`${festDate}T${p.start_time}:00`) };
+        const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
+        return { ...p, fullDate: new Date(`${festDate}T${parseTime(p.start_time)}:00`) };
       })
       .filter(p => {
         const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
+        const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
         const endTime = p.end_time || p.start_time;
-        const fullEndDate = new Date(`${festDate}T${endTime}:00`);
+        const fullEndDate = new Date(`${festDate}T${parseTime(endTime)}:00`);
         return fullEndDate > nowLocal;
       })
       .sort((a, b) => a.fullDate - b.fullDate);
@@ -67,8 +69,9 @@ const GroupDashboard = () => {
 
   const isEditable = useMemo(() => {
     if (!group) return false;
-    if (group.has_performances) {
-      return group.has_reception || group.has_ticket_status;
+    const isPerf = group.has_performances || (group.department || '').includes('公演');
+    if (isPerf) {
+      return group.has_reception || group.has_ticket_status || isPerf;
     }
     return group.has_reception || group.has_waiting_time || group.has_ticket_status;
   }, [group]);
@@ -235,8 +238,9 @@ const GroupDashboard = () => {
 
   const isPerformancePast = useCallback((perf) => {
     const festDate = perf.part_id === 3 ? '2026-06-14' : '2026-06-13';
+    const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
     const endTime = perf.end_time || perf.start_time;
-    return new Date(`${festDate}T${endTime}:00`) < new Date();
+    return new Date(`${festDate}T${parseTime(endTime)}:00`) < new Date();
   }, []);
 
   const getStatusColors = (status, type) => {
@@ -390,7 +394,7 @@ const GroupDashboard = () => {
           </div>
           <div className="grid grid-cols-1 gap-4">
           <div className="grid grid-cols-1 gap-4">
-            {group.has_reception && !group.has_performances && (
+            {group.has_reception && !(group.has_performances || (group.department || '').includes('公演')) && (
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-xs font-black text-slate-500">受付状況</span>
                 <span className={`text-xl font-black ${getStatusColors(group.reception_status, 'reception')}`}>
@@ -398,7 +402,7 @@ const GroupDashboard = () => {
                 </span>
               </div>
             )}
-            {group.has_waiting_time && !group.has_performances && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
+            {group.has_waiting_time && !(group.has_performances || (group.department || '').includes('公演')) && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-xs font-black text-slate-500">現在の待ち時間</span>
                 <span className={`text-xl font-black ${group.waiting_time <= 10 ? 'text-emerald-600' : group.waiting_time <= 30 ? 'text-amber-600' : 'text-rose-600'}`}>
@@ -406,7 +410,7 @@ const GroupDashboard = () => {
                 </span>
               </div>
             )}
-            {group.has_ticket_status && !group.has_performances && (
+            {group.has_ticket_status && !(group.has_performances || (group.department || '').includes('公演')) && (
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
                 <span className="text-xs font-black text-slate-500">整理券状況</span>
                 <span className={`text-xl font-black ${
@@ -493,7 +497,7 @@ const GroupDashboard = () => {
               </div>
 
               {/* Status Toggle */}
-              {group.has_reception && !group.has_performances && (
+                  {group.has_reception && !(group.has_performances || (group.department || '').includes('公演')) && (
                 <div className="space-y-4">
                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">受付状況</label>
                   <div className={`grid ${editData.ticket_status === 'distributing' || editData.ticket_status === 'ended' ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
@@ -520,7 +524,7 @@ const GroupDashboard = () => {
               )}
 
               {/* Waiting Time Management */}
-              {group.has_waiting_time && !group.has_performances && (
+              {group.has_waiting_time && !(group.has_performances || (group.department || '').includes('公演')) && (
                 <div className="space-y-6 pt-6 border-t border-slate-50">
                   <div className="flex items-center justify-between ml-1">
                     <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">現在の待ち時間</label>
@@ -553,7 +557,7 @@ const GroupDashboard = () => {
               )}
 
               {/* Ticket Status Management */}
-              {group.has_ticket_status && !group.has_performances && (
+              {group.has_ticket_status && !(group.has_performances || (group.department || '').includes('公演')) && (
                 <div className="space-y-4 pt-6 border-t border-slate-50">
                   <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">整理券配布状況</label>
                   <div className="grid grid-cols-3 gap-2">
@@ -575,7 +579,7 @@ const GroupDashboard = () => {
               )}
 
               {/* Performance Management */}
-              {group.has_performances && performances && performances.length > 0 && (
+              {(group.has_performances || (group.department || '').includes('公演')) && performances && performances.length > 0 && (
                 <div className="space-y-12">
                   <div className="flex items-center gap-4">
                     <div className="h-px flex-1 bg-slate-100"></div>
@@ -762,7 +766,7 @@ const GroupDashboard = () => {
               )}
 
 
-              {(!group.has_reception && !group.has_waiting_time && !group.has_ticket_status && (!group.has_performances || !performances || performances.length === 0)) && (
+              {(!group.has_reception && !group.has_waiting_time && !group.has_ticket_status && (!(group.has_performances || (group.department || '').includes('公演')) || !performances || performances.length === 0)) && (
                 <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4">
                   <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
                     <Info size={32} />

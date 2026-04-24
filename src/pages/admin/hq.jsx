@@ -62,7 +62,7 @@ const HQGroupCard = forwardRef(({
 }, ref) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const departments = useMemo(() => (g.department || '').split(',').filter(Boolean).map(d => d.trim()), [g.department]);
-  const isPerformance = g.has_performances;
+  const isPerformance = g.has_performances || (g.department || '').includes('公演');
 
   const getStatusColors = (status, type) => {
     if (type === 'reception') {
@@ -114,7 +114,7 @@ const HQGroupCard = forwardRef(({
             {g.editing_locked ? <Lock size={10} strokeWidth={3} /> : <Unlock size={10} strokeWidth={3} />}
             <span>{g.editing_locked ? 'ロック中' : '許可中'}</span>
           </div>
-          {!g.has_performances ? (
+          {!isPerformance ? (
             <>
               {g.has_reception && (
                 <div className={`w-[110px] py-1.5 rounded-full border shadow-sm text-[9px] font-black flex items-center justify-center gap-1.5 ${
@@ -218,7 +218,8 @@ const HQGroupCard = forwardRef(({
                         const sorted = (g.performances || [])
                           .map(p => {
                             const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
-                            return { ...p, fullDate: new Date(`${festDate}T${p.start_time}:00`) };
+                            const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
+                            return { ...p, fullDate: new Date(`${festDate}T${parseTime(p.start_time)}:00`) };
                           })
                           .filter(p => p.fullDate > now)
                           .sort((a, b) => a.fullDate - b.fullDate);
@@ -235,7 +236,10 @@ const HQGroupCard = forwardRef(({
                             {partPerfs.map(p => {
                               const isNext = nextPerf && p.id === nextPerf.id;
                               const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
-                              const isPast = p.end_time ? new Date(`${festDate}T${p.end_time}:00`) < new Date() : new Date(`${festDate}T${p.start_time}:00`) < new Date();
+                              const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
+                              const isPast = p.end_time 
+                                ? new Date(`${festDate}T${parseTime(p.end_time)}:00`) < new Date() 
+                                : new Date(`${festDate}T${parseTime(p.start_time)}:00`) < new Date();
                               const isOver = isPast;
                               const actualTicket = isOver ? 'ended' : p.status;
 
@@ -415,9 +419,10 @@ const HQDashboard = () => {
       .sort((a, b) => {
         if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
         if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
-        if (sortBy === 'area') {
-          if ((a.building || '') !== (b.building || '')) return (a.building || '').localeCompare(b.building || '', 'ja');
-          return (a.room || '').localeCompare(b.room || '', 'ja');
+        if (sortBy === 'title') {
+          const keyA = a.title_kana || a.title || a.name || '';
+          const keyB = b.title_kana || b.title || b.name || '';
+          return keyA.localeCompare(keyB, 'ja', { numeric: true });
         }
         
         const getPriority = (name) => {
@@ -912,8 +917,8 @@ const HQDashboard = () => {
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
                     >
-                      <option value="name">名前順</option>
-                      <option value="area">エリア順</option>
+                      <option value="name">団体名順</option>
+                      <option value="title">タイトル順</option>
                       <option value="time-asc">待ち時間 (短い順)</option>
                       <option value="time-desc">待ち時間 (長い順)</option>
                     </select>
@@ -1115,9 +1120,10 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
     const sorted = [...performances]
       .map(p => {
         const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
-        return { ...p, fullDate: new Date(`${festDate}T${p.start_time}:00`) };
+        const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
+        return { ...p, fullDate: new Date(`${festDate}T${parseTime(p.start_time)}:00`) };
       })
-      .filter(p => p.fullDate > now)
+      .filter(p => p.fullDate && !isNaN(p.fullDate.getTime()) && p.fullDate > now)
       .sort((a, b) => a.fullDate - b.fullDate);
     return sorted[0] || null;
   }, [performances]);
@@ -1232,7 +1238,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
           </div>
 
           <div className="space-y-6">
-            {(!group.has_performances && (group.has_reception || group.has_waiting_time || group.has_ticket_status)) ? (
+            {(!(group.has_performances || (group.department || '').includes('公演')) && (group.has_reception || group.has_waiting_time || group.has_ticket_status)) ? (
               <>
 
                 <div className="flex items-center gap-4">
@@ -1313,7 +1319,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                 </div>
 
               </>
-            ) : !group.has_performances && (
+            ) : !(group.has_performances || (group.department || '').includes('公演')) && (
               <div className="flex flex-col items-center justify-center py-10 px-6 text-center space-y-4">
                 <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
                   <Info size={24} />
@@ -1326,7 +1332,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                 </div>
               </div>
             )}
-            {group.has_performances && (
+            {(group.has_performances || (group.department || '').includes('公演')) && (
               <div className="space-y-10">
                 <div className="flex items-center gap-4">
                   <div className="h-px flex-1 bg-slate-100"></div>
@@ -1357,9 +1363,10 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                         {partPerfs.map(perf => {
                           const isNext = nextPerf && perf.id === nextPerf.id;
                           const festDate = perf.part_id === 3 ? '2026-06-14' : '2026-06-13';
+                          const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
                           const isPast = perf.end_time 
-                            ? new Date(`${festDate}T${perf.end_time}:00`) < new Date() 
-                            : new Date(`${festDate}T${perf.start_time}:00`) < new Date();
+                            ? new Date(`${festDate}T${parseTime(perf.end_time)}:00`) < new Date() 
+                            : new Date(`${festDate}T${parseTime(perf.start_time)}:00`) < new Date();
 
                           return (
                             <div key={perf.id} className={`p-6 rounded-[2rem] border transition-all space-y-6 ${
@@ -1375,7 +1382,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                 </span>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {group.has_reception && (
+                                {(group.has_reception || (group.department || '').includes('公演')) && (
                                   <div className="space-y-3">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
                                     <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
@@ -1402,7 +1409,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                     </div>
                                   </div>
                                 )}
-                                {group.has_ticket_status && (
+                                {(group.has_ticket_status || (group.department || '').includes('公演')) && (
                                   <div className="space-y-3">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
                                     <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">

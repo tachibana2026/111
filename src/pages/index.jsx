@@ -155,7 +155,7 @@ const Home = () => {
               <h2 className="text-2xl font-black text-slate-900">注意事項</h2>
             </div>
             <div className="space-y-4 w-full">
-              <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100/50 space-y-4">
+              <div className="space-y-4">
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
                   <p className="text-sm font-bold">上履き（またはスリッパ）と靴袋をご持参ください。</p>
@@ -174,11 +174,11 @@ const Home = () => {
                 </div>
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                  <p className="text-sm font-bold">入場開始の<span className="text-brand-600 font-black mx-1">15分前</span>から開場します。それより前の来場はお控えください。</p>
+                  <p className="text-sm font-bold">開始時刻の<span className="text-brand-600 font-black mx-1">15分前</span>から開場します。それより前の来場はお控えください。</p>
                 </div>
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                  <p className="text-sm font-bold">開催時間終了の<span className="text-brand-600 font-black mx-1">30分前</span>に入場を締め切らせていただきます。</p>
+                  <p className="text-sm font-bold">終了時刻の<span className="text-brand-600 font-black mx-1">30分前</span>に入場を締め切らせていただきます。</p>
                 </div>
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>

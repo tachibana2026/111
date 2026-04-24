@@ -132,7 +132,8 @@ const Timetable = ({ initialPerformances }) => {
   const isPast = (perf) => {
     const festDate = perf.part_id === 3 ? '2026-06-14' : '2026-06-13';
     const timeToCompare = perf.end_time || perf.start_time;
-    const perfEnd = new Date(`${festDate}T${timeToCompare}:00`);
+    const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
+    const perfEnd = new Date(`${festDate}T${parseTime(timeToCompare)}:00`);
     if (!perf.end_time) perfEnd.setMinutes(perfEnd.getMinutes() + 20);
     return currentTime > perfEnd;
   };
@@ -268,10 +269,10 @@ const Timetable = ({ initialPerformances }) => {
                   
                   {/* Header row with time slots */}
                   <div className="flex border-b border-slate-200 bg-slate-50/90 backdrop-blur-sm sticky top-0 z-30 rounded-none">
-                    <div ref={bIndex === 0 ? sidebarRef : null} className="w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-slate-50 sticky left-0 z-40 flex items-center justify-start py-4 px-3 rounded-none">
+                    <div ref={bIndex === 0 ? sidebarRef : null} className="w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-slate-50 sticky left-0 z-40 flex items-center justify-start py-4 px-3 rounded-none shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
                       <span className="text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-tighter">タイトル / 団体名</span>
                     </div>
-                    <div className="flex-1 flex min-w-[950px] lg:min-w-0 relative h-12 pr-6">
+                    <div className="flex-1 flex min-w-[1300px] lg:min-w-0 relative h-12 pr-6">
                       {timeSlots.map((time) => (
                         <div 
                           key={time} 
@@ -290,7 +291,7 @@ const Timetable = ({ initialPerformances }) => {
                     {/* Current time line for this building */}
                     <div className="absolute inset-0 pointer-events-none flex z-[15]">
                       <div className="w-24 md:w-32 flex-shrink-0" />
-                      <div className="flex-1 relative min-w-[950px] lg:min-w-0 pr-6">
+                      <div className="flex-1 relative min-w-[1300px] lg:min-w-0 pr-6">
                         {renderCurrentTimeLine()}
                       </div>
                     </div>
@@ -300,7 +301,7 @@ const Timetable = ({ initialPerformances }) => {
                       return (
                       <div key={group.id} className={`flex border-b border-slate-200 last:border-b-0 group hover:bg-slate-50/50 transition-colors ${isLast ? 'rounded-none' : ''}`}>
                         {/* Sticky Sidebar Cell */}
-                        <div className={`w-24 md:w-32 flex-shrink-0 border-x border-slate-200 bg-white sticky left-0 z-30 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors ${isLast ? 'rounded-none' : ''}`}>
+                        <div className={`w-24 md:w-32 flex-shrink-0 border-r border-slate-200 bg-white sticky left-0 z-30 p-2 md:p-3 flex flex-col justify-center items-start gap-1 group-hover:bg-slate-50 transition-colors ${isLast ? 'rounded-none' : ''} shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]`}>
                       {group.title && group.title !== group.name && (
                         <h3 className="text-[10px] md:text-[11px] font-black text-slate-900 leading-tight break-words text-left whitespace-pre-wrap">
                           {group.title}
@@ -312,7 +313,7 @@ const Timetable = ({ initialPerformances }) => {
                     </div>
 
                     {/* Timeline Cell */}
-                    <div className="flex-1 relative min-h-[110px] min-w-[950px] lg:min-w-0 pr-6">
+                    <div className="flex-1 relative min-h-[110px] min-w-[1300px] lg:min-w-0 pr-6">
                       {/* Grid Lines */}
                       {timeSlots.map((time) => (
                         <div 
@@ -350,8 +351,15 @@ const Timetable = ({ initialPerformances }) => {
                                 zIndex: 5
                               }}
                             >
-                              <div className="flex-[4] px-2 text-center flex items-center justify-center overflow-hidden border-b border-slate-100">
-                                <span className={`whitespace-nowrap text-[11px] font-black leading-none tracking-tight ${isOver ? 'text-slate-400' : 'text-slate-700'}`}>{perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}</span>
+                              <div className="flex-[4] px-1 text-center flex items-center justify-center overflow-hidden border-b border-slate-100">
+                                <div 
+                                  className="min-w-max origin-center transition-all"
+                                  style={{ transform: `scale(${Math.max(0.45, Math.min(1, width / 8))})` }}
+                                >
+                                  <span className={`whitespace-nowrap text-[11px] font-black leading-none tracking-tight ${isOver ? 'text-slate-400' : 'text-slate-700'}`}>
+                                    {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
+                                  </span>
+                                </div>
                               </div>
                               <div className="flex-[6] flex flex-col justify-center gap-0.5 bg-white/50 backdrop-blur-sm py-1">
                                 {group.has_reception && (
@@ -376,13 +384,18 @@ const Timetable = ({ initialPerformances }) => {
                                   </div>
                                 )}
                                 {!group.has_reception && !group.has_ticket_status && (
-                                  <div className="flex flex-col items-center justify-center w-full h-full px-0.5 overflow-visible">
-                                    <span className="font-black text-slate-500 whitespace-nowrap text-[10px] md:text-[11px] tracking-tighter transform scale-[0.85] sm:scale-[0.95] md:scale-100 origin-bottom">
-                                      公演開始時間に合わせて
-                                    </span>
-                                    <span className="font-black text-slate-500 whitespace-nowrap text-[10px] md:text-[11px] tracking-tighter transform scale-[0.85] sm:scale-[0.95] md:scale-100 origin-top">
-                                      直接会場へお越しください
-                                    </span>
+                                  <div className="flex flex-col items-center justify-center w-full h-full px-0.5 overflow-hidden">
+                                    <div 
+                                      className="flex flex-col items-center justify-center min-w-max origin-center"
+                                      style={{ transform: `scale(${Math.max(0.25, Math.min(1, width / 12))})` }}
+                                    >
+                                      <span className="font-black text-slate-400 whitespace-nowrap text-[11px] tracking-tighter leading-none">
+                                        公演開始時間に合わせて
+                                      </span>
+                                      <span className="font-black text-slate-400 whitespace-nowrap text-[11px] tracking-tighter leading-none mt-1.5">
+                                        直接会場へお越しください
+                                      </span>
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -410,12 +423,19 @@ const Timetable = ({ initialPerformances }) => {
                 onClick={e => e.stopPropagation()}
               >
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-base px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-base px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest shrink-0">
                       {selectedPerf.start_time}{selectedPerf.end_time && ` ～ ${selectedPerf.end_time}`}
                     </span>
+                    {selectedGroup.title && selectedGroup.title !== selectedGroup.name && (
+                      <span className="text-base font-black text-brand-600 uppercase tracking-[0.1em] text-right">
+                        {selectedGroup.name}
+                      </span>
+                    )}
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 leading-tight whitespace-pre-wrap">{selectedGroup.title || selectedGroup.name}</h2>
+                  <h2 className="text-2xl font-black text-slate-900 leading-tight whitespace-pre-wrap">
+                    {selectedGroup.title || selectedGroup.name}
+                  </h2>
                   <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
                     <MapPin size={14} />
                     <span>{selectedGroup.building} {selectedGroup.room}</span>
