@@ -812,7 +812,7 @@ const Groups = ({ initialGroups }) => {
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-base px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest shrink-0">
+                    <span className="text-sm px-3 py-1 rounded-full bg-brand-50 text-brand-600 font-black uppercase tracking-widest shrink-0">
                       {selectedPerf.start_time}{selectedPerf.end_time && ` ～ ${selectedPerf.end_time}`}
                     </span>
                     {selectedGroup.title && selectedGroup.title !== selectedGroup.name && (
