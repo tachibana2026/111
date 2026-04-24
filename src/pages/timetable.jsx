@@ -341,9 +341,9 @@ const Timetable = ({ initialPerformances }) => {
                                 setSelectedGroup(group);
                                 setSelectedPerf({ ...perf, currentReception, computedTicket });
                               }}
-                              className={`absolute top-2.5 bottom-2.5 rounded-2xl border shadow-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-center overflow-hidden gpu-accelerated ${isOver
-                                ? 'bg-slate-50 border-slate-100 text-slate-400'
-                                : 'bg-white border-slate-200 text-slate-700 hover:border-brand-300 hover:shadow-md'
+                              className={`absolute top-2.5 bottom-2.5 rounded-2xl border cursor-pointer transition-all hover:scale-[1.02] active:scale-95 flex flex-col justify-center overflow-hidden gpu-accelerated ${isOver
+                                ? 'bg-slate-50 border-slate-100 text-slate-400 shadow-none'
+                                : 'bg-white border-slate-200 text-slate-700 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] hover:border-brand-300 hover:shadow-[0_12px_30px_-4px_rgba(0,0,0,0.15)] ring-1 ring-black/[0.02]'
                                 }`}
                               style={{
                                 left: `calc( ${left}% + 6px )`,
