@@ -210,7 +210,11 @@ const HQGroupCard = forwardRef(({
                 >
                   <div className="space-y-6 pt-2 pb-2">
                     {[1, 2, 3].map(partId => {
-                      const partPerfs = (g.performances || []).filter(p => p.part_id === partId).sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+                      const partPerfs = (g.performances || []).filter(p => p.part_id === partId).sort((a, b) => {
+                        const timeA = (a.start_time || '').padStart(5, '0');
+                        const timeB = (b.start_time || '').padStart(5, '0');
+                        return timeA.localeCompare(timeB);
+                      });
                       if (!partPerfs || partPerfs.length === 0) return null;
 
                       const nextPerf = (() => {
@@ -1343,7 +1347,11 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                 {[1, 2, 3].map(partId => {
                   const partPerfs = performances
                     .filter(p => p.part_id === partId)
-                    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+                    .sort((a, b) => {
+                      const timeA = (a.start_time || '').padStart(5, '0');
+                      const timeB = (b.start_time || '').padStart(5, '0');
+                      return timeA.localeCompare(timeB);
+                    });
                   
                   if (partPerfs.length === 0) return null;
 

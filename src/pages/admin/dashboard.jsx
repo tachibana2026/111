@@ -155,7 +155,9 @@ const GroupDashboard = () => {
 
       const sortedPerfs = data.performances?.sort((a, b) => {
         if (a.part_id !== b.part_id) return a.part_id - b.part_id;
-        return a.start_time.localeCompare(b.start_time);
+        const timeA = (a.start_time || '').padStart(5, '0');
+        const timeB = (b.start_time || '').padStart(5, '0');
+        return timeA.localeCompare(timeB);
       }) || [];
       // 公開中の情報を更新
       setPublishedPerformances(sortedPerfs);

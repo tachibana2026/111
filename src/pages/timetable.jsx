@@ -424,16 +424,16 @@ const Timetable = ({ initialPerformances }) => {
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-base px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest shrink-0">
+                    <span className="text-sm px-3 py-1 rounded-full bg-brand-50 text-brand-700 font-black uppercase tracking-widest shrink-0">
                       {selectedPerf.start_time}{selectedPerf.end_time && ` ～ ${selectedPerf.end_time}`}
                     </span>
                     {selectedGroup.title && selectedGroup.title !== selectedGroup.name && (
-                      <span className="text-base font-black text-brand-600 uppercase tracking-[0.1em] text-right">
+                      <span className="text-sm font-black text-brand-600 uppercase tracking-[0.1em] text-right">
                         {selectedGroup.name}
                       </span>
                     )}
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 leading-tight whitespace-pre-wrap">
+                  <h2 className="text-xl font-black text-slate-900 leading-tight whitespace-pre-wrap">
                     {selectedGroup.title || selectedGroup.name}
                   </h2>
                   <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">

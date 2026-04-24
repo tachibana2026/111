@@ -41,7 +41,11 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
   const partSchedule = useMemo(() => 
     [...schedule]
       .filter(p => p.part_id === partId)
-      .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || '')),
+      .sort((a, b) => {
+        const timeA = (a.start_time || '').padStart(5, '0');
+        const timeB = (b.start_time || '').padStart(5, '0');
+        return timeA.localeCompare(timeB);
+      }),
     [schedule, partId]
   );
   if (partSchedule.length === 0) return null;
@@ -812,12 +816,12 @@ const Groups = ({ initialGroups }) => {
                       {selectedPerf.start_time}{selectedPerf.end_time && ` ～ ${selectedPerf.end_time}`}
                     </span>
                     {selectedGroup.title && selectedGroup.title !== selectedGroup.name && (
-                      <span className="text-base font-black text-brand-600 uppercase tracking-[0.1em] text-right">
+                      <span className="text-sm font-black text-brand-600 uppercase tracking-[0.1em] text-right">
                         {selectedGroup.name}
                       </span>
                     )}
                   </div>
-                  <h2 className="text-2xl font-black text-slate-900 leading-tight whitespace-pre-wrap">
+                  <h2 className="text-xl font-black text-slate-900 leading-tight whitespace-pre-wrap">
                     {selectedGroup.title || selectedGroup.name}
                   </h2>
                   <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
