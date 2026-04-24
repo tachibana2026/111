@@ -452,7 +452,7 @@ const Timetable = ({ initialPerformances }) => {
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className={`grid gap-3 ${(selectedPerf.groups?.has_reception && selectedPerf.groups?.has_ticket_status) ? 'grid-cols-2' : 'grid-cols-1'}`}>
                         {selectedPerf.groups?.has_reception && (
                           <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
                             <div className="flex items-center gap-1.5 text-slate-400">

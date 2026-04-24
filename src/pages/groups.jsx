@@ -836,39 +836,43 @@ const Groups = ({ initialGroups }) => {
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
-                          <div className="flex items-center gap-1.5 text-slate-400">
-                            <Info size={10} strokeWidth={3} />
-                            <span className="text-[8px] font-black uppercase tracking-widest">公演受付</span>
-                          </div>
-                          <div className="flex-1 flex items-center justify-center w-full">
-                            <div className={`font-black text-center leading-[1.2] ${
-                              selectedPerf.currentReception === 'ticket_only' ? 'text-brand-700 text-sm' :
-                              ['closed', 'ended'].includes(selectedPerf.currentReception) ? 'text-rose-600 text-base' :
-                              selectedPerf.currentReception === 'before_open' ? 'text-slate-500 text-base' :
-                              'text-emerald-600 text-base'
-                            }`}>
-                              {selectedPerf.currentReception === 'ticket_only' ? (
-                                <>整理券を<br />お持ちの方のみ<br />案内中</>
-                              ) : getReceptionLabel(selectedPerf.currentReception || 'open')}
+                      <div className={`grid gap-3 ${(selectedGroup.has_reception && selectedGroup.has_ticket_status) ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        {selectedGroup.has_reception && (
+                          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                              <Info size={10} strokeWidth={3} />
+                              <span className="text-[8px] font-black uppercase tracking-widest">公演受付</span>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center w-full">
+                              <div className={`font-black text-center leading-[1.2] ${
+                                selectedPerf.currentReception === 'ticket_only' ? 'text-brand-700 text-sm' :
+                                ['closed', 'ended'].includes(selectedPerf.currentReception) ? 'text-rose-600 text-base' :
+                                selectedPerf.currentReception === 'before_open' ? 'text-slate-500 text-base' :
+                                'text-emerald-600 text-base'
+                              }`}>
+                                {selectedPerf.currentReception === 'ticket_only' ? (
+                                  <>整理券を<br />お持ちの方のみ<br />案内中</>
+                                ) : getReceptionLabel(selectedPerf.currentReception || 'open')}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
-                          <div className="flex items-center gap-1.5 text-slate-400">
-                            <Ticket size={10} strokeWidth={3} />
-                            <span className="text-[8px] font-black uppercase tracking-widest">整理券</span>
-                          </div>
-                          <div className="flex-1 flex items-center justify-center w-full">
-                            <div className={`text-base font-black text-center leading-tight ${
-                              ['ended', 'none'].includes(selectedPerf.computedTicket || selectedPerf.status) ? 'text-slate-500' :
-                              'text-emerald-600'
-                            }`}>
-                              {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status).replace('整理券', '')}
+                        )}
+                        {selectedGroup.has_ticket_status && (
+                          <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 min-h-[100px]">
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                              <Ticket size={10} strokeWidth={3} />
+                              <span className="text-[8px] font-black uppercase tracking-widest">整理券</span>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center w-full">
+                              <div className={`text-base font-black text-center leading-tight ${
+                                ['ended', 'none'].includes(selectedPerf.computedTicket || selectedPerf.status) ? 'text-slate-500' :
+                                'text-emerald-600'
+                              }`}>
+                                {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status).replace('整理券', '')}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                       <p className="text-[11px] text-slate-400 font-bold leading-relaxed text-center">
                         整理券は紙での配布となります。<br />
