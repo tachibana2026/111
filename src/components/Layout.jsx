@@ -1,13 +1,10 @@
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { 
-  Home, Users, Clock, PackageSearch, UserCog, 
-  AlertTriangle, X, WifiOff, Info, CheckCircle2, AlertCircle
+  Home, Users, Clock, PackageSearch, UserCog
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Head from 'next/head';
-import { supabase } from '../lib/supabase';
 
 const Layout = ({ children }) => {
   const router = useRouter();
@@ -38,50 +35,6 @@ const Layout = ({ children }) => {
     return 'たちばな祭2026';
   };
 
-  const [isOnline, setIsOnline] = useState(true);
-  const [showDarkModeWarning, setShowDarkModeWarning] = useState(false);
-
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // オフライン検知
-    setIsOnline(navigator.onLine);
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // ダークモード検知
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const checkDarkMode = (e) => {
-      const dismissed = sessionStorage.getItem('dismissed-dark-mode-warning');
-      if (e.matches && !dismissed) {
-        setShowDarkModeWarning(true);
-      } else {
-        setShowDarkModeWarning(false);
-      }
-    };
-
-    checkDarkMode(mediaQuery);
-    mediaQuery.addEventListener('change', checkDarkMode);
-
-
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      mediaQuery.removeEventListener('change', checkDarkMode);
-    };
-  }, []);
-
-
-
-  const dismissDarkModeWarning = () => {
-    setShowDarkModeWarning(false);
-    sessionStorage.setItem('dismissed-dark-mode-warning', 'true');
-  };
-
   return (
     <div className="min-h-screen flex flex-col pb-28 md:pb-0 md:pt-20 bg-slate-50/30">
       <Head>
@@ -110,51 +63,6 @@ const Layout = ({ children }) => {
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </Head>
 
-      <AnimatePresence>
-        {!isOnline && (
-          <motion.div
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] w-[calc(100%-2rem)] max-w-[320px]"
-          >
-            <div className="bg-white/90 backdrop-blur-xl border border-slate-100 rounded-[2rem] p-5 shadow-2xl flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-                <WifiOff size={20} />
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="text-sm font-black text-slate-900">オフライン</span>
-                <span className="text-[10px] font-bold text-slate-400 mt-0.5">キャッシュを表示中</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-        {showDarkModeWarning && (
-          <motion.div
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: !isOnline ? 100 : 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-[1001] w-[calc(100%-2rem)] max-w-[320px]"
-          >
-            <div className="bg-white/90 backdrop-blur-xl border border-slate-100 rounded-[2rem] p-5 shadow-2xl flex items-center gap-4 relative">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-                <AlertTriangle size={20} />
-              </div>
-              <div className="flex flex-col text-left pr-6">
-                <span className="text-sm font-black text-slate-900">ダークモード非対応</span>
-                <span className="text-[10px] font-bold text-slate-400 mt-0.5 leading-relaxed">ライトモードを推奨します</span>
-              </div>
-              <button 
-                onClick={dismissDarkModeWarning}
-                className="absolute top-1/2 -translate-y-1/2 right-3 w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-50 transition-all"
-              >
-                <X size={16} strokeWidth={3} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-      </AnimatePresence>
 
       {/* Desktop Header */}
 
