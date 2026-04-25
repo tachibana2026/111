@@ -165,11 +165,11 @@ const GroupCard = forwardRef(({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.2 }}
-      className={`bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-5 md:p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'opacity-60 saturate-50' : ''}`}
+      className={`relative bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-5 md:p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'opacity-60 saturate-50' : ''}`}
     >
       <div className="flex flex-col gap-4 mb-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-start justify-between">
+          <div className="flex flex-wrap items-center gap-2 pr-[104px]">
             {(group.department || '').split(',').filter(Boolean).map(d => d.trim()).sort((a, b) => DEPARTMENTS.indexOf(a) - DEPARTMENTS.indexOf(b)).map(dept => (
               <span key={dept} className="text-[9px] px-2 py-0.5 rounded-md bg-brand-50 text-brand-700 font-black uppercase tracking-wider whitespace-nowrap">
                 {dept}
@@ -180,22 +180,34 @@ const GroupCard = forwardRef(({
             </span>
           </div>
           
-          <div className="flex flex-wrap gap-2 shrink-0">
+          <div className="absolute top-5 right-5 md:top-8 md:right-8 flex flex-col items-end gap-2 shrink-0">
             {!(group.has_performances || departments.includes('公演')) ? (
               <>
-                {group.has_reception && (
-                  <div className={`px-3 py-1.5 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
-                    group.reception_status === 'closed' || group.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                    group.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
-                    group.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
-                    'bg-emerald-50 border-emerald-100 text-emerald-600'
-                  }`}>
-                    <Info size={11} strokeWidth={3} />
-                    {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[group.reception_status] || group.reception_status}
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {group.has_waiting_time && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
+                    <div className={`px-3 py-1.5 min-w-[96px] rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                      group.waiting_time <= 10 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                      group.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                      'bg-rose-50 border-rose-100 text-rose-600'
+                    }`}>
+                      <Clock size={11} strokeWidth={3} />
+                      {group.waiting_time === 0 ? '待ちなし' : `${group.waiting_time}分待ち`}
+                    </div>
+                  )}
+                  {group.has_reception && (
+                    <div className={`px-3 py-1.5 min-w-[96px] rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                      group.reception_status === 'closed' || group.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                      group.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                      group.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
+                      'bg-emerald-50 border-emerald-100 text-emerald-600'
+                    }`}>
+                      <Info size={11} strokeWidth={3} />
+                      {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[group.reception_status] || group.reception_status}
+                    </div>
+                  )}
+                </div>
                 {group.has_ticket_status && (
-                  <div className={`px-3 py-1.5 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                  <div className={`px-3 py-1.5 min-w-[96px] rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
                     group.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
                     group.ticket_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
                     group.ticket_status === 'limited' ? 'bg-amber-50 border-amber-100 text-amber-600' :
@@ -205,25 +217,15 @@ const GroupCard = forwardRef(({
                     {{ distributing: '配布中', ended: '配布終了', limited: '残りわずか', none: '配布なし' }[group.ticket_status] || group.ticket_status}
                   </div>
                 )}
-                {group.has_waiting_time && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
-                  <div className={`px-3 py-1.5 rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
-                    group.waiting_time <= 10 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                    group.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                    'bg-rose-50 border-rose-100 text-rose-600'
-                  }`}>
-                    <Clock size={11} strokeWidth={3} />
-                    {group.waiting_time === 0 ? '待ちなし' : `${group.waiting_time}分待ち`}
-                  </div>
-                )}
               </>
             ) : (
-              <div className="px-3 py-1.5 rounded-full text-[10px] font-black flex items-center justify-center gap-1.5 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
+              <div className="px-3 py-1.5 min-w-[96px] rounded-full text-[10px] font-black flex items-center justify-center gap-1.5 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
                 <Info size={11} strokeWidth={3} />
                 <span>公演情報</span>
               </div>
             )}
             {!group.has_reception && !group.has_ticket_status && !group.has_waiting_time && !group.has_performances && !departments.includes('公演') && (
-              <div className="px-3 py-1.5 rounded-full text-[10px] font-black flex items-center justify-center gap-1.5 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
+              <div className="px-3 py-1.5 min-w-[96px] rounded-full text-[10px] font-black flex items-center justify-center gap-1.5 border shadow-sm bg-slate-50 border-slate-100 text-slate-400">
                 <Info size={11} strokeWidth={3} />
                 <span>団体情報</span>
               </div>
@@ -582,17 +584,18 @@ const Groups = ({ initialGroups }) => {
         );
       })
       .sort((a, b) => {
+        let result = 0;
         if (sortBy === 'time-asc') {
-          return (a.waiting_time || 0) - (b.waiting_time || 0);
-        }
-        if (sortBy === 'time-desc') {
-          return (b.waiting_time || 0) - (a.waiting_time || 0);
-        }
-        if (sortBy === 'title') {
+          result = (a.waiting_time || 0) - (b.waiting_time || 0);
+        } else if (sortBy === 'time-desc') {
+          result = (b.waiting_time || 0) - (a.waiting_time || 0);
+        } else if (sortBy === 'title') {
           const keyA = a.title_kana || a.title || a.name || '';
           const keyB = b.title_kana || b.title || b.name || '';
-          return keyA.localeCompare(keyB, 'ja', { numeric: true });
+          result = keyA.localeCompare(keyB, 'ja', { numeric: true });
         }
+
+        if (result !== 0) return result;
 
         // 優先度判定: クラス（1年->2年->3年） > 有志
         const getPriority = (name) => {
@@ -611,9 +614,9 @@ const Groups = ({ initialGroups }) => {
         }
 
         // クラス同士、または有志同士の場合のソートキー
-        const getSortKey = (g) => {
+        const getSortKey = (g, priority) => {
           // クラス（1年, 2年, 3年）は名称（1年A組, 1年B組...）でA-Z順にソート
-          if (priorityA < 4) return g.name || '';
+          if (priority < 4) return g.name || '';
           
           // 有志団体などは読み仮名（name_kana / title_kana）を優先して五十音順
           if (g.name_kana) return g.name_kana;
@@ -621,7 +624,7 @@ const Groups = ({ initialGroups }) => {
           return g.name || '';
         };
 
-        return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
+        return getSortKey(a, priorityA).localeCompare(getSortKey(b, priorityB), 'ja', { numeric: true });
       });
   }, [groups, filterDept, filterGrade, filterBuilding, sortBy, searchQuery]);
 

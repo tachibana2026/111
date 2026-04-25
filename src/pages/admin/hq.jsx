@@ -421,13 +421,18 @@ const HQDashboard = () => {
         );
       })
       .sort((a, b) => {
-        if (sortBy === 'time-asc') return (a.waiting_time || 0) - (b.waiting_time || 0);
-        if (sortBy === 'time-desc') return (b.waiting_time || 0) - (a.waiting_time || 0);
-        if (sortBy === 'title') {
+        let result = 0;
+        if (sortBy === 'time-asc') {
+          result = (a.waiting_time || 0) - (b.waiting_time || 0);
+        } else if (sortBy === 'time-desc') {
+          result = (b.waiting_time || 0) - (a.waiting_time || 0);
+        } else if (sortBy === 'title') {
           const keyA = a.title_kana || a.title || a.name || '';
           const keyB = b.title_kana || b.title || b.name || '';
-          return keyA.localeCompare(keyB, 'ja', { numeric: true });
+          result = keyA.localeCompare(keyB, 'ja', { numeric: true });
         }
+
+        if (result !== 0) return result;
         
         const getPriority = (name) => {
           if (!name) return 4;
@@ -441,13 +446,13 @@ const HQDashboard = () => {
         const priorityB = getPriority(b.name);
         if (priorityA !== priorityB) return priorityA - priorityB;
 
-        const getSortKey = (g) => {
-          if (priorityA < 4) return g.name || '';
+        const getSortKey = (g, priority) => {
+          if (priority < 4) return g.name || '';
           if (g.name_kana) return g.name_kana;
           if (g.title_kana) return g.title_kana;
           return g.name || '';
         };
-        return getSortKey(a).localeCompare(getSortKey(b), 'ja', { numeric: true });
+        return getSortKey(a, priorityA).localeCompare(getSortKey(b, priorityB), 'ja', { numeric: true });
       });
   }, [groups, selectedDept, filterGrade, filterBuilding, searchQuery, sortBy]);
 
@@ -484,6 +489,16 @@ const HQDashboard = () => {
   useEffect(() => {
     const authType = localStorage.getItem('ryoun_auth_type');
     if (authType !== 'hq') { router.push('/admin'); return; }
+
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('セッションが切れました。再度ログインしてください。');
+        router.push('/admin');
+      }
+    };
+    checkSession();
+
     fetchData();
     const channels = [
       supabase.channel('hq_realtime')
@@ -517,20 +532,37 @@ const HQDashboard = () => {
       const EXCLUDED_ID = '8d112d95-14cb-4eee-8a5f-2580f502668a';
       const targetGroups = groups.filter(g => 
         g.id !== EXCLUDED_ID && 
-        !(g.department?.split(',').map(d => d.trim()).includes('公演'))
+        !((g.department || '').split(',').map(d => d.trim()).includes('公演'))
       );
-      const groupIds = targetGroups.map(g => g.id);
       
-      if (groupIds.length > 0) {
-        await supabase.from('groups')
-          .update({ reception_status: status, updated_at: new Date().toISOString() })
-          .in('id', groupIds);
+      console.log('Bulk updating groups:', targetGroups.map(g => g.name));
+      
+      if (targetGroups.length > 0) {
+        const groupIds = targetGroups.map(g => g.id);
+        const { data, error } = await supabase.from('groups')
+          .update({ 
+            reception_status: status, 
+            updated_at: new Date().toISOString() 
+          })
+          .in('id', groupIds)
+          .select();
+          
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+          throw new Error('更新対象が見つかりません。権限がないか、セッションが切れている可能性があります。');
+        }
+        
+        alert(`一括更新を完了しました。（${data.length}件）`);
+      } else {
+        alert('対象となる団体（公演団体を除く）が見つかりませんでした。');
       }
       
       await fetchData();
       triggerRevalidate();
     } catch (error) {
       console.error('Bulk update error:', error);
+      alert(`エラーが発生しました: ${error.message}\n(一度ログアウトして再ログインを試してください)`);
     } finally {
       setIsBulkUpdating(false);
     }
@@ -541,19 +573,30 @@ const HQDashboard = () => {
       const EXCLUDED_ID = '8d112d95-14cb-4eee-8a5f-2580f502668a';
       const targetGroups = groups.filter(g => 
         g.id !== EXCLUDED_ID && 
-        !(g.department?.split(',').map(d => d.trim()).includes('公演'))
+        !((g.department || '').split(',').map(d => d.trim()).includes('公演'))
       );
-      const groupIds = targetGroups.map(g => g.id);
-
-      if (groupIds.length > 0) {
-        await supabase.from('groups').update({
-          editing_locked: locked
-        }).in('id', groupIds);
+      
+      if (targetGroups.length > 0) {
+        const groupIds = targetGroups.map(g => g.id);
+        const { data, error } = await supabase.from('groups')
+          .update({ 
+            editing_locked: locked, 
+            updated_at: new Date().toISOString() 
+          })
+          .in('id', groupIds)
+          .select();
+          
+        if (error) throw error;
+        alert(`${data?.length || 0}件の編集権限を一括更新しました。`);
+      } else {
+        alert('対象となる団体が見つかりませんでした。');
       }
+      
       await fetchData();
       triggerRevalidate();
     } catch (error) {
       console.error('Bulk lock error:', error);
+      alert(`一括ロック更新に失敗しました: ${error.message}`);
     } finally {
       setIsBulkUpdating(false);
     }
@@ -564,19 +607,30 @@ const HQDashboard = () => {
       const EXCLUDED_ID = '8d112d95-14cb-4eee-8a5f-2580f502668a';
       const targetGroups = groups.filter(g => 
         g.id !== EXCLUDED_ID && 
-        !(g.department?.split(',').map(d => d.trim()).includes('公演'))
+        !((g.department || '').split(',').map(d => d.trim()).includes('公演'))
       );
-      const groupIds = targetGroups.map(g => g.id);
       
-      if (groupIds.length > 0) {
-        await supabase.from('groups').update({
-          last_reset_at: new Date().toISOString()
-        }).in('id', groupIds);
+      if (targetGroups.length > 0) {
+        const groupIds = targetGroups.map(g => g.id);
+        const { data, error } = await supabase.from('groups')
+          .update({ 
+            last_reset_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .in('id', groupIds)
+          .select();
+          
+        if (error) throw error;
+        alert(`${data?.length || 0}件を一括ログアウトさせました。`);
+      } else {
+        alert('対象となる団体が見つかりませんでした。');
       }
+      
       await fetchData();
       triggerRevalidate();
     } catch (error) {
       console.error('Bulk logout error:', error);
+      alert(`一括ログアウトに失敗しました: ${error.message}`);
     } finally {
       setIsBulkUpdating(false);
     }
