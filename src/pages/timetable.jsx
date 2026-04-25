@@ -481,7 +481,8 @@ const Timetable = ({ initialPerformances }) => {
                             </div>
                             <div className="flex-1 flex items-center justify-center w-full">
                               <div className={`text-base font-black text-center leading-tight ${
-                                ['ended', 'none'].includes(selectedPerf.computedTicket || selectedPerf.status) ? 'text-slate-500' :
+                                (selectedPerf.computedTicket || selectedPerf.status) === 'ended' ? 'text-rose-600' :
+                                (selectedPerf.computedTicket || selectedPerf.status) === 'none' ? 'text-slate-500' :
                                 'text-emerald-600'
                               }`}>
                                 {getStatusLabel(selectedPerf.computedTicket || selectedPerf.status).replace('整理券', '')}
@@ -490,10 +491,12 @@ const Timetable = ({ initialPerformances }) => {
                           </div>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 font-bold leading-relaxed text-center">
-                        整理券は紙での配布となります。<br />
-                        詳細は各団体にご確認ください。
-                      </p>
+                      {selectedPerf.groups?.has_ticket_status && (
+                        <p className="text-[11px] text-slate-400 font-bold leading-relaxed text-center">
+                          整理券は紙での配布となります。<br />
+                          詳細は各団体にご確認ください。
+                        </p>
+                      )}
                     </>
                   )}
                 </div>
