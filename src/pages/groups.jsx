@@ -244,13 +244,13 @@ const GroupCard = forwardRef(({
         </div>
       </div>
 
-      <div className="flex-grow space-y-6">
+      <div className="flex-grow space-y-4">
         <p className="text-sm text-slate-500 font-bold leading-relaxed whitespace-pre-wrap">
           {group.description}
         </p>
 
         {(group.has_performances || departments.includes('公演')) && (group.performances || []).length > 0 && (
-          <div className="pt-6 border-t border-slate-50 space-y-4">
+          <div className="space-y-4">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 group/btn ${
