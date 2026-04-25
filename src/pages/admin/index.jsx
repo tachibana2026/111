@@ -13,6 +13,11 @@ const AdminLogin = () => {
   const router = useRouter();
 
   useEffect(() => {
+    const { message } = router.query;
+    if (message === 'timeout') {
+      setError('セッションが切れました。再度ログインしてください。');
+    }
+
     const authType = localStorage.getItem('ryoun_auth_type');
     const groupIdSaved = localStorage.getItem('ryoun_group_id');
 
@@ -21,7 +26,7 @@ const AdminLogin = () => {
     } else if (authType === 'group' && groupIdSaved) {
       router.replace('/admin/dashboard');
     }
-  }, [router]);
+  }, [router, router.query]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

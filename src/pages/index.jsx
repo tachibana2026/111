@@ -255,7 +255,7 @@ const Home = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
                     {/* Visitors */}
                     <motion.a
-                      href="https://forms.gle/ZCapvAkzZsywhDMU8"
+                      href="https://docs.google.com/forms/d/e/1FAIpQLSd5yD7DVhKpC_Sb_357XtLJTF25T9OAedNWBzPf2-1w5Kj7FA/viewform?usp=pp_url&entry.249308399=1&entry.833029210=1&entry.83968647=1&entry.802661669=1&entry.1369323239=1&entry.1688463110=1&entry.261354764=1&entry.867981035=1&entry.298333243=1&entry.1463226499=1&entry.1666310131=1&entry.1082912239=1&entry.681153693=1&entry.1077231570=1&entry.700836762=1&entry.1342516405=1&entry.16776596=1&entry.938338203=1&entry.1435724050=1&entry.2102912724=1&entry.448310341=1&entry.968252275=1&entry.2009452398=1&entry.694705143=1&entry.1601411245=1&entry.1384529605=1&entry.542183590=1"
                       target="_blank"
                       rel="noopener noreferrer"
                       whileHover={{ y: -5 }}
@@ -276,7 +276,7 @@ const Home = () => {
 
                     {/* Students & Teachers */}
                     <motion.a
-                      href="https://forms.gle/9pecbGrrvZjvEgg18"
+                      href="https://docs.google.com/forms/d/e/1FAIpQLSeGSrihMXgdUOKr6kTrjUQhrJROGvaWgmygIHqf5fbMR2hk8g/viewform?usp=pp_url&entry.1378729720=1&entry.833029210=1&entry.83968647=1&entry.802661669=1&entry.1369323239=1&entry.1688463110=1&entry.261354764=1&entry.867981035=1&entry.298333243=1&entry.1463226499=1&entry.1666310131=1&entry.1082912239=1&entry.681153693=1&entry.1077231570=1&entry.700836762=1&entry.1342516405=1&entry.16776596=1&entry.938338203=1&entry.1435724050=1&entry.2102912724=1&entry.448310341=1&entry.968252275=1&entry.2009452398=1&entry.694705143=1&entry.1601411245=1&entry.1384529605=1&entry.542183590=1"
                       target="_blank"
                       rel="noopener noreferrer"
                       whileHover={{ y: -5 }}

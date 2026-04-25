@@ -3,9 +3,9 @@ import { supabase } from '../../lib/supabase';
 import {
   Users, PackageSearch, ShieldCheck,
   Lock, Unlock, Plus, RefreshCw, MapPin,
-  LogOut, CheckCircle2, Clock, Edit2, XCircle, X,
+  LogOut, CheckCircle2, Clock, Edit2, XCircle, X, Trash2,
   AlertTriangle, Info, Ticket, Save, Filter, Loader2,
-  ChevronDown, Search, Calendar
+  ChevronDown, Search, Calendar, Bell, AlertCircle, MessageSquare
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -356,6 +356,7 @@ const HQDashboard = () => {
   const [editingLostFound, setEditingLostFound] = useState(null);
   const [isLostFoundModalOpen, setIsLostFoundModalOpen] = useState(false);
 
+
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -474,13 +475,20 @@ const HQDashboard = () => {
     requireConfirm(
       '本部管理画面から\n【ログアウト】しますか？',
       async () => {
-        await supabase.auth.signOut();
-        localStorage.removeItem('ryoun_auth_type');
-        localStorage.removeItem('ryoun_group_id');
-        localStorage.removeItem('ryoun_password');
-        localStorage.removeItem('ryoun_login_at');
-        sessionStorage.removeItem('ryoun_hq_filters');
-        router.push('/admin');
+        try {
+          // localStorageを先にクリアして再リダイレクトを防ぐ
+          localStorage.removeItem('ryoun_auth_type');
+          localStorage.removeItem('ryoun_group_id');
+          localStorage.removeItem('ryoun_password');
+          localStorage.removeItem('ryoun_login_at');
+          sessionStorage.removeItem('ryoun_hq_filters');
+          
+          await supabase.auth.signOut();
+        } catch (e) {
+          console.error('Logout error:', e);
+        } finally {
+          router.push('/admin');
+        }
       },
       'ログアウト',
       <LogOut className="w-7 h-7 md:w-8 md:h-8" />
@@ -493,8 +501,7 @@ const HQDashboard = () => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        alert('セッションが切れました。再度ログインしてください。');
-        router.push('/admin');
+        router.push('/admin?message=timeout');
       }
     };
     checkSession();
@@ -553,7 +560,7 @@ const HQDashboard = () => {
           throw new Error('更新対象が見つかりません。権限がないか、セッションが切れている可能性があります。');
         }
         
-        alert(`一括更新を完了しました。（${data.length}件）`);
+        // alert(`一括更新を完了しました。（${data.length}件）`);
       } else {
         alert('対象となる団体（公演団体を除く）が見つかりませんでした。');
       }
@@ -587,7 +594,7 @@ const HQDashboard = () => {
           .select();
           
         if (error) throw error;
-        alert(`${data?.length || 0}件の編集権限を一括更新しました。`);
+        // alert(`${data?.length || 0}件の編集権限を一括更新しました。`);
       } else {
         alert('対象となる団体が見つかりませんでした。');
       }
@@ -621,7 +628,7 @@ const HQDashboard = () => {
           .select();
           
         if (error) throw error;
-        alert(`${data?.length || 0}件を一括ログアウトさせました。`);
+        // alert(`${data?.length || 0}件を一括ログアウトさせました。`);
       } else {
         alert('対象となる団体が見つかりませんでした。');
       }
@@ -642,6 +649,7 @@ const HQDashboard = () => {
       triggerRevalidate();
     }, '削除');
   };
+
 
   if (!isMounted) {
     return (
@@ -741,7 +749,7 @@ const HQDashboard = () => {
       {/* Header sections moved to activeTab === 'groups' */}
 
       {/* Tabs / Navigation */}
-      <div className="flex w-full overflow-hidden pb-2 md:pb-0">
+      <div className="flex w-full overflow-hidden py-2 md:py-4">
         <div className="flex w-full p-1 md:p-2 bg-slate-100/80 backdrop-blur-md rounded-2xl md:rounded-[2.5rem] border border-slate-200/50 shadow-inner">
           {[
             { id: 'groups', label: '団体管理', icon: <Users className="w-4 h-4 md:w-[18px] md:h-[18px]" /> },
@@ -759,13 +767,10 @@ const HQDashboard = () => {
         </div>
       </div>
       {activeTab === 'groups' && (
-        <div className="space-y-6 md:space-y-10">
-          <div className="bg-white border border-slate-100 rounded-3xl md:rounded-[3.5rem] shadow-sm overflow-hidden">
-            <div className="p-6 md:p-10 border-b border-slate-50 bg-white/50 backdrop-blur-xl">
-              <div className="flex flex-col space-y-4 md:space-y-6 flex-1">
-                  {/* Bulk Management (Permanently Visible) */}
-                  <div className="bg-slate-50/50 rounded-[2rem] border border-slate-100/50 overflow-hidden">
-                    <div className="w-full px-8 py-5 flex items-center justify-between border-b border-white/50">
+        <div className="space-y-6 md:space-y-10 pt-2 md:pt-4">
+          {/* Bulk Management (Permanently Visible) */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="w-full px-8 py-6 flex items-center justify-between border-b border-slate-50">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center">
                           <RefreshCw className={`w-5 h-5 ${isBulkUpdating ? 'animate-spin' : ''}`} />
@@ -845,170 +850,171 @@ const HQDashboard = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Search Bar (Moved here) */}
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-                      <Search size={22} className="text-slate-300 group-focus-within:text-brand-500 transition-colors" strokeWidth={3} />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="団体を検索"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-white border-2 border-slate-100 rounded-[2rem] md:rounded-3xl py-4 md:py-6 pl-14 md:pl-16 pr-14 md:pr-16 text-base md:text-lg font-bold text-slate-700 placeholder:text-slate-300 outline-none transition-all focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 shadow-sm hover:shadow-md"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery('')}
-                        className="absolute inset-y-0 right-6 flex items-center text-slate-300 hover:text-slate-500 transition-colors"
-                      >
-                        <X size={22} strokeWidth={3} />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="bg-white border-2 border-slate-100 rounded-[2rem] p-5 md:p-6 shadow-sm overflow-hidden">
-                    <button
-                      onClick={() => setIsFilterOpen(!isFilterOpen)}
-                      className="w-full flex items-center justify-between group px-2"
-                    >
-                      <div className="flex items-center gap-4 text-slate-900">
-                        <div className={`p-2.5 rounded-xl transition-all duration-500 ${isFilterOpen ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 shadow-sm transition-transform group-hover:scale-110'}`}>
-                          <Filter size={18} strokeWidth={2.5} />
-                        </div>
-                        <div className="text-left flex items-center gap-3">
-                          <h2 className="text-lg font-black tracking-tight">絞り込み</h2>
-                          {!isFilterOpen && (selectedDept !== 'すべて' || filterGrade !== 'すべて' || filterBuilding !== 'すべて') && (
-                            <div className="flex flex-wrap gap-1.5">
-                              {[filterGrade, selectedDept, filterBuilding].filter(f => f !== 'すべて').map(f => (
-                                <span key={f} className="px-2 py-0.5 bg-brand-600 text-white text-[9px] rounded-lg font-black shadow-sm shadow-brand-500/20">
-                                  {f}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className={`p-1.5 rounded-full transition-all duration-300 ${isFilterOpen ? 'bg-brand-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
-                        <ChevronDown size={18} />
-                      </div>
-                    </button>
-
-                    <AnimatePresence>
-                      {isFilterOpen && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
-                          className="overflow-hidden"
-                        >
-                          <div className="flex flex-col space-y-8 pt-8 pb-4">
-                            <div className="flex flex-col space-y-4">
-                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                                <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 部門
-                              </span>
-                              <div className="flex flex-wrap items-center gap-2.5">
-                                {DEPARTMENTS.map(d => (
-                                  <button
-                                    key={d}
-                                    onClick={() => setSelectedDept(d)}
-                                    className={`px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${selectedDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                                  >
-                                    {d}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="flex flex-col space-y-4">
-                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                                <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 学年・有志
-                              </span>
-                              <div className="flex flex-wrap items-center gap-2.5">
-                                {GRADES.map(g => (
-                                  <button
-                                    key={g}
-                                    onClick={() => setFilterGrade(g)}
-                                    className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterGrade === g ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                                  >
-                                    {g}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="flex flex-col space-y-4">
-                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                                <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 場所
-                              </span>
-                              <div className="flex flex-wrap items-center gap-2.5">
-                                {BUILDINGS.map(b => (
-                                  <button
-                                    key={b}
-                                    onClick={() => setFilterBuilding(b)}
-                                    className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterBuilding === b ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                                  >
-                                    {b}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-               </div>
-            </div>
           </div>
+
+          {/* Search Bar (Moved here) */}
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
+              <Search size={22} className="text-slate-300 group-focus-within:text-brand-500 transition-colors" strokeWidth={3} />
+            </div>
+            <input
+              type="text"
+              placeholder="団体を検索"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border-2 border-slate-100 rounded-[2rem] md:rounded-3xl py-4 md:py-6 pl-14 md:pl-16 pr-14 md:pr-16 text-base md:text-lg font-bold text-slate-700 placeholder:text-slate-300 outline-none transition-all focus:border-brand-500 focus:ring-8 focus:ring-brand-500/5 shadow-sm hover:shadow-md"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-6 flex items-center text-slate-300 hover:text-slate-500 transition-colors"
+              >
+                <X size={22} strokeWidth={3} />
+              </button>
+            )}
+          </div>
+
+          <div className="bg-white border-2 border-slate-100 rounded-[2rem] p-5 md:p-6 shadow-sm overflow-hidden">
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="w-full flex items-center justify-between group px-2"
+            >
+              <div className="flex items-center gap-4 text-slate-900">
+                <div className={`p-2.5 rounded-xl transition-all duration-500 ${isFilterOpen ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 shadow-sm transition-transform group-hover:scale-110'}`}>
+                  <Filter size={18} strokeWidth={2.5} />
+                </div>
+                <div className="text-left flex items-center gap-3">
+                  <h2 className="text-lg font-black tracking-tight">絞り込み</h2>
+                  {!isFilterOpen && (selectedDept !== 'すべて' || filterGrade !== 'すべて' || filterBuilding !== 'すべて') && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {[filterGrade, selectedDept, filterBuilding].filter(f => f !== 'すべて').map(f => (
+                        <span key={f} className="px-2 py-0.5 bg-brand-600 text-white text-[9px] rounded-lg font-black shadow-sm shadow-brand-500/20">
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className={`p-1.5 rounded-full transition-all duration-300 ${isFilterOpen ? 'bg-brand-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
+                <ChevronDown size={18} />
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {isFilterOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-col space-y-8 pt-8 pb-4">
+                    <div className="flex flex-col space-y-4">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                        <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 部門
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {DEPARTMENTS.map(d => (
+                          <button
+                            key={d}
+                            onClick={() => setSelectedDept(d)}
+                            className={`px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${selectedDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col space-y-4">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                        <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 学年・有志
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {GRADES.map(g => (
+                          <button
+                            key={g}
+                            onClick={() => setFilterGrade(g)}
+                            className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterGrade === g ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                          >
+                            {g}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col space-y-4">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                        <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 場所
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {BUILDINGS.map(b => (
+                          <button
+                            key={b}
+                            onClick={() => setFilterBuilding(b)}
+                            className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterBuilding === b ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                          >
+                            {b}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+
 
           {/* Sort Controls */}
           <div className="flex justify-end px-2">
             <div className="flex items-center gap-4">
-                  <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <RefreshCw size={14} className="text-brand-600/50" /> 並び替え
-                  </span>
-                  <div className="relative group">
-                    <select
-                      className="w-full min-w-[200px] bg-white border-2 border-slate-100 rounded-2xl py-3 pl-5 pr-12 text-xs font-black text-slate-700 outline-none transition-all focus:border-brand-500 appearance-none cursor-pointer shadow-sm hover:shadow-md"
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                    >
-                      <option value="name">団体名順</option>
-                      <option value="title">タイトル順</option>
-                      <option value="time-asc">待ち時間 (短い順)</option>
-                      <option value="time-desc">待ち時間 (長い順)</option>
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-brand-600 transition-colors">
-                      <ChevronDown size={14} strokeWidth={3} />
-                    </div>
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <RefreshCw size={14} className="text-brand-600/50" /> 並び替え
+              </span>
+              <div className="relative group">
+                <select
+                  className="w-full min-w-[200px] bg-white border-2 border-slate-100 rounded-2xl py-3 pl-5 pr-12 text-xs font-black text-slate-700 outline-none transition-all focus:border-brand-500 appearance-none cursor-pointer shadow-sm hover:shadow-md"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="name">団体名順</option>
+                  <option value="title">タイトル順</option>
+                  <option value="time-asc">待ち時間 (短い順)</option>
+                  <option value="time-desc">待ち時間 (長い順)</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-brand-600 transition-colors">
+                  <ChevronDown size={14} strokeWidth={3} />
                 </div>
+              </div>
             </div>
-        </div>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <AnimatePresence mode="popLayout">
-                {filteredAndSortedGroups
-                  .map(g => (
-                    <HQGroupCard
-                      key={g.id}
-                      g={g}
-                      selectedDept={selectedDept}
-                      setEditingGroup={setEditingGroup}
-                      setIsEditModalOpen={setIsEditModalOpen}
-                      requireConfirm={requireConfirm}
-                      fetchData={fetchData}
-                      formatRelativeTime={formatRelativeTime}
-                    />
-                  ))
-                }
-              </AnimatePresence>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence mode="popLayout">
+              {filteredAndSortedGroups
+                .map(g => (
+                  <HQGroupCard
+                    key={g.id}
+                    g={g}
+                    selectedDept={selectedDept}
+                    setEditingGroup={setEditingGroup}
+                    setIsEditModalOpen={setIsEditModalOpen}
+                    requireConfirm={requireConfirm}
+                    fetchData={fetchData}
+                    formatRelativeTime={formatRelativeTime}
+                  />
+                ))
+              }
+            </AnimatePresence>
+          </div>
         </div>
       )}
+
+
       {activeTab === 'lost_found' && (
-        <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[3.5rem] p-6 md:p-10 shadow-sm space-y-6 md:space-y-8">
+        <div className="space-y-6 md:space-y-8 pt-2 md:pt-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">落とし物管理</h3>
             <button
@@ -1046,16 +1052,24 @@ const HQDashboard = () => {
                   </div>
                 </div>
 
-                <div className="w-full pt-6 border-t border-slate-100 flex items-center justify-end gap-6">
+                <div className="w-full pt-6 border-t border-slate-100 flex items-center justify-end gap-3">
                   <button
                     onClick={() => {
                       setEditingLostFound(item);
                       setIsLostFoundModalOpen(true);
                     }}
-                    className="text-[11px] font-black text-brand-600 hover:text-brand-700 tracking-[0.2em] uppercase transition-colors">編集</button>
+                    className="px-5 py-2.5 bg-brand-600 text-white rounded-xl text-[11px] font-black shadow-lg shadow-brand-500/20 transition-all hover:bg-brand-700 active:scale-95 flex items-center gap-2"
+                  >
+                    <Edit2 size={14} strokeWidth={3} />
+                    編集
+                  </button>
                   <button
                     onClick={() => handleDeleteLostFound(item.id)}
-                    className="text-[11px] font-black text-rose-400 hover:text-rose-600 tracking-[0.2em] uppercase transition-colors">削除</button>
+                    className="px-5 py-2.5 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl text-[11px] font-black transition-all hover:bg-rose-600 hover:text-white active:scale-95 flex items-center gap-2"
+                  >
+                    <Trash2 size={14} strokeWidth={3} />
+                    削除
+                  </button>
                 </div>
               </div>
             ))}
@@ -1092,9 +1106,11 @@ const HQDashboard = () => {
                     キャンセル
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+                    onClick={async () => {
+                      const action = confirmDialog.onConfirm;
+                      // 先にダイアログを閉じることでフリーズ感を防ぐ
                       setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                      if (action) await action();
                     }}
                     className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all"
                   >
@@ -1136,6 +1152,7 @@ const HQDashboard = () => {
           </Portal>
         )}
       </AnimatePresence>
+
       {/* Loading Overlay */}
       <Portal>
         <AnimatePresence>
@@ -1671,5 +1688,6 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
     </Portal>
   );
 };
+
 
 export default HQDashboard;

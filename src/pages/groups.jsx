@@ -289,12 +289,15 @@ const GroupCard = forwardRef(({
                   className="overflow-hidden"
                 >
                   <div className="space-y-6 pt-2 pb-2">
-                  <div className="flex items-center gap-2 px-1 pb-1">
+                  <div className="flex flex-col gap-1 px-1 pb-1">
                     <p className="text-[10px] font-bold text-slate-400">
-                      {(group.has_performances || departments.includes('公演')) && !group.has_reception && !group.has_ticket_status 
-                        ? "整理券はありません。直接会場へお越しください。" 
-                        : "各公演回をタップすると詳細が表示されます"}
+                      各公演回をタップすると詳細が表示されます。
                     </p>
+                    {!group.has_ticket_status && (
+                      <p className="text-[10px] font-bold text-slate-400">
+                        整理券はありません。直接会場へお越しください。
+                      </p>
+                    )}
                   </div>
                   {(() => {
                     const nextPerf = getNextPerformance(group);

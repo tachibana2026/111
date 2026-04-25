@@ -1,8 +1,13 @@
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Home, Users, Clock, PackageSearch, UserCog } from 'lucide-react';
+import { 
+  Home, Users, Clock, PackageSearch, UserCog, 
+  AlertTriangle, X, WifiOff, Info, CheckCircle2, AlertCircle
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Head from 'next/head';
+import { supabase } from '../lib/supabase';
 
 const Layout = ({ children }) => {
   const router = useRouter();
@@ -33,6 +38,50 @@ const Layout = ({ children }) => {
     return 'たちばな祭2026';
   };
 
+  const [isOnline, setIsOnline] = useState(true);
+  const [showDarkModeWarning, setShowDarkModeWarning] = useState(false);
+
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // オフライン検知
+    setIsOnline(navigator.onLine);
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // ダークモード検知
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const checkDarkMode = (e) => {
+      const dismissed = sessionStorage.getItem('dismissed-dark-mode-warning');
+      if (e.matches && !dismissed) {
+        setShowDarkModeWarning(true);
+      } else {
+        setShowDarkModeWarning(false);
+      }
+    };
+
+    checkDarkMode(mediaQuery);
+    mediaQuery.addEventListener('change', checkDarkMode);
+
+
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      mediaQuery.removeEventListener('change', checkDarkMode);
+    };
+  }, []);
+
+
+
+  const dismissDarkModeWarning = () => {
+    setShowDarkModeWarning(false);
+    sessionStorage.setItem('dismissed-dark-mode-warning', 'true');
+  };
+
   return (
     <div className="min-h-screen flex flex-col pb-28 md:pb-0 md:pt-20 bg-slate-50/30">
       <Head>
@@ -40,7 +89,7 @@ const Layout = ({ children }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <meta name="google-site-verification" content="vPtf7XF5A3UF7EC6PKbwyGE3bvmheVPGOQvMzfO1PqM" />
         {isAdminPage && <meta name="robots" content="noindex, nofollow" />}
-        <meta name="description" content="令和8年度 千葉県立船橋高等学校 文化祭「たちばな祭2026」の公式サイト" />
+        <meta name="description" content="令和8年度 千橋県立船橋高等学校 文化祭「たちばな祭2026」の公式サイト" />
         
         {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
@@ -60,6 +109,52 @@ const Layout = ({ children }) => {
         <link rel="icon" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </Head>
+
+      <AnimatePresence>
+        {!isOnline && (
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] w-[calc(100%-2rem)] max-w-[320px]"
+          >
+            <div className="bg-white/90 backdrop-blur-xl border border-slate-100 rounded-[2rem] p-5 shadow-2xl flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                <WifiOff size={20} />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-sm font-black text-slate-900">オフライン</span>
+                <span className="text-[10px] font-bold text-slate-400 mt-0.5">キャッシュを表示中</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        {showDarkModeWarning && (
+          <motion.div
+            initial={{ y: -50, opacity: 0 }}
+            animate={{ y: !isOnline ? 100 : 0, opacity: 1 }}
+            exit={{ y: -50, opacity: 0 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[1001] w-[calc(100%-2rem)] max-w-[320px]"
+          >
+            <div className="bg-white/90 backdrop-blur-xl border border-slate-100 rounded-[2rem] p-5 shadow-2xl flex items-center gap-4 relative">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="flex flex-col text-left pr-6">
+                <span className="text-sm font-black text-slate-900">ダークモード非対応</span>
+                <span className="text-[10px] font-bold text-slate-400 mt-0.5 leading-relaxed">ライトモードを推奨します</span>
+              </div>
+              <button 
+                onClick={dismissDarkModeWarning}
+                className="absolute top-1/2 -translate-y-1/2 right-3 w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-slate-600 hover:bg-slate-50 transition-all"
+              >
+                <X size={16} strokeWidth={3} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+      </AnimatePresence>
 
       {/* Desktop Header */}
 
@@ -116,7 +211,7 @@ const Layout = ({ children }) => {
               key={item.path}
               href={item.path}
               className={`flex flex-col items-center justify-center w-full h-full transition-all relative ${
-                isActive ? 'text-brand-600' : 'text-slate-400 hover:text-slate-500'
+                isActive ? 'text-brand-600' : 'text-slate-400 hover:text-slate-50'
               }`}
             >
               <div className={`p-2 rounded-2xl transition-all duration-300 ${isActive ? 'bg-brand-50' : 'bg-transparent'}`}>
@@ -125,8 +220,8 @@ const Layout = ({ children }) => {
               <span className={`text-[9px] mt-1 font-black tracking-tight ${isActive ? 'opacity-100' : 'opacity-60'}`}>{item.name}</span>
               {isActive && (
                 <motion.div 
-                  layoutId="active-nav-glow"
-                  className="absolute -bottom-1 w-12 h-1 bg-brand-600/20 blur-sm rounded-full" 
+                   layoutId="active-nav-glow"
+                   className="absolute -bottom-1 w-12 h-1 bg-brand-600/20 blur-sm rounded-full" 
                 />
               )}
             </Link>

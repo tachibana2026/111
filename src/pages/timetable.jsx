@@ -180,7 +180,6 @@ const Timetable = ({ initialPerformances }) => {
 
     return BUILDING_ORDER.map(building => {
       const groups = map.get(building).sort((a, b) => {
-        if ((a.room || '') !== (b.room || '')) return (a.room || '').localeCompare(b.room || '', 'ja', { numeric: true });
         return (a.name || '').localeCompare(b.name || '', 'ja', { numeric: true });
       });
       return { building, groups };
@@ -246,7 +245,7 @@ const Timetable = ({ initialPerformances }) => {
       </div>
 
       <div className="flex items-center gap-2 px-1">
-        <p className="text-xs font-black text-slate-400">各公演回をタップすると詳細が表示されます</p>
+        <p className="text-xs font-black text-slate-400">各公演回をタップすると詳細が表示されます。</p>
       </div>
 
       <div 

@@ -148,7 +148,7 @@ const GroupDashboard = () => {
     } else {
       const loginAt = localStorage.getItem('ryoun_login_at');
       if (data.last_reset_at && loginAt && new Date(data.last_reset_at) > new Date(loginAt)) {
-        handleLogout();
+        handleLogout('timeout');
         return;
       }
       setGroup(data);
@@ -267,12 +267,12 @@ const GroupDashboard = () => {
     }));
   };
 
-  const handleLogout = () => {
+  const handleLogout = (message = '') => {
     localStorage.removeItem('ryoun_group_id');
     localStorage.removeItem('ryoun_auth_type');
     localStorage.removeItem('ryoun_login_at');
     localStorage.removeItem('ryoun_password');
-    router.push('/admin');
+    router.push(message ? `/admin?message=${message}` : '/admin');
   };
 
   const confirmLogout = () => {
@@ -837,9 +837,11 @@ const GroupDashboard = () => {
                     キャンセル
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+                    onClick={async () => {
+                      const action = confirmDialog.onConfirm;
+                      // 先にダイアログを閉じることでフリーズ感を防ぐ
                       setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                      if (action) await action();
                     }}
                     className="order-1 md:order-2 flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all"
                   >
