@@ -180,7 +180,7 @@ const GroupCard = forwardRef(({
             </span>
           </div>
           
-          <div className="absolute top-5 right-5 md:top-8 md:right-8 flex flex-col items-end gap-2 shrink-0">
+          <div className="absolute top-[16px] right-5 md:top-[28px] md:right-8 flex flex-col items-end gap-2 shrink-0">
             {!(group.has_performances || departments.includes('公演')) ? (
               <>
                 <div className="flex items-center gap-2">
