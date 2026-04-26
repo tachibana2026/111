@@ -100,7 +100,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                   setSelectedPerf({ ...p, currentReception, computedTicket: actualTicket });
                 }
               }}
-              className={`px-4 py-3 rounded-xl border flex flex-col justify-center gap-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100' : isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 'bg-white text-slate-600 border-slate-100'}`}
+              className={`px-4 py-3 rounded-xl border flex flex-col justify-center gap-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 shadow-sm hover:shadow-md ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60' : isNext ? 'bg-brand-50 text-brand-700 border-brand-400' : 'bg-white text-slate-600 border-slate-200'}`}
             >
               <div className="flex justify-between items-center">
                 <span className="text-xs font-black">
@@ -116,7 +116,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                     currentReception === 'before_open' ? 'text-slate-400' : 
                     'text-emerald-600'
                   }`}>
-                    <Info size={10} strokeWidth={3} />
+                    <Info size={10} strokeWidth={3} className="shrink-0 -translate-y-[0.5px]" />
                     {receptionStatus}
                   </div>
                 )}
@@ -126,7 +126,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                     actualTicket === 'none' ? 'text-slate-400' :
                     'text-emerald-600'
                   }`}>
-                    <Ticket size={10} strokeWidth={3} />
+                    <Ticket size={10} strokeWidth={3} className="shrink-0 -translate-y-[0.5px]" />
                     {ticketStatus.replace('整理券', '')}
                   </div>
                 )}
@@ -183,29 +183,31 @@ const GroupCard = forwardRef(({
           <div className="absolute top-[16px] right-5 md:top-[28px] md:right-8 flex flex-col items-end gap-2 shrink-0">
             {!(group.has_performances || departments.includes('公演')) ? (
               <>
-                <div className="flex items-center gap-2">
-                  {group.has_waiting_time && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
-                    <div className={`px-3 py-1.5 min-w-[96px] rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
-                      group.waiting_time <= 10 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                      group.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
-                      'bg-rose-50 border-rose-100 text-rose-600'
-                    }`}>
-                      <Clock size={11} strokeWidth={3} />
-                      {group.waiting_time === 0 ? '待ちなし' : `${group.waiting_time}分待ち`}
-                    </div>
-                  )}
-                  {group.has_reception && (
-                    <div className={`px-3 py-1.5 min-w-[96px] rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
-                      group.reception_status === 'closed' || group.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
-                      group.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
-                      group.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
-                      'bg-emerald-50 border-emerald-100 text-emerald-600'
-                    }`}>
-                      <Info size={11} strokeWidth={3} />
-                      {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[group.reception_status] || group.reception_status}
-                    </div>
-                  )}
-                </div>
+                {(group.has_waiting_time && !['closed', 'ended', 'before_open'].includes(group.reception_status) || group.has_reception) && (
+                  <div className="flex items-center gap-2">
+                    {group.has_waiting_time && !['closed', 'ended', 'before_open'].includes(group.reception_status) && (
+                      <div className={`px-3 py-1.5 min-w-[96px] rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                        group.waiting_time <= 10 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                        group.waiting_time <= 30 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                        'bg-rose-50 border-rose-100 text-rose-600'
+                      }`}>
+                        <Clock size={11} strokeWidth={3} />
+                        {group.waiting_time === 0 ? '待ちなし' : `${group.waiting_time}分待ち`}
+                      </div>
+                    )}
+                    {group.has_reception && (
+                      <div className={`px-3 py-1.5 min-w-[96px] rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                        group.reception_status === 'closed' || group.reception_status === 'ended' ? 'bg-rose-50 border-rose-100 text-rose-600' :
+                        group.reception_status === 'before_open' ? 'bg-slate-50 border-slate-100 text-slate-400' :
+                        group.reception_status === 'ticket_only' ? 'bg-brand-50 border-brand-100 text-brand-600' :
+                        'bg-emerald-50 border-emerald-100 text-emerald-600'
+                      }`}>
+                        <Info size={11} strokeWidth={3} />
+                        {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了', ended: '受付終了' }[group.reception_status] || group.reception_status}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {group.has_ticket_status && (
                   <div className={`px-3 py-1.5 min-w-[96px] rounded-full border shadow-sm text-[10px] font-black whitespace-nowrap flex items-center justify-center gap-1.5 ${
                     group.ticket_status === 'distributing' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :

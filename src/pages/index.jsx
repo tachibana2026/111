@@ -158,7 +158,7 @@ const Home = () => {
               <div className="space-y-4">
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
-                  <p className="text-sm font-bold">上履き（またはスリッパ）と靴袋をご持参ください。</p>
+                  <p className="text-sm font-bold">上履き（またはスリッパ）と靴袋をご持参ください。（数に限りがあります）</p>
                 </div>
                 <div className="flex items-start space-x-3 text-slate-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-500 mt-1.5 shrink-0"></div>
@@ -198,10 +198,8 @@ const Home = () => {
 
       {/* Voting Section */}
       <section className="px-4 md:px-0 max-w-7xl mx-auto">
-        <motion.button
-          onClick={() => setIsVoteModalOpen(true)}
+        <motion.div
           whileHover={{ y: -5, scale: 1.01 }}
-          whileActive={{ scale: 0.98 }}
           className="w-full bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-sm relative overflow-hidden group text-left transition-all"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-brand-50 rounded-full blur-3xl -z-10 group-hover:bg-brand-100 transition-colors" />
@@ -219,12 +217,15 @@ const Home = () => {
               </p>
             </div>
 
-            <div className="flex items-center justify-center gap-4 bg-brand-600 px-10 py-5 rounded-2xl text-white font-black group-hover:bg-brand-700 transition-all w-full md:w-auto">
+            <button
+              onClick={() => setIsVoteModalOpen(true)}
+              className="flex items-center justify-center gap-4 bg-brand-600 px-10 py-5 rounded-2xl text-white font-black hover:bg-brand-700 active:scale-95 transition-all w-full md:w-auto shadow-lg shadow-brand-500/20"
+            >
               <span>投票する</span>
               <ArrowRight size={20} className="transition-transform group-hover:translate-x-2" />
-            </div>
+            </button>
           </div>
-        </motion.button>
+        </motion.div>
       </section>
 
       {/* Voting Modal */}
@@ -254,12 +255,8 @@ const Home = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-2">
                     {/* Visitors */}
-                    <motion.a
-                      href="https://docs.google.com/forms/d/e/1FAIpQLSd5yD7DVhKpC_Sb_357XtLJTF25T9OAedNWBzPf2-1w5Kj7FA/viewform?usp=pp_url&entry.249308399=1&entry.833029210=1&entry.83968647=1&entry.802661669=1&entry.1369323239=1&entry.1688463110=1&entry.261354764=1&entry.867981035=1&entry.298333243=1&entry.1463226499=1&entry.1666310131=1&entry.1082912239=1&entry.681153693=1&entry.1077231570=1&entry.700836762=1&entry.1342516405=1&entry.16776596=1&entry.938338203=1&entry.1435724050=1&entry.2102912724=1&entry.448310341=1&entry.968252275=1&entry.2009452398=1&entry.694705143=1&entry.1601411245=1&entry.1384529605=1&entry.542183590=1"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <motion.div
                       whileHover={{ y: -5 }}
-                      whileActive={{ scale: 0.98 }}
                       className="group p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-brand-200 hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all flex flex-col justify-between gap-6"
                     >
                       <div className="space-y-3">
@@ -268,19 +265,20 @@ const Home = () => {
                           校外からお越しいただいた方はこちらから投票をお願いします。
                         </p>
                       </div>
-                      <div className="flex items-center justify-between text-slate-900 font-black text-sm pt-4 border-t border-slate-100 group-hover:text-brand-600 transition-colors">
+                      <a
+                        href="https://docs.google.com/forms/d/e/1FAIpQLSd5yD7DVhKpC_Sb_357XtLJTF25T9OAedNWBzPf2-1w5Kj7FA/viewform?usp=pp_url&entry.249308399=1&entry.833029210=1&entry.83968647=1&entry.802661669=1&entry.1369323239=1&entry.1688463110=1&entry.261354764=1&entry.867981035=1&entry.298333243=1&entry.1463226499=1&entry.1666310131=1&entry.1082912239=1&entry.681153693=1&entry.1077231570=1&entry.700836762=1&entry.1342516405=1&entry.16776596=1&entry.938338203=1&entry.1435724050=1&entry.2102912724=1&entry.448310341=1&entry.968252275=1&entry.2009452398=1&entry.694705143=1&entry.1601411245=1&entry.1384529605=1&entry.542183590=1"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between text-slate-900 font-black text-sm pt-4 border-t border-slate-100 hover:text-brand-600 active:scale-95 transition-all"
+                      >
                         <span>フォームを開く</span>
                         <ArrowRight size={18} className="translate-x-0 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </motion.a>
+                      </a>
+                    </motion.div>
 
                     {/* Students & Teachers */}
-                    <motion.a
-                      href="https://docs.google.com/forms/d/e/1FAIpQLSeGSrihMXgdUOKr6kTrjUQhrJROGvaWgmygIHqf5fbMR2hk8g/viewform?usp=pp_url&entry.1378729720=1&entry.833029210=1&entry.83968647=1&entry.802661669=1&entry.1369323239=1&entry.1688463110=1&entry.261354764=1&entry.867981035=1&entry.298333243=1&entry.1463226499=1&entry.1666310131=1&entry.1082912239=1&entry.681153693=1&entry.1077231570=1&entry.700836762=1&entry.1342516405=1&entry.16776596=1&entry.938338203=1&entry.1435724050=1&entry.2102912724=1&entry.448310341=1&entry.968252275=1&entry.2009452398=1&entry.694705143=1&entry.1601411245=1&entry.1384529605=1&entry.542183590=1"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <motion.div
                       whileHover={{ y: -5 }}
-                      whileActive={{ scale: 0.98 }}
                       className="group p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:border-brand-200 hover:bg-white hover:shadow-xl hover:shadow-brand-900/5 transition-all flex flex-col justify-between gap-6"
                     >
                       <div className="space-y-3">
@@ -289,11 +287,16 @@ const Home = () => {
                           回答には船橋高校Googleアカウントでログインが必要です。
                         </p>
                       </div>
-                      <div className="flex items-center justify-between text-slate-900 font-black text-sm pt-4 border-t border-slate-100 group-hover:text-brand-600 transition-colors">
+                      <a
+                        href="https://docs.google.com/forms/d/e/1FAIpQLSeGSrihMXgdUOKr6kTrjUQhrJROGvaWgmygIHqf5fbMR2hk8g/viewform?usp=pp_url&entry.1378729720=1&entry.833029210=1&entry.83968647=1&entry.802661669=1&entry.1369323239=1&entry.1688463110=1&entry.261354764=1&entry.867981035=1&entry.298333243=1&entry.1463226499=1&entry.1666310131=1&entry.1082912239=1&entry.681153693=1&entry.1077231570=1&entry.700836762=1&entry.1342516405=1&entry.16776596=1&entry.938338203=1&entry.1435724050=1&entry.2102912724=1&entry.448310341=1&entry.968252275=1&entry.2009452398=1&entry.694705143=1&entry.1601411245=1&entry.1384529605=1&entry.542183590=1"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between text-slate-900 font-black text-sm pt-4 border-t border-slate-100 hover:text-brand-600 active:scale-95 transition-all"
+                      >
                         <span>フォームを開く</span>
                         <ArrowRight size={18} className="translate-x-0 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </motion.a>
+                      </a>
+                    </motion.div>
                   </div>
                 </div>
               </motion.div>
@@ -304,13 +307,9 @@ const Home = () => {
 
       {/* Feedback Section */}
       <section className="px-4 md:px-0 max-w-7xl mx-auto pb-12">
-        <motion.a
-          href="https://forms.gle/KQ7icJ7HWBaHyUdFA"
-          target="_blank"
-          rel="noopener noreferrer"
+        <motion.div
           whileHover={{ y: -5, scale: 1.01 }}
-          whileActive={{ scale: 0.98 }}
-          className="block w-full bg-slate-900 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-xl relative overflow-hidden group transition-all"
+          className="w-full bg-slate-900 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-xl relative overflow-hidden group transition-all"
         >
           <div className="absolute top-0 right-0 w-96 h-96 bg-brand-600/20 rounded-full blur-[100px] -z-10 group-hover:bg-brand-500/30 transition-colors" />
 
@@ -324,12 +323,17 @@ const Home = () => {
 
             <p className="text-slate-400 font-bold max-w-xl">サイト不具合の報告･ご意見等はこちら</p>
 
-            <div className="flex items-center justify-center gap-4 bg-white/10 px-10 py-5 rounded-2xl text-white font-black group-hover:bg-white/20 transition-all w-full">
+            <a
+              href="https://forms.gle/KQ7icJ7HWBaHyUdFA"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-4 bg-white/10 px-10 py-5 rounded-2xl text-white font-black hover:bg-white/20 active:scale-95 transition-all w-full"
+            >
               <span>フォームを開く</span>
               <ArrowRight size={20} className="transition-transform group-hover:translate-x-2" />
-            </div>
+            </a>
           </div>
-        </motion.a>
+        </motion.div>
       </section>
     </div>
   );

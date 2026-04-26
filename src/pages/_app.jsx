@@ -13,6 +13,23 @@ function MyApp({ Component, pageProps }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // 5時間（5 * 60 * 60 * 1000 ミリ秒）経過していたらService Workerのキャッシュを削除
+    const CACHE_EXPIRATION_MS = 5 * 60 * 60 * 1000;
+    const now = Date.now();
+    const lastCacheClear = localStorage.getItem('lastCacheClear');
+
+    if (!lastCacheClear || (now - parseInt(lastCacheClear, 10) > CACHE_EXPIRATION_MS)) {
+      if ('serviceWorker' in navigator && window.caches) {
+        window.caches.keys().then((cacheNames) => {
+          Promise.all(cacheNames.map((name) => window.caches.delete(name)))
+            .then(() => {
+              localStorage.setItem('lastCacheClear', now.toString());
+              console.log('Service Worker caches cleared after 5 hours.');
+            });
+        });
+      }
+    }
+
     const handleStart = (url) => {
       if (url !== router.pathname) setLoading(true);
     };

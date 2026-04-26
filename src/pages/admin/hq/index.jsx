@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo, forwardRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 import {
   Users, PackageSearch, ShieldCheck,
   Lock, Unlock, Plus, RefreshCw, MapPin,
   LogOut, CheckCircle2, Clock, Edit2, XCircle, X, Trash2,
   AlertTriangle, Info, Ticket, Save, Filter, Loader2,
-  ChevronDown, Search, Calendar, Bell, AlertCircle, MessageSquare
+  ChevronDown, Search, Calendar, Bell, AlertCircle, MessageSquare, SortDesc,
+  Monitor
 } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { triggerRevalidate } from '../../lib/revalidate';
-import Portal from '../../components/Portal';
+import { triggerRevalidate } from '../../../lib/revalidate';
+import Portal from '../../../components/Portal';
 
 const DEPARTMENTS = ['すべて', '体験', '食品', '公演', '展示', '冊子', '物販'];
 const formatDateTime = (isoString) => {
@@ -243,7 +244,7 @@ const HQGroupCard = forwardRef(({
                               const actualTicket = isOver ? 'ended' : p.status;
 
                               return (
-                                <div key={p.id} className={`px-4 ${(!g.has_reception && !g.has_ticket_status) ? 'py-4' : 'py-3'} rounded-xl border transition-all flex flex-col justify-center gap-1 ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60 saturate-50' : isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 'bg-white text-slate-600 border-slate-100'}`}>
+                                <div key={p.id} className={`px-4 ${(!g.has_reception && !g.has_ticket_status) ? 'py-4' : 'py-3'} rounded-xl border transition-all flex flex-col justify-center gap-1 shadow-sm hover:shadow-md ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60 saturate-50' : isNext ? 'bg-brand-50 text-brand-700 border-brand-400' : 'bg-white text-slate-600 border-slate-200'}`}>
                                   <div className={`flex justify-between items-center ${(!g.has_reception && !g.has_ticket_status) ? 'flex-1' : ''}`}>
                                     <span className="text-xs font-black">
                                       {p.start_time}{p.end_time && ` ～ ${p.end_time}`}
@@ -258,7 +259,7 @@ const HQGroupCard = forwardRef(({
                                               ['closed', 'ended'].includes(isOver ? 'closed' : p.reception_status) ? 'text-rose-600' :
                                                 'text-emerald-600'
                                           }`}>
-                                          <CheckCircle2 size={8} strokeWidth={3} />
+                                          <CheckCircle2 size={8} strokeWidth={3} className="shrink-0 -translate-y-[0.5px]" />
                                           {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[isOver ? 'closed' : (p.reception_status || 'open')]}
                                         </div>
                                       )}
@@ -267,7 +268,7 @@ const HQGroupCard = forwardRef(({
                                             actualTicket === 'none' ? 'text-slate-400' :
                                               'text-emerald-600'
                                           }`}>
-                                          <Ticket size={8} strokeWidth={3} />
+                                          <Ticket size={8} strokeWidth={3} className="shrink-0 -translate-y-[0.5px]" />
                                           {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[actualTicket]}
                                         </div>
                                       )}
@@ -662,7 +663,7 @@ const HQDashboard = () => {
   }
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-10 pb-12 pt-4 px-4 md:px-0">
+    <div className="container mx-auto space-y-6 md:space-y-10 pb-12 pt-4 px-4">
       {/* HQ Header */}
       <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-10">
         <div className="flex items-center space-x-4 md:space-x-8">
@@ -674,6 +675,13 @@ const HQDashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => window.open('/admin/hq/projector', '_blank')}
+            className="w-full md:w-auto px-6 md:px-10 py-4 md:py-5 bg-brand-50 text-brand-600 rounded-2xl md:rounded-3xl text-sm md:text-base font-black transition-all hover:bg-brand-600 hover:text-white border border-transparent hover:border-brand-100 flex items-center justify-center gap-3 md:gap-4 shadow-sm"
+          >
+            <Monitor className="w-[18px] h-[18px] md:w-[22px] md:h-[22px]" strokeWidth={2.5} />
+            投影用画面
+          </button>
           <button
             onClick={handleLogout}
             className="w-full md:w-auto px-6 md:px-10 py-4 md:py-5 bg-slate-50 text-slate-500 rounded-2xl md:rounded-3xl text-sm md:text-base font-black transition-all hover:bg-rose-50 hover:text-rose-600 border border-transparent hover:border-rose-100 flex items-center justify-center gap-3 md:gap-4 shadow-sm"
@@ -867,30 +875,33 @@ const HQDashboard = () => {
             )}
           </div>
 
-          <div className="bg-white border-2 border-slate-100 rounded-[2rem] p-5 md:p-6 shadow-sm overflow-hidden">
+          <div className="bg-white border border-slate-100 rounded-[2rem] p-5 md:p-8 shadow-sm overflow-hidden">
             <button
               onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className="w-full flex items-center justify-between group px-2"
+              className="w-full flex items-center justify-between group"
             >
               <div className="flex items-center gap-4 text-slate-900">
-                <div className={`p-2.5 rounded-xl transition-all duration-500 ${isFilterOpen ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 shadow-sm transition-transform group-hover:scale-110'}`}>
-                  <Filter size={18} strokeWidth={2.5} />
+                <div className={`p-3 rounded-2xl transition-all duration-500 ${isFilterOpen ? 'bg-brand-600 text-white rotate-[360deg]' : 'bg-brand-50 text-brand-600 shadow-sm transition-transform group-hover:scale-110'}`}>
+                  <Filter size={20} strokeWidth={2.5} />
                 </div>
-                <div className="text-left flex items-center gap-3">
-                  <h2 className="text-lg font-black tracking-tight">絞り込み</h2>
-                  {!isFilterOpen && (selectedDept !== 'すべて' || filterGrade !== 'すべて' || filterBuilding !== 'すべて') && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {[filterGrade, selectedDept, filterBuilding].filter(f => f !== 'すべて').map(f => (
-                        <span key={f} className="px-2 py-0.5 bg-brand-600 text-white text-[9px] rounded-lg font-black shadow-sm shadow-brand-500/20">
-                          {f}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                <div className="text-left flex flex-col gap-0.5">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xl font-black tracking-tight">絞り込み</h2>
+                    {!isFilterOpen && (selectedDept !== 'すべて' || filterGrade !== 'すべて' || filterBuilding !== 'すべて') && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {[filterGrade, selectedDept, filterBuilding].filter(f => f !== 'すべて').map(f => (
+                          <span key={f} className="px-2 py-0.5 bg-brand-600 text-white text-[10px] rounded-lg font-black shadow-sm shadow-brand-500/20 animate-in fade-in zoom-in duration-300">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">タップして 学年・部門・場所 で団体を絞り込む</p>
                 </div>
               </div>
-              <div className={`p-1.5 rounded-full transition-all duration-300 ${isFilterOpen ? 'bg-brand-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
-                <ChevronDown size={18} />
+              <div className={`p-2 rounded-full transition-all duration-300 ${isFilterOpen ? 'bg-brand-600 text-white rotate-180' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
+                <ChevronDown size={20} />
               </div>
             </button>
 
@@ -906,22 +917,6 @@ const HQDashboard = () => {
                   <div className="flex flex-col space-y-8 pt-8 pb-4">
                     <div className="flex flex-col space-y-4">
                       <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
-                        <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 部門
-                      </span>
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        {DEPARTMENTS.map(d => (
-                          <button
-                            key={d}
-                            onClick={() => setSelectedDept(d)}
-                            className={`px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${selectedDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
-                          >
-                            {d}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex flex-col space-y-4">
-                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
                         <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 学年・有志
                       </span>
                       <div className="flex flex-wrap items-center gap-2.5">
@@ -932,6 +927,22 @@ const HQDashboard = () => {
                             className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${filterGrade === g ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
                           >
                             {g}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col space-y-4">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                        <div className="w-1 h-3 bg-brand-600 rounded-full"></div> 部門
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        {DEPARTMENTS.map(d => (
+                          <button
+                            key={d}
+                            onClick={() => setSelectedDept(d)}
+                            className={`min-w-[5rem] px-4 py-3 rounded-2xl text-xs font-black transition-all flex items-center justify-center border-2 ${selectedDept === d ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-500/20' : 'bg-white border-slate-50 text-slate-500 hover:border-slate-100 hover:bg-slate-50'}`}
+                          >
+                            {d}
                           </button>
                         ))}
                       </div>
@@ -964,11 +975,11 @@ const HQDashboard = () => {
           <div className="flex justify-end px-2">
             <div className="flex items-center gap-4">
               <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                <RefreshCw size={14} className="text-brand-600/50" /> 並び替え
+                <SortDesc size={14} className="text-brand-600/50" /> 並び替え
               </span>
               <div className="relative group">
                 <select
-                  className="w-full min-w-[200px] bg-white border-2 border-slate-100 rounded-2xl py-3 pl-5 pr-12 text-xs font-black text-slate-700 outline-none transition-all focus:border-brand-500 appearance-none cursor-pointer shadow-sm hover:shadow-md"
+                  className="w-full min-w-[180px] bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 pl-5 pr-12 text-xs font-black text-slate-700 outline-none transition-all focus:border-brand-500 focus:bg-white appearance-none cursor-pointer"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                 >
@@ -1453,7 +1464,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                 </span>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {(group.has_reception || (group.department || '').includes('公演')) && (
+                                {group.has_reception && (
                                   <div className="space-y-3">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">受付状況</label>
                                     <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
@@ -1480,7 +1491,7 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
                                     </div>
                                   </div>
                                 )}
-                                {(group.has_ticket_status || (group.department || '').includes('公演')) && (
+                                {group.has_ticket_status && (
                                   <div className="space-y-3">
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">整理券配布状況</label>
                                     <div className="flex bg-white/50 p-1 rounded-xl border border-slate-100 gap-1">
