@@ -1023,7 +1023,7 @@ const HQDashboard = () => {
             <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">落とし物管理</h3>
             <button
               onClick={() => {
-                setEditingLostFound({ name: '', location: '', features: '', found_at: new Date().toISOString() });
+                setEditingLostFound({ name: '', location: '', features: '', found_at: new Date().toISOString(), is_returned: false });
                 setIsLostFoundModalOpen(true);
               }}
               className="w-full md:w-auto flex items-center justify-center gap-3 px-8 md:px-10 py-4 md:py-5 bg-brand-600 text-white rounded-2xl md:rounded-[1.5rem] font-black text-sm shadow-2xl shadow-brand-500/30 hover:bg-brand-700 active:scale-95 transition-all">
@@ -1033,26 +1033,42 @@ const HQDashboard = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {lostFound.map(item => (
-              <div key={item.id} className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 transition-all duration-300">
-                <div className="flex justify-between items-start w-full gap-4">
-                  <div>
-                    <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
-                    <div className="mt-2 flex items-center text-[10px] font-bold text-slate-400">
-                      <Clock size={12} className="mr-1" />
-                      拾得日時: {formatDateTime(item.found_at)}
+              <div key={item.id} className="relative bg-white border border-slate-200 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 shadow-md shadow-slate-200/30 hover:shadow-xl hover:shadow-brand-900/5 transition-all duration-300">
+                {item.is_returned ? (
+                  <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-zinc-100 text-zinc-500 rounded-xl text-[10px] font-black border border-zinc-200 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
+                    <CheckCircle2 size={12} strokeWidth={3} />
+                    <span>返却済み</span>
+                  </div>
+                ) : (
+                  <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black border border-rose-100 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
+                    <AlertCircle size={12} strokeWidth={3} />
+                    <span>未返却</span>
+                  </div>
+                )}
+                
+                <div className={`w-full space-y-6 ${item.is_returned ? 'opacity-40 contrast-75' : ''}`}>
+                  <div className="flex justify-between items-start w-full gap-4">
+                    <div>
+                      <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
+                      <div className="mt-2 flex items-center gap-3">
+                        <div className="flex items-center text-[10px] font-bold text-slate-400">
+                          <Clock size={12} className="mr-1" />
+                          拾得日時: {formatDateTime(item.found_at)}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="w-full space-y-4">
-                  <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
-                    <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">拾得場所</span>
-                    <p className="text-slate-700 text-sm font-bold leading-relaxed">{item.location}</p>
-                  </div>
+                  <div className="w-full space-y-4">
+                    <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
+                      <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">拾得場所</span>
+                      <p className="text-slate-700 text-sm font-bold leading-tight">{item.location}</p>
+                    </div>
 
-                  <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
-                    <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">特徴・詳細</span>
-                    <p className="text-slate-700 text-sm font-bold leading-relaxed whitespace-pre-wrap">{item.features || 'なし'}</p>
+                    <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
+                      <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">特徴・詳細</span>
+                      <p className="text-slate-700 text-sm font-bold leading-tight whitespace-pre-wrap">{item.features || 'なし'}</p>
+                    </div>
                   </div>
                 </div>
 
@@ -1400,15 +1416,15 @@ const EditGroupModal = ({ group, onClose, onSave }) => {
               </>
             ) : !(group.has_performances || (group.department || '').includes('公演')) && (
               <div className="flex flex-col items-center justify-center py-10 px-6 text-center space-y-4">
-                <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
-                  <Info size={24} />
-                </div>
-                <div>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-slate-50 text-slate-300 rounded-xl flex items-center justify-center shrink-0">
+                    <Info size={24} />
+                  </div>
                   <h3 className="text-sm font-black text-slate-900">編集項目はありません</h3>
-                  <p className="text-xs font-bold text-slate-400 mt-2 leading-relaxed">
-                    この団体に本部で設定された編集項目はありません。
-                  </p>
                 </div>
+                <p className="text-xs font-bold text-slate-400 leading-relaxed">
+                  この団体に設定されている編集可能項目ありません
+                </p>
               </div>
             )}
             {(group.has_performances || (group.department || '').includes('公演')) && (
@@ -1602,17 +1618,38 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
     <Portal>
       <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-xl">
         <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-white w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="p-6 md:p-10 border-b border-slate-50 flex items-center justify-between">
+          <div className="p-6 md:p-8 border-b border-slate-50 flex items-center justify-between">
             <h2 className="text-xl md:text-2xl font-black text-slate-900">落とし物登録・編集</h2>
           </div>
-          <div className="p-6 md:p-10 space-y-6 overflow-y-auto">
+          <div className="px-6 md:px-8 py-4 md:py-6 space-y-4 overflow-y-auto">
+            <div className="pb-2">
+              <button
+                onClick={() => setFormData({ ...formData, is_returned: !formData.is_returned })}
+                className={`w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${formData.is_returned
+                  ? 'bg-emerald-50 border-emerald-500 text-emerald-600 shadow-md ring-2 ring-emerald-500/10'
+                  : 'bg-rose-50 border-rose-500 text-rose-600 shadow-md ring-2 ring-rose-500/10'
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  {formData.is_returned ? (
+                    <CheckCircle2 size={20} strokeWidth={2.5} />
+                  ) : (
+                    <AlertCircle size={20} strokeWidth={2.5} />
+                  )}
+                  <span className="text-[12px] font-black uppercase tracking-widest">{formData.is_returned ? '返却済み' : '未返却'}</span>
+                </div>
+                <div className={`w-12 h-7 rounded-full p-1 transition-colors ${formData.is_returned ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                  <div className={`w-5 h-5 bg-white rounded-full transition-transform ${formData.is_returned ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
+              </button>
+            </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">品名</label>
               <input
                 type="text"
                 value={formData.name || ''}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-3 px-6 text-sm font-black outline-none transition-all"
                 placeholder="品名を入力してください"
               />
             </div>
@@ -1622,7 +1659,7 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
                 type="text"
                 value={formData.location || ''}
                 onChange={e => setFormData({ ...formData, location: e.target.value })}
-                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all"
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-3 px-6 text-sm font-black outline-none transition-all"
                 placeholder="拾得場所を入力してください"
               />
             </div>
@@ -1631,8 +1668,8 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
               <textarea
                 value={formData.features || ''}
                 onChange={e => setFormData({ ...formData, features: e.target.value })}
-                rows={3}
-                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all resize-none"
+                rows={2}
+                className="w-full bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-3 px-6 text-sm font-black outline-none transition-all resize-none"
                 placeholder="特徴･詳細を入力してください"
               />
             </div>
@@ -1652,11 +1689,11 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
                     setFormData({ ...formData, found_at: date.toISOString() });
                   }
                 }}
-                className="w-full block bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-4 px-6 text-sm font-black outline-none transition-all text-left appearance-none"
+                className="w-full block bg-slate-50 border-2 border-transparent focus:border-brand-500 rounded-2xl py-3 px-6 text-sm font-black outline-none transition-all text-left appearance-none"
               />
             </div>
           </div>
-          <div className="p-6 md:p-10 border-t border-slate-50 bg-slate-50/30 flex gap-4">
+          <div className="p-6 md:p-8 border-t border-slate-50 bg-slate-50/30 flex gap-4">
             <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black text-sm">キャンセル</button>
             <button onClick={handleSave} disabled={isSaving} className="flex-[2] py-4 bg-brand-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-brand-500/20 hover:bg-brand-700 active:scale-95 transition-all flex items-center justify-center gap-2">
               {isSaving ? <RefreshCw className="animate-spin w-4 h-4" /> : <Save className="w-4 h-4" />}

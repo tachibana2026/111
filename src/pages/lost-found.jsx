@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { PackageSearch, Clock, MapPin, Info } from 'lucide-react';
+import { PackageSearch, Clock, MapPin, Info, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const LostFound = ({ initialItems }) => {
@@ -47,30 +47,43 @@ const LostFound = ({ initialItems }) => {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: idx * 0.03 }}
-                className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 shadow-sm hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300"
+                className="relative bg-white border border-slate-200 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 shadow-md shadow-slate-200/30 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300"
               >
-              <div className="flex justify-between items-start w-full gap-4">
-                <div className="flex items-start gap-4">
-                  <div>
-                    <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
-                    <div className="mt-2 flex items-center text-[10px] font-bold text-slate-400">
-                      <Clock size={12} className="mr-1" />
-                      拾得日時: {formatDate(item.found_at)}
+              {item.is_returned ? (
+                <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-zinc-100 text-zinc-500 rounded-xl text-[10px] font-black border border-zinc-200 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
+                  <CheckCircle2 size={12} strokeWidth={3} />
+                  <span>返却済み</span>
+                </div>
+              ) : (
+                <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black border border-rose-100 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
+                  <AlertCircle size={12} strokeWidth={3} />
+                  <span>未返却</span>
+                </div>
+              )}
+              <div className={`w-full space-y-6 ${item.is_returned ? 'opacity-40 contrast-75' : ''}`}>
+                <div className="flex justify-between items-start w-full gap-4">
+                  <div className="flex items-start gap-4">
+                    <div>
+                      <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
+                      <div className="mt-2 flex items-center text-[10px] font-bold text-slate-400">
+                        <Clock size={12} className="mr-1" />
+                        拾得日時: {formatDate(item.found_at)}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
               <div className="w-full space-y-4">
                 <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
                   <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">拾得場所</span>
-                  <p className="text-slate-700 text-sm font-bold leading-relaxed">{item.location}</p>
+                  <p className="text-slate-700 text-sm font-bold leading-tight">{item.location}</p>
                 </div>
 
                 <div className="p-4 md:p-5 rounded-2xl bg-slate-50/50 border border-slate-100">
                   <span className="text-[9px] text-slate-400 font-black block mb-2 uppercase tracking-widest">特徴・詳細</span>
-                  <p className="text-slate-700 text-sm font-bold leading-relaxed">{item.features}</p>
+                  <p className="text-slate-700 text-sm font-bold leading-tight whitespace-pre-wrap">{item.features}</p>
                 </div>
+              </div>
               </div>
             </motion.div>
           ))}
@@ -90,7 +103,8 @@ const LostFound = ({ initialItems }) => {
 export async function getStaticProps() {
   const { data, error } = await supabase
     .from('lost_found')
-    .select('id, name, found_at, location, features')
+    .select('id, name, found_at, location, features, is_returned')
+    .order('is_returned', { ascending: true })
     .order('found_at', { ascending: false });
 
   if (error) {

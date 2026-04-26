@@ -770,16 +770,16 @@ const GroupDashboard = () => {
 
               {(!group.has_reception && !group.has_waiting_time && !group.has_ticket_status && (!(group.has_performances || (group.department || '').includes('公演')) || !performances || performances.length === 0)) && (
                 <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-4">
-                  <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center">
-                    <Info size={32} />
-                  </div>
-                  <div>
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center shrink-0">
+                      <Info size={32} />
+                    </div>
                     <h3 className="text-lg font-black text-slate-900">編集項目はありません</h3>
-                    <p className="text-sm font-bold text-slate-400 mt-2 leading-relaxed">
-                      この団体に設定された操作項目はありません。<br />
-                      設定の変更が必要な場合は本部へお問い合わせください。
-                    </p>
                   </div>
+                  <p className="text-sm font-bold text-slate-400 leading-relaxed">
+                    この団体に設定された操作項目はありません。<br />
+                    設定の変更が必要な場合は本部へお問い合わせください。
+                  </p>
                 </div>
               )}
             </div>
