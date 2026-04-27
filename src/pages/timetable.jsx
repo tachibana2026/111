@@ -25,6 +25,10 @@ const Timetable = ({ initialPerformances }) => {
   const [selectedPerf, setSelectedPerf] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [hasManuallySwitched, setHasManuallySwitched] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // タイムスロットの定義（レンダリング全体で使用）
+  const timeSlots = TIME_SLOTS_MAP[activePart] || TIME_SLOTS_MAP[1];
 
   // ページロード時および時間経過時に適切なPartを自動選択する
   useEffect(() => {
@@ -66,7 +70,8 @@ const Timetable = ({ initialPerformances }) => {
   const buildingRefs = useRef({});
 
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 30000);
+    setIsMounted(true);
+    const interval = setInterval(() => setCurrentTime(new Date()), 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -123,7 +128,7 @@ const Timetable = ({ initialPerformances }) => {
       const left = (diffMinutes / currentPartInfo.duration) * timelineWidth;
 
       mainScrollRef.current.scrollTo({
-        left: Math.max(0, left - 40),
+        left: Math.max(0, left - 120),
         behavior: smooth ? 'smooth' : 'auto'
       });
     }
@@ -140,7 +145,7 @@ const Timetable = ({ initialPerformances }) => {
 
   const renderCurrentTimeLine = () => {
     const festDate = activePart === 3 ? '2026-06-14' : '2026-06-13';
-    const isSameDay = currentTime.toISOString().split('T')[0] === festDate;
+    const isSameDay = currentTime.toLocaleDateString('sv-SE') === festDate;
     if (!isSameDay) return null;
 
     const h = currentTime.getHours();
@@ -154,7 +159,7 @@ const Timetable = ({ initialPerformances }) => {
 
     return (
       <div
-        className="absolute top-0 bottom-0 z-[15] pointer-events-none"
+        className="absolute top-0 bottom-0 z-[1] pointer-events-none"
         style={{ left: `${leftPercentage}%` }}
       >
         <div className="w-0.5 h-full bg-rose-500/60 shadow-[0_0_8px_rgba(244,63,94,0.3)]"></div>
@@ -217,14 +222,21 @@ const Timetable = ({ initialPerformances }) => {
     return status === 'closed' ? '受付終了' : '受付中';
   };
 
-  const timeSlots = TIME_SLOTS_MAP[activePart];
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 md:space-y-12 pb-32">
       <div className="flex flex-col space-y-8">
         <div className="flex flex-col gap-6">
           <div className="flex items-center space-x-4 text-slate-900">
-            <div className="w-2 h-10 bg-brand-600 rounded-full shadow-lg shadow-brand-500/20"></div>
+            <div className="w-2 h-10 bg-brand-600 rounded-full"></div>
             <h1 className="text-4xl font-black tracking-tight">タイムテーブル</h1>
           </div>
 
@@ -277,7 +289,7 @@ const Timetable = ({ initialPerformances }) => {
                 {/* Building Title */}
                 <div className="pb-4 pt-4 w-full bg-transparent">
                   <div className="sticky left-0 z-20 px-2 flex items-center gap-3 w-max">
-                    <div className="w-1.5 h-6 bg-brand-600 rounded-full shadow-[0_0_8px_rgba(2,132,199,0.3)]" />
+                    <div className="w-1.5 h-6 bg-brand-600 rounded-full" />
                     <h2 className="text-xl font-black text-slate-900 tracking-tight">{bInfo.building}</h2>
                   </div>
                 </div>
@@ -307,7 +319,7 @@ const Timetable = ({ initialPerformances }) => {
 
                   <div className="relative">
                     {/* Current time line for this building */}
-                    <div className="absolute inset-0 pointer-events-none flex z-[15]">
+                    <div className="absolute inset-0 pointer-events-none flex z-[1]">
                       <div className="w-24 md:w-32 flex-shrink-0" />
                       <div className="flex-1 relative min-w-[1300px] lg:min-w-0 pr-6">
                         {renderCurrentTimeLine()}
@@ -354,7 +366,7 @@ const Timetable = ({ initialPerformances }) => {
                             <motion.div
                               key={perf.id}
                               initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1 - (isOver ? 0.6 : 0), y: 0 }}
+                              animate={{ opacity: 1, y: 0 }}
                               onClick={() => {
                                 setSelectedGroup(group);
                                 setSelectedPerf({ ...perf, currentReception, computedTicket });
@@ -369,12 +381,12 @@ const Timetable = ({ initialPerformances }) => {
                                 zIndex: 5
                               }}
                             >
-                              <div className="flex-[4] px-1 text-center flex items-center justify-center overflow-hidden border-b border-slate-100">
+                              <div className={`flex-[4] px-1 text-center flex items-center justify-center overflow-hidden border-b border-slate-100 ${!isOver ? 'bg-brand-100/60' : ''}`}>
                                 <div 
                                   className="min-w-max origin-center transition-all"
                                   style={{ transform: `scale(${Math.max(0.45, Math.min(1, width / 8))})` }}
                                 >
-                                  <span className={`whitespace-nowrap text-[11px] font-black leading-none tracking-tight ${isOver ? 'text-slate-400' : 'text-slate-700'}`}>
+                                  <span className={`whitespace-nowrap text-[11px] font-black leading-none tracking-tight ${isOver ? 'text-slate-400' : 'text-slate-950'}`}>
                                     {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
                                   </span>
                                 </div>
@@ -382,6 +394,7 @@ const Timetable = ({ initialPerformances }) => {
                               <div className="flex-[6] flex flex-col justify-center gap-0.5 bg-white/50 backdrop-blur-sm py-1">
                                 {group.has_reception && (
                                   <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
+                                    isOver ? 'text-slate-400' :
                                     currentReception === 'ticket_only' ? 'text-brand-600' : 
                                     ['closed', 'ended'].includes(currentReception) ? 'text-rose-600' : 
                                     currentReception === 'before_open' ? 'text-slate-400' : 
@@ -393,6 +406,7 @@ const Timetable = ({ initialPerformances }) => {
                                 )}
                                 {group.has_ticket_status && (
                                   <div className={`flex items-center justify-center gap-1.5 text-[9px] font-black px-1 whitespace-nowrap overflow-hidden ${
+                                    isOver ? 'text-slate-400' :
                                     computedTicket === 'ended' ? 'text-rose-600' :
                                     computedTicket === 'none' ? 'text-slate-400' :
                                     'text-emerald-600'
@@ -407,12 +421,20 @@ const Timetable = ({ initialPerformances }) => {
                                       className="flex flex-col items-center justify-center min-w-max origin-center"
                                       style={{ transform: `scale(${Math.max(0.25, Math.min(1, width / 12))})` }}
                                     >
-                                      <span className="font-black text-slate-400 whitespace-nowrap text-[11px] tracking-tighter leading-none">
-                                        公演開始時間に合わせて
-                                      </span>
-                                      <span className="font-black text-slate-400 whitespace-nowrap text-[11px] tracking-tighter leading-none mt-1.5">
-                                        直接会場へお越しください
-                                      </span>
+                                      {isOver ? (
+                                        <span className="font-black text-slate-400 whitespace-nowrap text-[11px] tracking-tighter leading-none">
+                                          この回の公演は終了しました
+                                        </span>
+                                      ) : (
+                                        <>
+                                          <span className="font-black text-slate-400 whitespace-nowrap text-[11px] tracking-tighter leading-none">
+                                            公演開始時間に合わせて
+                                          </span>
+                                          <span className="font-black text-slate-400 whitespace-nowrap text-[11px] tracking-tighter leading-none mt-1.5">
+                                            直接会場へお越しください
+                                          </span>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
                                 )}
@@ -464,8 +486,11 @@ const Timetable = ({ initialPerformances }) => {
                   {selectedGroup && !selectedGroup.has_reception && !selectedGroup.has_ticket_status ? (
                     <div className="py-8 bg-slate-50/50 rounded-3xl border border-slate-100/50 flex items-center justify-center">
                       <p className="text-xl font-black text-slate-900 leading-relaxed text-center">
-                        公演開始時間に合わせて<br />
-                        直接会場へお越しください
+                        {isPast(selectedPerf) ? (
+                          'この回の公演は終了しました'
+                        ) : (
+                          <>公演開始時間に合わせて<br />直接会場へお越しください</>
+                        )}
                       </p>
                     </div>
                   ) : (

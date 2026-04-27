@@ -54,16 +54,12 @@ const GroupDashboard = () => {
       .map(p => {
         const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
         const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
-        return { ...p, fullDate: new Date(`${festDate}T${parseTime(p.start_time)}:00`) };
+        const startTime = new Date(`${festDate}T${parseTime(p.start_time)}:00`);
+        const endTime = p.end_time ? new Date(`${festDate}T${parseTime(p.end_time)}:00`) : startTime;
+        return { ...p, startTime, endTime };
       })
-      .filter(p => {
-        const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
-        const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
-        const endTime = p.end_time || p.start_time;
-        const fullEndDate = new Date(`${festDate}T${parseTime(endTime)}:00`);
-        return fullEndDate > nowLocal;
-      })
-      .sort((a, b) => a.fullDate - b.fullDate);
+      .filter(p => p.startTime > nowLocal)
+      .sort((a, b) => a.startTime - b.startTime);
     return sorted[0] || null;
   }, [performances]);
 
@@ -111,12 +107,19 @@ const GroupDashboard = () => {
     const groupId = localStorage.getItem('ryoun_group_id');
     const authType = localStorage.getItem('ryoun_auth_type');
 
+    const isManualLogout = sessionStorage.getItem('ryoun_manual_logout');
     if ((!groupId || authType !== 'group') && router.pathname.startsWith('/admin/dashboard')) {
       localStorage.removeItem('ryoun_group_id');
       localStorage.removeItem('ryoun_auth_type');
-      router.replace('/admin');
+      if (isManualLogout) {
+        sessionStorage.removeItem('ryoun_manual_logout');
+        router.replace('/admin');
+      } else {
+        router.replace('/admin?message=timeout');
+      }
       return;
     }
+    if (isManualLogout) sessionStorage.removeItem('ryoun_manual_logout');
 
     fetchGroupData(groupId, true);
 
@@ -270,6 +273,7 @@ const GroupDashboard = () => {
   };
 
   const handleLogout = (message = '') => {
+    if (!message) sessionStorage.setItem('ryoun_manual_logout', 'true');
     localStorage.removeItem('ryoun_group_id');
     localStorage.removeItem('ryoun_auth_type');
     localStorage.removeItem('ryoun_login_at');
@@ -446,31 +450,41 @@ const GroupDashboard = () => {
                         <div className="grid grid-cols-2 gap-2">
                           {partPerfs.map(perf => {
                             const isNext = nextPerf && perf.id === nextPerf.id;
-                            const isOver = isPerformancePast(perf);
-                            const displayStatus = (isOver && perf.status === 'distributing') ? 'ended' : perf.status;
-                            const displayReception = isOver ? 'closed' : (perf.reception_status || 'open');
+                            const festDate = perf.part_id === 3 ? '2026-06-14' : '2026-06-13';
+                            const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
+                            const startTime = new Date(`${festDate}T${parseTime(perf.start_time)}:00`);
+                            const endTime = perf.end_time ? new Date(`${festDate}T${parseTime(perf.end_time)}:00`) : startTime;
+                            const isPastLocal = endTime < new Date();
+                            const isOngoing = !isPastLocal && startTime <= new Date();
+                            
+                            const displayStatus = (isPastLocal && perf.status !== 'none') ? 'ended' : perf.status;
+                            const displayReception = isPastLocal ? 'closed' : (perf.reception_status || 'open');
 
                             return (
                               <div key={perf.id} className={`px-4 py-3 rounded-xl border transition-all flex flex-col justify-center gap-1 ${
-                                isOver ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60' : 
-                                isNext ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 
+                                isPastLocal ? 'bg-slate-50 text-slate-400 border-slate-100 opacity-60' : 
+                                (isNext || isOngoing) ? 'bg-brand-50 text-brand-700 border-brand-200 ring-2 ring-brand-500/10' : 
                                 'bg-white text-slate-600 border-slate-100'
                               }`}>
                                 <div className="flex justify-between items-center">
                                   <span className="text-xs font-black">
                                     {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
                                   </span>
-                                  {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                  {(isNext || isOngoing) && (
+                                    <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse ${isOngoing ? 'bg-rose-600 text-white' : 'bg-brand-600 text-white'}`}>
+                                      {isOngoing ? 'Now' : 'Next'}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex flex-col gap-1 mt-1.5">
                                   {group.has_reception && (
-                                    <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${getStatusColors(displayReception, 'reception')}`}>
+                                    <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${isPastLocal ? 'text-slate-400' : getStatusColors(displayReception, 'reception')}`}>
                                       <Info size={10} strokeWidth={3} />
                                       {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[displayReception]}
                                     </div>
                                   )}
                                   {group.has_ticket_status && (
-                                    <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${getStatusColors(displayStatus, 'ticket')}`}>
+                                    <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${isPastLocal ? 'text-slate-400' : getStatusColors(displayStatus, 'ticket')}`}>
                                       <Ticket size={10} strokeWidth={3} />
                                       {{ none: '配布なし', distributing: '配布中', ended: '配布終了' }[displayStatus]}
                                     </div>
@@ -611,13 +625,18 @@ const GroupDashboard = () => {
                           {partPerfs.map(perf => {
                             const isExpanded = expandedPerformances.includes(perf.id);
                             const isNext = nextPerf && perf.id === nextPerf.id;
-                            const isPast = isPerformancePast(perf);
+                            const festDate = perf.part_id === 3 ? '2026-06-14' : '2026-06-13';
+                            const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
+                            const startTime = new Date(`${festDate}T${parseTime(perf.start_time)}:00`);
+                            const endTime = perf.end_time ? new Date(`${festDate}T${parseTime(perf.end_time)}:00`) : startTime;
+                            const isPast = endTime < new Date();
+                            const isOngoing = !isPast && startTime <= new Date();
                             const canEditPerf = group.has_reception || group.has_ticket_status;
-                            const isCurrentlyExpanded = isExpanded && canEditPerf;
+                            const isCurrentlyExpanded = isExpanded && canEditPerf && !isPast;
 
                             return (
                               <div key={perf.id} className={`${(!canEditPerf) ? 'rounded-[1.5rem]' : 'rounded-[2.5rem]'} border transition-all duration-500 shadow-sm overflow-hidden ${
-                                isPast ? 'bg-slate-50/30 border-slate-100 opacity-60' :
+                                isPast ? 'bg-slate-50/50 border-slate-200 opacity-80' :
                                 isCurrentlyExpanded ? 'bg-white border-brand-200 ring-4 ring-brand-500/5' :
                                 'bg-slate-50/50 border-slate-100 hover:bg-slate-100/50'
                               }`}>
@@ -627,17 +646,27 @@ const GroupDashboard = () => {
                                     className="w-full p-6 flex items-center justify-between group/btn text-left transition-colors"
                                   >
                                     <div className="flex items-center gap-4">
-                                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isCurrentlyExpanded ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20 rotate-[360deg]' : 'bg-brand-50 text-brand-600 group-hover/btn:scale-110'}`}>
-                                        <Clock size={20} strokeWidth={2.5} />
+                                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${isPast ? 'bg-slate-200 text-slate-500' : isCurrentlyExpanded ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/20 rotate-[360deg]' : 'bg-brand-50 text-brand-600 group-hover/btn:scale-110'}`}>
+                                        {isPast ? <Lock size={20} strokeWidth={2.5} /> : <Clock size={20} strokeWidth={2.5} />}
                                       </div>
                                       <div className="flex flex-col gap-0.5">
                                         <div className="flex items-center gap-2">
                                           <span className="text-[15px] font-black text-slate-900 tracking-tight">
                                             {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
                                           </span>
-                                          {isNext && <span className="bg-brand-600 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                          {(isNext || isOngoing) && (
+                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse ${isOngoing ? 'bg-rose-600 text-white' : 'bg-brand-600 text-white'}`}>
+                                              {isOngoing ? 'Now' : 'Next'}
+                                            </span>
+                                          )}
                                         </div>
-                                        {!isCurrentlyExpanded && (
+                                        {isPast && (
+                                          <div className="flex items-center gap-1.5 mt-1">
+                                            <Info size={10} className="text-slate-400" />
+                                            <span className="text-[10px] font-black text-slate-400">公演終了時間を過ぎたため編集できません</span>
+                                          </div>
+                                        )}
+                                        {!isCurrentlyExpanded && !isPast && (
                                           <div className="flex items-center gap-3">
                                             {group.has_reception && (
                                               <span className={`text-[10px] font-black ${getStatusColors(perf.reception_status, 'reception')}`}>
@@ -653,9 +682,11 @@ const GroupDashboard = () => {
                                         )}
                                       </div>
                                     </div>
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isCurrentlyExpanded ? 'bg-brand-100 text-brand-600 rotate-180' : 'bg-white text-slate-400 shadow-sm group-hover/btn:bg-brand-50 group-hover/btn:text-brand-600'}`}>
-                                      <ChevronDown size={20} strokeWidth={3} />
-                                    </div>
+                                    {!isPast && (
+                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${isCurrentlyExpanded ? 'bg-brand-100 text-brand-600 rotate-180' : 'bg-white text-slate-400 shadow-sm group-hover/btn:bg-brand-50 group-hover/btn:text-brand-600'}`}>
+                                        <ChevronDown size={20} strokeWidth={3} />
+                                      </div>
+                                    )}
                                   </button>
                                 ) : (
                                   <div className="w-full p-4 flex items-center justify-between text-left">
@@ -668,14 +699,18 @@ const GroupDashboard = () => {
                                           <span className="text-[14px] font-black text-slate-900 tracking-tight">
                                             {perf.start_time}{perf.end_time && ` ～ ${perf.end_time}`}
                                           </span>
-                                          {isNext && <span className="bg-brand-600 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
+                                          {(isNext || isOngoing) && (
+                                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter animate-pulse ${isOngoing ? 'bg-rose-600 text-white' : 'bg-brand-600 text-white'}`}>
+                                              {isOngoing ? 'Now' : 'Next'}
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
                                     </div>
                                   </div>
                                 )}
                                 
-                                {canEditPerf && (
+                                {canEditPerf && !isPast && (
                                   <AnimatePresence initial={false}>
                                     {isExpanded && (
                                       <motion.div
@@ -697,14 +732,11 @@ const GroupDashboard = () => {
                                                     { id: 'ticket_only', label: '整理券のみ', hide: perf.status === 'none' },
                                                     { id: 'closed', label: '受付終了' }
                                                   ].filter(s => !s.hide).map(s => {
-                                                    const isPastLocal = isPerformancePast(perf);
-                                                    const displayReception = isPastLocal ? 'closed' : (perf.reception_status || 'open');
-                                                    const isActive = displayReception === s.id;
+                                                    const isActive = perf.reception_status === s.id;
                                                     return (
                                                       <button
                                                         key={s.id}
                                                         onClick={() => handleLocalPerformanceUpdate(perf.id, 'reception_status', s.id)}
-                                                        disabled={isPastLocal}
                                                         className={`py-4 px-1 sm:px-2 rounded-2xl text-[10px] font-black transition-all border-2 break-keep ${isActive
                                                           ? s.id === 'open'
                                                             ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10'
@@ -714,7 +746,7 @@ const GroupDashboard = () => {
                                                                 ? 'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
                                                                 : 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10'
                                                           : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100 hover:bg-slate-50'
-                                                          } ${isPastLocal ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
+                                                          } ${isPast ? 'opacity-30 cursor-not-allowed filter grayscale pointer-events-none' : ''}`}
                                                       >
                                                         {s.label}
                                                       </button>
@@ -732,19 +764,17 @@ const GroupDashboard = () => {
                                                     { id: 'distributing', label: '配布中' },
                                                     { id: 'ended', label: '終了' }
                                                   ].map(s => {
-                                                    const isPastLocal = isPerformancePast(perf);
-                                                    const displayStatus = isPastLocal && perf.status !== 'none' ? 'ended' : perf.status;
+                                                    const displayStatus = perf.status;
                                                     return (
                                                       <button
                                                         key={s.id}
                                                         onClick={() => handleLocalPerformanceUpdate(perf.id, 'status', s.id)}
-                                                        disabled={isPastLocal}
                                                         className={`py-4 rounded-2xl text-[10px] font-black transition-all border-2 ${displayStatus === s.id
                                                           ? s.id === 'distributing' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-md ring-2 ring-emerald-500/10' :
                                                             s.id === 'ended' ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-md ring-2 ring-rose-500/10' :
                                                             'bg-slate-50 border-slate-400 text-slate-700 shadow-md ring-2 ring-slate-400/10'
                                                           : 'bg-white border-slate-50 text-slate-300 hover:border-slate-100 hover:bg-slate-50'
-                                                          } ${isPastLocal ? 'opacity-30 cursor-not-allowed filter grayscale' : ''}`}
+                                                          } ${isPast ? 'opacity-30 cursor-not-allowed filter grayscale pointer-events-none' : ''}`}
                                                       >
                                                         {s.label}
                                                       </button>

@@ -47,24 +47,24 @@ const LostFound = ({ initialItems }) => {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: idx * 0.03 }}
-                className="relative bg-white border border-slate-200 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 shadow-md shadow-slate-200/30 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 transition-all duration-300"
+                className={`relative bg-white border border-slate-200 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 transition-all duration-300 ${item.is_returned ? 'shadow-none border-slate-100' : 'shadow-md shadow-slate-200/30 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1'}`}
               >
               {item.is_returned ? (
-                <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-zinc-100 text-zinc-500 rounded-xl text-[10px] font-black border border-zinc-200 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
+                <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black border border-slate-100 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
                   <CheckCircle2 size={12} strokeWidth={3} />
                   <span>返却済み</span>
                 </div>
               ) : (
-                <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black border border-rose-100 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
+                <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-brand-50 text-brand-600 rounded-xl text-[10px] font-black border border-brand-100 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
                   <AlertCircle size={12} strokeWidth={3} />
                   <span>未返却</span>
                 </div>
               )}
-              <div className={`w-full space-y-6 ${item.is_returned ? 'opacity-40 contrast-75' : ''}`}>
+              <div className={`w-full space-y-6 ${item.is_returned ? 'opacity-60 saturate-50' : ''}`}>
                 <div className="flex justify-between items-start w-full gap-4">
                   <div className="flex items-start gap-4">
                     <div>
-                      <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
+                      <h3 className={`font-black text-xl leading-tight ${item.is_returned ? 'text-slate-500' : 'text-brand-600'}`}>{item.name}</h3>
                       <div className="mt-2 flex items-center text-[10px] font-bold text-slate-400">
                         <Clock size={12} className="mr-1" />
                         拾得日時: {formatDate(item.found_at)}

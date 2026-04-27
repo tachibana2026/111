@@ -10,6 +10,7 @@ const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -24,11 +25,18 @@ const AdminLogin = () => {
     if (router.pathname === '/admin') {
       if (authType === 'hq') {
         router.replace('/admin/hq');
+        return;
       } else if (authType === 'group' && groupIdSaved) {
         router.replace('/admin/dashboard');
+        return;
       }
     }
+    setIsCheckingAuth(false);
   }, [router, router.query]);
+
+  if (isCheckingAuth) {
+    return null;
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault();

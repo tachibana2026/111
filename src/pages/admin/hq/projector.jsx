@@ -11,11 +11,13 @@ const ProjectorDashboard = () => {
   const [now, setNow] = useState(new Date());
   const [currentPage, setCurrentPage] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   
   const ITEMS_PER_PAGE = 18; 
   const ROWS_PER_PAGE = 12;
 
   useEffect(() => {
+    setIsMounted(true);
     fetchData();
     const interval = setInterval(() => setNow(new Date()), 1000);
     const channel = supabase.channel('public:groups_and_perfs_v_layout_refine_3')
@@ -147,9 +149,9 @@ const ProjectorDashboard = () => {
     return ((total - activePartInfo.startTimeNum) / range) * 100;
   };
 
-  if (loading) return (
+  if (!isMounted || loading) return (
     <div className="w-full h-screen bg-slate-50 flex items-center justify-center font-black text-slate-900">
-      読み込み中...
+      {loading ? '読み込み中...' : '準備中...'}
     </div>
   );
 
@@ -303,7 +305,7 @@ const ProjectorDashboard = () => {
                               <div key={p.id} className="absolute top-3 bottom-3 px-2" style={{ left: `${start}%`, width: `${Math.max(12, end - start)}%` }}>
                                 <div className={`h-full w-full rounded-2xl border transition-all flex flex-col justify-center items-center gap-1.5 overflow-hidden shadow-md ${isOver ? 'bg-slate-50 border-slate-100 opacity-60 text-slate-400' : 'bg-white border-slate-200 text-slate-700'}`}>
                                   <span className="text-lg font-black tracking-tighter leading-none">{p.start_time}{p.end_time && ` - ${p.end_time}`}</span>
-                                  <div className="flex gap-2 items-center">{entry.group.has_reception && (<div className={`px-2.5 py-1 rounded-xl text-[10px] font-black border flex items-center gap-1.5 ${currentReception === 'ticket_only' ? 'text-brand-600' : ['closed', 'ended'].includes(currentReception) ? 'text-rose-600' : currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-600 border-emerald-100 bg-emerald-50'}`}><Info size={12} strokeWidth={3} />{{ before_open: '受前', open: '受付', ticket_only: '整理', closed: '終了', ended: '終了' }[currentReception]}</div>)}</div>
+                                  <div className="flex gap-2 items-center">{entry.group.has_reception && (<div className={`px-2.5 py-1 rounded-xl text-[10px] font-black border flex items-center gap-1.5 ${isOver ? 'text-slate-400' : currentReception === 'ticket_only' ? 'text-brand-600' : ['closed', 'ended'].includes(currentReception) ? 'text-rose-600' : currentReception === 'before_open' ? 'text-slate-400' : 'text-emerald-600 border-emerald-100 bg-emerald-50'}`}><Info size={12} strokeWidth={3} />{{ before_open: '受前', open: '受付', ticket_only: '整理', closed: '終了', ended: '終了' }[currentReception]}</div>)}</div>
                                 </div>
                               </div>
                             );

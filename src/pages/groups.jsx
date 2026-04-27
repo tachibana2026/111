@@ -58,14 +58,16 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
     const isOver = perf.end_time 
       ? new Date(`${festDate}T${parseTime(perf.end_time)}:00`) < now 
       : new Date(`${festDate}T${parseTime(perf.start_time)}:00`) < now;
+    
     let ticketStatus = '';
     const actualTicket = (isOver && perf.status !== 'none') ? 'ended' : perf.status;
     if (actualTicket === 'distributing') ticketStatus = '整理券配布中';
     else if (actualTicket === 'ended') ticketStatus = '整理券配布終了';
-    else ticketStatus = '整理券配布なし';
+    else if (actualTicket === 'none') ticketStatus = '整理券配布なし';
+    else ticketStatus = '整理券情報なし';
 
-    const currentReception = isOver ? 'closed' : (perf.reception_status || 'open');
     let receptionStatus = '受付中';
+    const currentReception = isOver ? 'closed' : (perf.reception_status || 'open');
     if (currentReception === 'closed') receptionStatus = '受付終了';
     else if (currentReception === 'ticket_only') receptionStatus = '整理券のみ';
     else if (currentReception === 'before_open') receptionStatus = '受付前';
@@ -84,9 +86,10 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
       <div className="grid grid-cols-2 gap-2">
         {partSchedule.map((p, i) => {
           const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
-          const isPast = p.end_time 
-            ? new Date(`${festDate}T${parseTime(p.end_time)}:00`) < now 
-            : new Date(`${festDate}T${parseTime(p.start_time)}:00`) < now;
+          const startTime = new Date(`${festDate}T${parseTime(p.start_time)}:00`);
+          const endTime = p.end_time ? new Date(`${festDate}T${parseTime(p.end_time)}:00`) : startTime;
+          const isPast = endTime < now;
+          const isOngoing = !isPast && startTime <= now;
           const isNext = currentNextPerf && p.id === currentNextPerf.id;
           const { ticketStatus, receptionStatus, currentReception, actualTicket } = getPerfStatusText(p);
           return (
@@ -100,17 +103,22 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                   setSelectedPerf({ ...p, currentReception, computedTicket: actualTicket });
                 }
               }}
-              className={`px-4 py-3 rounded-xl border flex flex-col justify-center gap-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 shadow-sm hover:shadow-md ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60' : isNext ? 'bg-brand-50 text-brand-700 border-brand-400' : 'bg-white text-slate-600 border-slate-200'}`}
+              className={`px-4 py-3 rounded-xl border flex flex-col justify-center gap-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 shadow-sm hover:shadow-md ${isPast ? 'bg-slate-50 text-slate-400 border-slate-100 opacity-60' : (isNext || isOngoing) ? 'bg-brand-50 text-brand-700 border-brand-400' : 'bg-white text-slate-600 border-slate-200'}`}
             >
               <div className="flex justify-between items-center">
                 <span className="text-xs font-black">
                   {p.start_time}{p.end_time && ` ～ ${p.end_time}`}
                 </span>
-                {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] uppercase tracking-tighter animate-pulse">次</span>}
+                {(isNext || isOngoing) && (
+                  <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse ${isOngoing ? 'bg-rose-600 text-white' : 'bg-brand-600 text-white'}`}>
+                    {isOngoing ? 'Now' : 'Next'}
+                  </span>
+                )}
               </div>
               <div className="flex flex-col gap-1 mt-1.5">
                 {hasReception && (
                   <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${
+                    isPast ? 'text-slate-400' :
                     currentReception === 'ticket_only' ? 'text-brand-600' : 
                     ['closed', 'ended'].includes(currentReception) ? 'text-rose-600' : 
                     currentReception === 'before_open' ? 'text-slate-400' : 
@@ -122,6 +130,7 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                 )}
                 {hasTicketStatus && (
                   <div className={`flex items-center justify-start gap-1.5 text-[9px] font-black ${
+                    isPast ? 'text-slate-400' :
                     actualTicket === 'ended' ? 'text-rose-600' :
                     actualTicket === 'none' ? 'text-slate-400' :
                     'text-emerald-600'
@@ -132,7 +141,11 @@ const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, 
                 )}
                 {!hasReception && !hasTicketStatus && (
                   <div className="text-[9px] font-black text-slate-400 leading-tight">
-                    公演開始時間に合わせて<br />直接会場へお越しください
+                    {isPast ? (
+                      'この回の公演は終了しました'
+                    ) : (
+                      <>公演開始時間に合わせて<br />直接会場へお越しください</>
+                    )}
                   </div>
                 )}
               </div>
@@ -414,6 +427,12 @@ const Groups = ({ initialGroups }) => {
   const [selectedPerf, setSelectedPerf] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isRestored, setIsRestored] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // フィルター・検索状態の復元
   useEffect(() => {
@@ -431,13 +450,15 @@ const Groups = ({ initialGroups }) => {
         console.error('Failed to parse saved filters', e);
       }
     }
+    setIsRestored(true);
   }, []);
 
   // フィルター・検索状態の保存
   useEffect(() => {
+    if (!isRestored) return;
     const state = { filterDept, filterGrade, filterBuilding, sortBy, searchQuery, isFilterOpen };
     sessionStorage.setItem('ryoun_groups_filters', JSON.stringify(state));
-  }, [filterDept, filterGrade, filterBuilding, sortBy, searchQuery, isFilterOpen]);
+  }, [filterDept, filterGrade, filterBuilding, sortBy, searchQuery, isFilterOpen, isRestored]);
 
   useEffect(() => {
     if (selectedPerf) {
@@ -541,10 +562,12 @@ const Groups = ({ initialGroups }) => {
       .map(p => {
         const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
         const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
-        return { ...p, fullDate: new Date(`${festDate}T${parseTime(p.start_time)}:00`) };
+        const startTime = new Date(`${festDate}T${parseTime(p.start_time)}:00`);
+        const endTime = p.end_time ? new Date(`${festDate}T${parseTime(p.end_time)}:00`) : startTime;
+        return { ...p, startTime, endTime };
       })
-      .filter(p => p.fullDate && !isNaN(p.fullDate.getTime()) && p.fullDate > now)
-      .sort((a, b) => a.fullDate - b.fullDate);
+      .filter(p => p.startTime > now)
+      .sort((a, b) => a.startTime - b.startTime);
 
     return sorted[0] || null;
   };
@@ -634,6 +657,14 @@ const Groups = ({ initialGroups }) => {
   }, [groups, filterDept, filterGrade, filterBuilding, sortBy, searchQuery]);
 
   const filteredGroupsCount = useMemo(() => filteredGroups.length, [filteredGroups]);
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-10 pb-12">
@@ -842,8 +873,11 @@ const Groups = ({ initialGroups }) => {
                   {(selectedGroup.has_performances || (selectedGroup.department || '').includes('公演')) && !selectedGroup.has_reception && !selectedGroup.has_ticket_status ? (
                     <div className="py-8 bg-slate-50/50 rounded-3xl border border-slate-100/50 flex items-center justify-center">
                       <p className="text-xl font-black text-slate-900 leading-relaxed text-center">
-                        公演開始時間に合わせて<br />
-                        直接会場へお越しください
+                        {isPast(selectedPerf) ? (
+                          'この回の公演は終了しました'
+                        ) : (
+                          <>公演開始時間に合わせて<br />直接会場へお越しください</>
+                        )}
                       </p>
                     </div>
                   ) : (

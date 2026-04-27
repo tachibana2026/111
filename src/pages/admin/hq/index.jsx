@@ -219,10 +219,12 @@ const HQGroupCard = forwardRef(({
                           .map(p => {
                             const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
                             const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
-                            return { ...p, fullDate: new Date(`${festDate}T${parseTime(p.start_time)}:00`) };
+                            const startTime = new Date(`${festDate}T${parseTime(p.start_time)}:00`);
+                            const endTime = p.end_time ? new Date(`${festDate}T${parseTime(p.end_time)}:00`) : startTime;
+                            return { ...p, startTime, endTime };
                           })
-                          .filter(p => p.fullDate > now)
-                          .sort((a, b) => a.fullDate - b.fullDate);
+                          .filter(p => p.startTime > now)
+                          .sort((a, b) => a.startTime - b.startTime);
                         return sorted[0] || null;
                       })();
 
@@ -237,46 +239,51 @@ const HQGroupCard = forwardRef(({
                               const isNext = nextPerf && p.id === nextPerf.id;
                               const festDate = p.part_id === 3 ? '2026-06-14' : '2026-06-13';
                               const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
-                              const isPast = p.end_time
-                                ? new Date(`${festDate}T${parseTime(p.end_time)}:00`) < new Date()
-                                : new Date(`${festDate}T${parseTime(p.start_time)}:00`) < new Date();
+                              const startTime = new Date(`${festDate}T${parseTime(p.start_time)}:00`);
+                              const endTime = p.end_time ? new Date(`${festDate}T${parseTime(p.end_time)}:00`) : startTime;
+                              const isPast = endTime < new Date();
+                              const isOngoing = !isPast && startTime <= new Date();
                               const isOver = isPast;
-                              const actualTicket = isOver ? 'ended' : p.status;
+                              const actualTicket = (isOver && p.status !== 'none') ? 'ended' : p.status;
 
                               return (
-                                <div key={p.id} className={`px-4 ${(!g.has_reception && !g.has_ticket_status) ? 'py-4' : 'py-3'} rounded-xl border transition-all flex flex-col justify-center gap-1 shadow-sm hover:shadow-md ${isPast ? 'bg-slate-50 text-slate-300 border-slate-100 opacity-60 saturate-50' : isNext ? 'bg-brand-50 text-brand-700 border-brand-400' : 'bg-white text-slate-600 border-slate-200'}`}>
-                                  <div className={`flex justify-between items-center ${(!g.has_reception && !g.has_ticket_status) ? 'flex-1' : ''}`}>
-                                    <span className="text-xs font-black">
-                                      {p.start_time}{p.end_time && ` ～ ${p.end_time}`}
+                                <div key={p.id} className={`px-4 ${(!g.has_reception && !g.has_ticket_status) ? 'py-4' : 'py-3'} rounded-xl border transition-all flex flex-col justify-center gap-1 shadow-sm hover:shadow-md ${isPast ? 'bg-slate-50 text-slate-400 border-slate-100 opacity-60 saturate-50' : (isNext || isOngoing) ? 'bg-brand-50 text-brand-700 border-brand-400' : 'bg-white text-slate-600 border-slate-200'}`}>
+                                <div className={`flex justify-between items-center ${(!g.has_reception && !g.has_ticket_status) ? 'flex-1' : ''}`}>
+                                  <span className="text-xs font-black">
+                                    {p.start_time}{p.end_time && ` ～ ${p.end_time}`}
+                                  </span>
+                                  {(isNext || isOngoing) && (
+                                    <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse ${isOngoing ? 'bg-rose-600 text-white' : 'bg-brand-600 text-white'}`}>
+                                      {isOngoing ? 'Now' : 'Next'}
                                     </span>
-                                    {isNext && <span className="bg-brand-600 text-white px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter animate-pulse">Next</span>}
-                                  </div>
-                                  {(g.has_reception || g.has_ticket_status) && (
-                                    <div className="flex flex-col gap-1.5 mt-2">
-                                      {g.has_reception && (
-                                        <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${(isOver ? 'closed' : p.reception_status) === 'ticket_only' ? 'text-brand-600' :
-                                            (isOver ? 'closed' : p.reception_status) === 'before_open' ? 'text-slate-400' :
-                                              ['closed', 'ended'].includes(isOver ? 'closed' : p.reception_status) ? 'text-rose-600' :
-                                                'text-emerald-600'
-                                          }`}>
-                                          <CheckCircle2 size={8} strokeWidth={3} className="shrink-0 -translate-y-[0.5px]" />
-                                          {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[isOver ? 'closed' : (p.reception_status || 'open')]}
-                                        </div>
-                                      )}
-                                      {g.has_ticket_status && (
-                                        <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${actualTicket === 'ended' ? 'text-rose-600' :
-                                            actualTicket === 'none' ? 'text-slate-400' :
-                                              'text-emerald-600'
-                                          }`}>
-                                          <Ticket size={8} strokeWidth={3} className="shrink-0 -translate-y-[0.5px]" />
-                                          {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[actualTicket]}
-                                        </div>
-                                      )}
-                                    </div>
                                   )}
                                 </div>
-                              );
-                            })}
+                                {(g.has_reception || g.has_ticket_status) && (
+                                  <div className="flex flex-col gap-1.5 mt-2">
+                                    {g.has_reception && (
+                                      <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${isOver ? 'text-slate-400' : (isOver ? 'closed' : p.reception_status) === 'ticket_only' ? 'text-brand-600' :
+                                          (isOver ? 'closed' : p.reception_status) === 'before_open' ? 'text-slate-400' :
+                                            ['closed', 'ended'].includes(isOver ? 'closed' : p.reception_status) ? 'text-rose-600' :
+                                              'text-emerald-600'
+                                        }`}>
+                                        <CheckCircle2 size={8} strokeWidth={3} className="shrink-0 -translate-y-[0.5px]" />
+                                        {{ before_open: '受付前', open: '受付中', ticket_only: '整理券のみ', closed: '受付終了' }[isOver ? 'closed' : (p.reception_status || 'open')]}
+                                      </div>
+                                    )}
+                                    {g.has_ticket_status && (
+                                      <div className={`flex items-center justify-start gap-1.5 text-[8px] font-black ${isOver ? 'text-slate-400' : actualTicket === 'ended' ? 'text-rose-600' :
+                                          actualTicket === 'none' ? 'text-slate-400' :
+                                            'text-emerald-600'
+                                        }`}>
+                                        <Ticket size={8} strokeWidth={3} className="shrink-0 -translate-y-[0.5px]" />
+                                        {{ distributing: '配布中', ended: '配布終了', none: '配布なし' }[actualTicket]}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                           </div>
                         </div>
                       );
@@ -356,6 +363,7 @@ const HQDashboard = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterGrade, setFilterGrade] = useState('すべて');
   const [filterBuilding, setFilterBuilding] = useState('すべて');
+  const [isRestored, setIsRestored] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -380,13 +388,15 @@ const HQDashboard = () => {
         console.error('Failed to parse saved filters', e);
       }
     }
+    setIsRestored(true);
   }, []);
 
   // フィルター・検索状態の保存
   useEffect(() => {
+    if (!isRestored) return;
     const state = { activeTab, selectedDept, searchQuery, filterGrade, filterBuilding, isFilterOpen, isBulkOpen, sortBy };
     sessionStorage.setItem('ryoun_hq_filters', JSON.stringify(state));
-  }, [activeTab, selectedDept, searchQuery, filterGrade, filterBuilding, isFilterOpen, isBulkOpen, sortBy]);
+  }, [activeTab, selectedDept, searchQuery, filterGrade, filterBuilding, isFilterOpen, isBulkOpen, sortBy, isRestored]);
 
   const filteredAndSortedGroups = useMemo(() => {
     return groups
@@ -470,7 +480,9 @@ const HQDashboard = () => {
       '本部管理画面から\n【ログアウト】しますか？',
       async () => {
         try {
-          // localStorageを先にクリアして再リダイレクトを防ぐ
+          // 手動ログアウトフラグを先にセットしてリダイレクト時の誤検知を防ぐ
+          sessionStorage.setItem('ryoun_manual_logout', 'true');
+          
           localStorage.removeItem('ryoun_auth_type');
           localStorage.removeItem('ryoun_group_id');
           localStorage.removeItem('ryoun_password');
@@ -490,19 +502,32 @@ const HQDashboard = () => {
   };
   useEffect(() => {
     const authType = localStorage.getItem('ryoun_auth_type');
+    const isManualLogout = sessionStorage.getItem('ryoun_manual_logout');
     if (authType !== 'hq' && router.pathname.startsWith('/admin/hq')) { 
       localStorage.removeItem('ryoun_auth_type');
       localStorage.removeItem('ryoun_group_id');
-      router.replace('/admin'); 
+      if (isManualLogout) {
+        sessionStorage.removeItem('ryoun_manual_logout');
+        router.replace('/admin');
+      } else {
+        router.replace('/admin?message=timeout');
+      }
       return; 
     }
+    if (isManualLogout) sessionStorage.removeItem('ryoun_manual_logout');
 
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        localStorage.removeItem('ryoun_auth_type');
-        localStorage.removeItem('ryoun_group_id');
-        router.replace('/admin?message=timeout');
+        const isManual = sessionStorage.getItem('ryoun_manual_logout');
+        if (isManual) {
+          sessionStorage.removeItem('ryoun_manual_logout');
+          router.replace('/admin');
+        } else {
+          localStorage.removeItem('ryoun_auth_type');
+          localStorage.removeItem('ryoun_group_id');
+          router.replace('/admin?message=timeout');
+        }
       }
     };
     checkSession();
@@ -1040,23 +1065,23 @@ const HQDashboard = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {lostFound.map(item => (
-              <div key={item.id} className="relative bg-white border border-slate-200 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 shadow-md shadow-slate-200/30 hover:shadow-xl hover:shadow-brand-900/5 transition-all duration-300">
+              <div key={item.id} className={`relative bg-white border border-slate-200 rounded-[2rem] p-6 md:p-8 group flex flex-col items-start gap-6 transition-all duration-300 ${item.is_returned ? 'shadow-none border-slate-100' : 'shadow-md shadow-slate-200/30 hover:shadow-xl hover:shadow-brand-900/5'}`}>
                 {item.is_returned ? (
-                  <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-zinc-100 text-zinc-500 rounded-xl text-[10px] font-black border border-zinc-200 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
+                  <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black border border-slate-100 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
                     <CheckCircle2 size={12} strokeWidth={3} />
                     <span>返却済み</span>
                   </div>
                 ) : (
-                  <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-rose-50 text-rose-600 rounded-xl text-[10px] font-black border border-rose-100 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
+                  <div className="absolute top-6 right-6 md:top-8 md:right-8 flex items-center justify-center gap-1.5 px-3 py-1 min-w-[80px] bg-brand-50 text-brand-600 rounded-xl text-[10px] font-black border border-brand-100 shadow-sm animate-in fade-in zoom-in duration-300 z-10">
                     <AlertCircle size={12} strokeWidth={3} />
                     <span>未返却</span>
                   </div>
                 )}
                 
-                <div className={`w-full space-y-6 ${item.is_returned ? 'opacity-40 contrast-75' : ''}`}>
+                <div className={`w-full space-y-6 ${item.is_returned ? 'opacity-60 saturate-50' : ''}`}>
                   <div className="flex justify-between items-start w-full gap-4">
                     <div>
-                      <h3 className="font-black text-xl text-slate-900 leading-tight">{item.name}</h3>
+                      <h3 className={`font-black text-xl leading-tight ${item.is_returned ? 'text-slate-500' : 'text-brand-600'}`}>{item.name}</h3>
                       <div className="mt-2 flex items-center gap-3">
                         <div className="flex items-center text-[10px] font-bold text-slate-400">
                           <Clock size={12} className="mr-1" />
@@ -1634,7 +1659,7 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
                 onClick={() => setFormData({ ...formData, is_returned: !formData.is_returned })}
                 className={`w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all ${formData.is_returned
                   ? 'bg-emerald-50 border-emerald-500 text-emerald-600 shadow-md ring-2 ring-emerald-500/10'
-                  : 'bg-rose-50 border-rose-500 text-rose-600 shadow-md ring-2 ring-rose-500/10'
+                  : 'bg-brand-50 border-brand-500 text-brand-600 shadow-md ring-2 ring-brand-500/10'
                   }`}
               >
                 <div className="flex items-center gap-3">
@@ -1645,7 +1670,7 @@ const EditLostFoundModal = ({ item, onClose, onSave }) => {
                   )}
                   <span className="text-[12px] font-black uppercase tracking-widest">{formData.is_returned ? '返却済み' : '未返却'}</span>
                 </div>
-                <div className={`w-12 h-7 rounded-full p-1 transition-colors ${formData.is_returned ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                <div className={`w-12 h-7 rounded-full p-1 transition-colors ${formData.is_returned ? 'bg-emerald-500' : 'bg-brand-500'}`}>
                   <div className={`w-5 h-5 bg-white rounded-full transition-transform ${formData.is_returned ? 'translate-x-5' : 'translate-x-0'}`} />
                 </div>
               </button>
