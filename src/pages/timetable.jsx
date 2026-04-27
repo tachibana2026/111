@@ -285,7 +285,7 @@ const Timetable = ({ initialPerformances }) => {
       >
         <div className="inline-block min-w-full space-y-12">
             {buildingsData.map((bInfo, bIndex) => (
-              <div key={bInfo.building} ref={el => buildingRefs.current[bInfo.building] = el} className="w-full">
+              <div key={bInfo.building} ref={el => buildingRefs.current[bInfo.building] = el} className="w-full scroll-mt-24">
                 {/* Building Title */}
                 <div className="pb-4 pt-4 w-full bg-transparent">
                   <div className="sticky left-0 z-20 px-2 flex items-center gap-3 w-max">
