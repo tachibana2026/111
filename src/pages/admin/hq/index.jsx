@@ -490,15 +490,19 @@ const HQDashboard = () => {
   };
   useEffect(() => {
     const authType = localStorage.getItem('ryoun_auth_type');
-    if (authType !== 'hq') { 
-      router.replace(router.pathname.startsWith('/Admin') ? '/Admin' : '/admin'); 
+    if (authType !== 'hq' && router.pathname.startsWith('/admin/hq')) { 
+      localStorage.removeItem('ryoun_auth_type');
+      localStorage.removeItem('ryoun_group_id');
+      router.replace('/admin'); 
       return; 
     }
 
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.replace(router.pathname.startsWith('/Admin') ? '/Admin?message=timeout' : '/admin?message=timeout');
+        localStorage.removeItem('ryoun_auth_type');
+        localStorage.removeItem('ryoun_group_id');
+        router.replace('/admin?message=timeout');
       }
     };
     checkSession();
@@ -511,7 +515,7 @@ const HQDashboard = () => {
         .on('postgres_changes', { event: '*', table: 'lost_found' }, fetchData).subscribe()
     ];
     return () => channels.forEach(c => supabase.removeChannel(c));
-  }, []);
+  }, [router]);
   const fetchData = async () => {
     setLoading(true);
     try {

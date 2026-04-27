@@ -111,8 +111,10 @@ const GroupDashboard = () => {
     const groupId = localStorage.getItem('ryoun_group_id');
     const authType = localStorage.getItem('ryoun_auth_type');
 
-    if (!groupId || authType !== 'group') {
-      router.replace(router.pathname.startsWith('/Admin') ? '/Admin' : '/admin');
+    if ((!groupId || authType !== 'group') && router.pathname.startsWith('/admin/dashboard')) {
+      localStorage.removeItem('ryoun_group_id');
+      localStorage.removeItem('ryoun_auth_type');
+      router.replace('/admin');
       return;
     }
 
@@ -272,8 +274,7 @@ const GroupDashboard = () => {
     localStorage.removeItem('ryoun_auth_type');
     localStorage.removeItem('ryoun_login_at');
     localStorage.removeItem('ryoun_password');
-    const target = router.pathname.startsWith('/Admin') ? '/Admin' : '/admin';
-    router.replace(message ? `${target}?message=${message}` : target);
+    router.replace(message ? `/admin?message=${message}` : '/admin');
   };
 
   const confirmLogout = () => {

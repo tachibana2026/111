@@ -21,7 +21,7 @@ const AdminLogin = () => {
     const authType = localStorage.getItem('ryoun_auth_type');
     const groupIdSaved = localStorage.getItem('ryoun_group_id');
 
-    if (router.pathname === '/admin' || router.pathname === '/Admin') {
+    if (router.pathname === '/admin') {
       if (authType === 'hq') {
         router.replace('/admin/hq');
       } else if (authType === 'group' && groupIdSaved) {
