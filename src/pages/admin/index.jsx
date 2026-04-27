@@ -21,10 +21,12 @@ const AdminLogin = () => {
     const authType = localStorage.getItem('ryoun_auth_type');
     const groupIdSaved = localStorage.getItem('ryoun_group_id');
 
-    if (authType === 'hq') {
-      router.replace('/admin/hq');
-    } else if (authType === 'group' && groupIdSaved) {
-      router.replace('/admin/dashboard');
+    if (router.pathname === '/admin' || router.pathname === '/Admin') {
+      if (authType === 'hq') {
+        router.replace('/admin/hq');
+      } else if (authType === 'group' && groupIdSaved) {
+        router.replace('/admin/dashboard');
+      }
     }
   }, [router, router.query]);
 

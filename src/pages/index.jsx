@@ -342,7 +342,7 @@ const Home = () => {
 export async function getStaticProps() {
   return {
     props: {},
-    revalidate: 3600,
+    revalidate: 10,
   };
 }
 

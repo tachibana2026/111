@@ -490,12 +490,15 @@ const HQDashboard = () => {
   };
   useEffect(() => {
     const authType = localStorage.getItem('ryoun_auth_type');
-    if (authType !== 'hq') { router.push('/admin'); return; }
+    if (authType !== 'hq') { 
+      router.replace(router.pathname.startsWith('/Admin') ? '/Admin' : '/admin'); 
+      return; 
+    }
 
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push('/admin?message=timeout');
+        router.replace(router.pathname.startsWith('/Admin') ? '/Admin?message=timeout' : '/admin?message=timeout');
       }
     };
     checkSession();

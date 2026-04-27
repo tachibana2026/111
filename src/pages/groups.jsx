@@ -927,8 +927,8 @@ export async function getStaticProps() {
       initialGroups: data || [],
     },
     // On-demand revalidation is used, but a fallback revalidation 
-    // every hour is a good safety measure.
-    revalidate: 3600,
+    // every 10 seconds is a good safety measure during the festival.
+    revalidate: 10,
   };
 }
 

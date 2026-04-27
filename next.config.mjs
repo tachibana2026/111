@@ -6,6 +6,23 @@ const withPWA = withPWAInit({
   register: true,
   skipWaiting: true,
   buildExcludes: [/middleware-manifest\.json$/],
+  cacheOnFrontEndNav: false,
+  reloadOnOnline: true,
+  runtimeCaching: [
+    {
+      urlPattern: ({ url }) => {
+        return url.origin === self.location.origin && !url.pathname.startsWith('/api/');
+      },
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'pages',
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 60, // 1分間だけ保持
+        },
+      },
+    },
+  ],
 });
 
 /** @type {import('next').NextConfig} */

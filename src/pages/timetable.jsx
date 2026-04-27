@@ -164,22 +164,41 @@ const Timetable = ({ initialPerformances }) => {
 
   const buildingsData = useMemo(() => {
     const map = new Map();
-    BUILDING_ORDER.forEach(b => map.set(b, []));
-
+    // 存在する全ての建物を収集する
+    const allBuildings = new Set(BUILDING_ORDER);
     performances.forEach(p => {
-      if (!p.groups) return;
-      if (!map.has(p.groups.building)) map.set(p.groups.building, []);
-      
-      const existingGroup = map.get(p.groups.building).find(g => g.id === p.group_id);
-      if (existingGroup) {
-        existingGroup.group_performances.push(p);
-      } else {
-        map.get(p.groups.building).push({ ...p.groups, group_performances: [p] });
+      if (p.groups?.building) {
+        allBuildings.add(p.groups.building);
       }
     });
 
-    return BUILDING_ORDER.map(building => {
-      const groups = map.get(building).sort((a, b) => {
+    // 順序を決定（BUILDING_ORDERの順 + それ以外の建物）
+    const sortedBuildingList = Array.from(allBuildings).sort((a, b) => {
+      const indexA = BUILDING_ORDER.indexOf(a);
+      const indexB = BUILDING_ORDER.indexOf(b);
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b, 'ja');
+    });
+
+    sortedBuildingList.forEach(b => map.set(b, []));
+
+    performances.forEach(p => {
+      if (!p.groups) return;
+      const bName = p.groups.building || 'その他';
+      if (!map.has(bName)) map.set(bName, []);
+      
+      const existingGroup = map.get(bName).find(g => g.id === p.group_id);
+      if (existingGroup) {
+        existingGroup.group_performances.push(p);
+      } else {
+        map.get(bName).push({ ...p.groups, group_performances: [p] });
+      }
+    });
+
+    return sortedBuildingList.map(building => {
+      const groups = (map.get(building) || []).sort((a, b) => {
         return (a.name || '').localeCompare(b.name || '', 'ja', { numeric: true });
       });
       return { building, groups };
@@ -227,14 +246,14 @@ const Timetable = ({ initialPerformances }) => {
 
           <div className="space-y-3">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">場所でジャンプ</p>
-            <div className="flex w-full gap-2 md:gap-3 px-1">
-              {BUILDING_ORDER.map(building => (
+            <div className="flex w-full gap-2 md:gap-3 px-1 overflow-x-auto no-scrollbar">
+              {buildingsData.map(b => b.building).map(building => (
                 <button
                   key={building}
                   onClick={() => {
                     buildingRefs.current[building]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-                  className="flex-1 px-1 py-3 bg-white border border-slate-200 rounded-xl text-[10px] md:text-[11px] font-black text-slate-600 hover:bg-brand-50 hover:border-brand-200 hover:text-brand-700 transition-all shadow-sm active:scale-95"
+                  className="flex-shrink-0 px-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] md:text-[11px] font-black text-slate-600 hover:bg-brand-50 hover:border-brand-200 hover:text-brand-700 transition-all shadow-sm active:scale-95"
                 >
                   {building}
                 </button>
@@ -531,7 +550,7 @@ export async function getStaticProps() {
     props: {
       initialPerformances: data || [],
     },
-    revalidate: 3600,
+    revalidate: 10,
   };
 }
 
