@@ -36,6 +36,17 @@ const normalizeString = (str) => {
   return result;
 };
 
+const isPast = (perf) => {
+  if (!perf) return false;
+  const now = new Date();
+  const festDate = perf.part_id === 3 ? '2026-06-14' : '2026-06-13';
+  const parseTime = (t) => t?.includes(':') ? t.split(':').map(s => s.padStart(2, '0')).join(':') : t;
+  const endTime = perf.end_time 
+    ? new Date(`${festDate}T${parseTime(perf.end_time)}:00`) 
+    : new Date(`${festDate}T${parseTime(perf.start_time)}:00`);
+  return endTime < now;
+};
+
 // サブコンポーネントをメインコンポーネントの外に移動して再描画ごとの再生成を回避
 const PerformanceList = ({ schedule, dayLabel, partId, currentNextPerf, groups, setSelectedGroup, setSelectedPerf, hasReception, hasTicketStatus }) => {
   const partSchedule = useMemo(() => 
