@@ -246,14 +246,14 @@ const Timetable = ({ initialPerformances }) => {
 
           <div className="space-y-3">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">場所でジャンプ</p>
-            <div className="flex w-full gap-2 md:gap-3 px-1 overflow-x-auto no-scrollbar">
+            <div className="flex w-full gap-2 md:gap-3 px-1 flex-wrap">
               {buildingsData.map(b => b.building).map(building => (
                 <button
                   key={building}
                   onClick={() => {
                     buildingRefs.current[building]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-                  className="flex-shrink-0 px-4 py-3 bg-white border border-slate-200 rounded-xl text-[10px] md:text-[11px] font-black text-slate-600 hover:bg-brand-50 hover:border-brand-200 hover:text-brand-700 transition-all shadow-sm active:scale-95"
+                  className="flex-1 px-2 py-3 bg-white border border-slate-200 rounded-xl text-[10px] md:text-[11px] font-black text-slate-600 hover:bg-brand-50 hover:border-brand-200 hover:text-brand-700 transition-all shadow-sm active:scale-95"
                 >
                   {building}
                 </button>
