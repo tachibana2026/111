@@ -501,9 +501,11 @@ const HQDashboard = () => {
     );
   };
   useEffect(() => {
+    if (!router.pathname.startsWith('/admin/hq')) return;
+
     const authType = localStorage.getItem('ryoun_auth_type');
     const isManualLogout = sessionStorage.getItem('ryoun_manual_logout');
-    if (authType !== 'hq' && router.pathname.startsWith('/admin/hq')) { 
+    if (authType !== 'hq') {
       localStorage.removeItem('ryoun_auth_type');
       localStorage.removeItem('ryoun_group_id');
       if (isManualLogout) {

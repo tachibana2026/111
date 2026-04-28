@@ -189,7 +189,7 @@ const GroupCard = forwardRef(({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.2 }}
-      className={`relative bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-5 md:p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1 ${group.reception_status === 'closed' || group.reception_status === 'ended' ? 'opacity-60 saturate-50' : ''}`}
+      className="relative bg-white border border-slate-100 rounded-[2rem] md:rounded-3xl p-5 md:p-8 flex flex-col h-full shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-brand-900/5 hover:-translate-y-1"
     >
       <div className="flex flex-col gap-4 mb-5">
         <div className="flex items-start justify-between">

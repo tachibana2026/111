@@ -16,8 +16,8 @@ const LostFound = ({ initialItems }) => {
   };
 
   return (
-    <div className="space-y-8 md:space-y-12 pb-12">
-      <div className="flex flex-col space-y-6">
+    <div className="space-y-6 md:space-y-10 pb-12">
+      <div className="flex flex-col space-y-4">
         <div className="flex items-center space-x-4 text-slate-900">
           <div className="w-2 h-10 bg-brand-600 rounded-full shadow-lg shadow-brand-500/20"></div>
           <h1 className="text-4xl font-black tracking-tight">落とし物情報</h1>
@@ -26,7 +26,7 @@ const LostFound = ({ initialItems }) => {
       </div>
 
       {/* Guide Section */}
-      <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 space-y-6 shadow-sm overflow-hidden relative">
+      <div className="bg-white border border-slate-100 rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-6 space-y-2 shadow-sm overflow-hidden relative">
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-50 rounded-full blur-3xl -z-10" />
         <div className="flex items-center gap-4">
           <div className="bg-brand-50 p-3 rounded-2xl text-brand-600 shadow-sm transition-transform group-hover:scale-110">

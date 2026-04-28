@@ -104,11 +104,13 @@ const GroupDashboard = () => {
   }, [confirmDialog.isOpen, loading, updating]);
 
   useEffect(() => {
+    if (!router.pathname.startsWith('/admin/dashboard')) return;
+
     const groupId = localStorage.getItem('ryoun_group_id');
     const authType = localStorage.getItem('ryoun_auth_type');
 
     const isManualLogout = sessionStorage.getItem('ryoun_manual_logout');
-    if ((!groupId || authType !== 'group') && router.pathname.startsWith('/admin/dashboard')) {
+    if (!groupId || authType !== 'group') {
       localStorage.removeItem('ryoun_group_id');
       localStorage.removeItem('ryoun_auth_type');
       if (isManualLogout) {
