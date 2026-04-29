@@ -676,7 +676,7 @@ const GroupDashboard = () => {
                                               </span>
                                             )}
                                             {group.has_ticket_status && (
-                                              <span className="text-[10px] font-bold text-slate-300">
+                                              <span className={`text-[10px] font-black ${getStatusColors(perf.status, 'ticket')}`}>
                                                 整理券{perf.status === 'distributing' ? '配布中' : perf.status === 'ended' ? '終了' : 'なし'}
                                               </span>
                                             )}
